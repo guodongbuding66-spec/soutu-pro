@@ -14,21 +14,34 @@ export default async function handler(req, res) {
     const now = Date.now();
     const expiresAt = now + ttl * 60_000;
     const pathname = `temp/${expiresAt}-${crypto.randomUUID()}`;
-    const token = await issueSignedToken({ operations: ['put', 'get', 'delete'] });
+    const token = await issueSignedToken({
+      pathname,
+      operations: ['put', 'get', 'delete'],
+      validUntil: expiresAt + 24 * 60 * 60_000,
+      allowedContentTypes: [contentType],
+      maximumSizeInBytes: MAX_BYTES,
+    });
     const upload = await presignUrl(token, {
       pathname,
       operation: 'put',
+      access: 'private',
       validUntil: now + 10 * 60_000,
+      allowedContentTypes: [contentType],
+      maximumSizeInBytes: MAX_BYTES,
+      addRandomSuffix: false,
+      allowOverwrite: true,
     });
     const read = await presignUrl(token, {
       pathname,
       operation: 'get',
+      access: 'private',
       validUntil: expiresAt,
       useCache: false,
     });
     const remove = await presignUrl(token, {
       pathname,
       operation: 'delete',
+      access: 'private',
       validUntil: expiresAt + 24 * 60 * 60_000,
     });
 
