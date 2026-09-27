@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <meta name="theme-color" content="#f6f8fb" />
+  <meta name="description" content="搜图 Pro：多引擎图片搜索、OCR、商品溯源、批量研究与图片预处理工作台。" />
+  <meta name="color-scheme" content="light dark" />
+  <title>搜图 Pro · 图片搜索与商品溯源工作台</title>
+  <link rel="manifest" href="./manifest.webmanifest" />
+  <link rel="icon" href="./icon.svg" type="image/svg+xml" />
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <svg class="svg-sprite" aria-hidden="true">
+    <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.25 4.25"/></symbol>
+    <symbol id="i-upload" viewBox="0 0 24 24"><path d="M12 16V4m0 0L7.5 8.5M12 4l4.5 4.5"/><path d="M5 14.5v3.25A2.25 2.25 0 0 0 7.25 20h9.5A2.25 2.25 0 0 0 19 17.75V14.5"/></symbol>
+    <symbol id="i-link" viewBox="0 0 24 24"><path d="M10 13.5a4 4 0 0 0 5.65 0l2.85-2.85a4 4 0 0 0-5.65-5.65L11.2 6.65"/><path d="M14 10.5a4 4 0 0 0-5.65 0L5.5 13.35A4 4 0 1 0 11.15 19l1.65-1.65"/></symbol>
+    <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3 5.5 5.5v5.25c0 4.35 2.55 8.12 6.5 10.25 3.95-2.13 6.5-5.9 6.5-10.25V5.5L12 3Z"/><path d="m9.25 12 1.85 1.85L15.2 9.7"/></symbol>
+    <symbol id="i-moon" viewBox="0 0 24 24"><path d="M20 15.4A8.5 8.5 0 0 1 8.6 4 8.5 8.5 0 1 0 20 15.4Z"/></symbol>
+    <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.5"/><path d="M12 2.5v2M12 19.5v2M4.7 4.7l1.4 1.4m11.8 11.8 1.4 1.4M2.5 12h2M19.5 12h2M4.7 19.3l1.4-1.4M17.9 6.1l1.4-1.4"/></symbol>
+    <symbol id="i-settings" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.2 13.5a7.9 7.9 0 0 0 .05-3l2-1.55-2-3.45-2.45 1a8.2 8.2 0 0 0-2.55-1.5L14 2.5h-4L9.75 5a8.2 8.2 0 0 0-2.55 1.5l-2.45-1-2 3.45 2 1.55a7.9 7.9 0 0 0 .05 3l-2 1.55 2 3.45 2.45-1a8.2 8.2 0 0 0 2.5 1.45L10 21.5h4l.25-2.55a8.2 8.2 0 0 0 2.5-1.45l2.45 1 2-3.45-2-1.55Z"/></symbol>
+    <symbol id="i-x" viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></symbol>
+    <symbol id="i-crop" viewBox="0 0 24 24"><path d="M7 3v14a1 1 0 0 0 1 1h13M3 7h14a1 1 0 0 1 1 1v13"/></symbol>
+    <symbol id="i-rotate" viewBox="0 0 24 24"><path d="M4.9 9A8 8 0 1 1 5 15"/><path d="M4 4v5h5"/></symbol>
+    <symbol id="i-flip" viewBox="0 0 24 24"><path d="M12 3v18"/><path d="M9 6H5a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h4M15 6h4a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-4"/></symbol>
+    <symbol id="i-copy" viewBox="0 0 24 24"><rect x="8" y="8" width="11" height="11" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></symbol>
+    <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 4v11m0 0 4-4m-4 4-4-4"/><path d="M5 19h14"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12.5 4 4L19 7"/></symbol>
+    <symbol id="i-arrow-up-right" viewBox="0 0 24 24"><path d="M7 17 17 7M8 7h9v9"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+    <symbol id="i-history" viewBox="0 0 24 24"><path d="M4 12a8 8 0 1 0 2.35-5.65L4 8.7"/><path d="M4 4v4.7h4.7M12 7.5V12l3 2"/></symbol>
+    <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 10.5v6M12 7.5h.01"/></symbol>
+    <symbol id="i-image" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="8.5" cy="9" r="1.5"/><path d="m4 17 4.5-4.5 3.5 3 2.5-2.5 5.5 5"/></symbol>
+    <symbol id="i-shopping" viewBox="0 0 24 24"><path d="M5 8h14l-1 11H6L5 8Z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/></symbol>
+    <symbol id="i-origin" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3"/><path d="M12 2v3M22 12h-3M12 22v-3M2 12h3"/></symbol>
+    <symbol id="i-expand" viewBox="0 0 24 24"><path d="M8 3H3v5M16 3h5v5M8 21H3v-5M16 21h5v-5"/><path d="m3 8 5-5M21 8l-5-5M3 16l5 5M21 16l-5 5"/></symbol>
+    <symbol id="i-sparkles" viewBox="0 0 24 24"><path d="m12 3 1.1 3.2L16 7.5l-2.9 1.3L12 12l-1.1-3.2L8 7.5l2.9-1.3L12 3Z"/><path d="m18.5 13 1 2.2 2.2 1-2.2 1-1 2.3-1-2.3-2.2-1 2.2-1 1-2.2ZM5.5 13.5l.8 1.7 1.7.8-1.7.8-.8 1.7-.8-1.7L3 16l1.7-.8.8-1.7Z"/></symbol>
+    <symbol id="i-grid" viewBox="0 0 24 24"><rect x="4" y="4" width="6" height="6" rx="1.5"/><rect x="14" y="4" width="6" height="6" rx="1.5"/><rect x="4" y="14" width="6" height="6" rx="1.5"/><rect x="14" y="14" width="6" height="6" rx="1.5"/></symbol>
+    <symbol id="i-bolt" viewBox="0 0 24 24"><path d="M13.5 2 5 13h6l-.5 9L19 11h-6l.5-9Z"/></symbol>
+    <symbol id="i-hand" viewBox="0 0 24 24"><path d="M7 11V6a1.5 1.5 0 0 1 3 0v4-5a1.5 1.5 0 0 1 3 0v5-4a1.5 1.5 0 0 1 3 0v5-2a1.5 1.5 0 0 1 3 0v5c0 4.4-2.6 7-7 7h-1.5c-2.4 0-4.1-1.2-5.3-3.2L3.2 14.5A1.6 1.6 0 0 1 5.8 12L7 13.2V11Z"/></symbol>
+    <symbol id="i-keyboard" viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="12" rx="2"/><path d="M7 10h.01M10 10h.01M13 10h.01M16 10h.01M7 13h.01M10 13h.01M13 13h4M8 16h8"/></symbol>
+    <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3M7 7l1 13h8l1-13M10 11v5M14 11v5"/></symbol>
+    <symbol id="i-command" viewBox="0 0 24 24"><path d="M9 7V5.5A2.5 2.5 0 1 0 6.5 8H18M15 17v1.5a2.5 2.5 0 1 0 2.5-2.5H6"/><path d="M9 17h6V7H9v10Z"/></symbol>
+    <symbol id="i-batch" viewBox="0 0 24 24"><rect x="4" y="4" width="11" height="11" rx="2"/><path d="M9 19h9a2 2 0 0 0 2-2V8"/></symbol>
+    <symbol id="i-folder" viewBox="0 0 24 24"><path d="M3 7.5A2.5 2.5 0 0 1 5.5 5H10l2 2h6.5A2.5 2.5 0 0 1 21 9.5v7A2.5 2.5 0 0 1 18.5 19h-13A2.5 2.5 0 0 1 3 16.5v-9Z"/></symbol>
+    <symbol id="i-scan" viewBox="0 0 24 24"><path d="M8 3H4a1 1 0 0 0-1 1v4M16 3h4a1 1 0 0 1 1 1v4M8 21H4a1 1 0 0 1-1-1v-4M16 21h4a1 1 0 0 0 1-1v-4"/><path d="M7 12h10M9 8h6M9 16h6"/></symbol>
+    <symbol id="i-text" viewBox="0 0 24 24"><path d="M5 5h14M12 5v14M8 19h8"/></symbol>
+    <symbol id="i-wand" viewBox="0 0 24 24"><path d="m4 20 10-10M13 5l1-2 1 2 2 1-2 1-1 2-1-2-2-1 2-1ZM18 12l.75-1.5.75 1.5 1.5.75-1.5.75-.75 1.5-.75-1.5-1.5-.75L18 12Z"/><path d="m6 14 4 4"/></symbol>
+    <symbol id="i-contrast" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 1 0 18V3Z"/></symbol>
+    <symbol id="i-sharpen" viewBox="0 0 24 24"><path d="m12 3 8 16H4L12 3Z"/><circle cx="12" cy="14" r="2"/></symbol>
+    <symbol id="i-edge" viewBox="0 0 24 24"><path d="M5 4h14v16H5zM8 7v10M12 7v10M16 7v10"/></symbol>
+    <symbol id="i-zoom" viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6"/><path d="m15 15 5 5M10.5 7.5v6M7.5 10.5h6"/></symbol>
+    <symbol id="i-barcode" viewBox="0 0 24 24"><path d="M4 5v14M7 5v14M11 5v14M14 5v14M18 5v14M20 5v14"/></symbol>
+    <symbol id="i-cloud" viewBox="0 0 24 24"><path d="M7 18a4 4 0 0 1-.7-7.94A6 6 0 0 1 18 11a3.5 3.5 0 0 1-.5 7H7Z"/><path d="M12 16V9m0 0-3 3m3-3 3 3"/></symbol>
+    <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+    <symbol id="i-star" viewBox="0 0 24 24"><path d="m12 3 2.7 5.5 6.1.9-4.4 4.3 1 6.1-5.4-2.9-5.4 2.9 1-6.1-4.4-4.3 6.1-.9L12 3Z"/></symbol>
+    <symbol id="i-save" viewBox="0 0 24 24"><path d="M5 4h12l2 2v14H5V4Z"/><path d="M8 4v6h8V4M8 20v-6h8v6"/></symbol>
+    <symbol id="i-play" viewBox="0 0 24 24"><path d="m8 5 11 7-11 7V5Z"/></symbol>
+    <symbol id="i-install" viewBox="0 0 24 24"><path d="M12 3v11m0 0 4-4m-4 4-4-4"/><path d="M5 18v2h14v-2"/></symbol>
+    <symbol id="i-list" viewBox="0 0 24 24"><path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01"/></symbol>
+  </svg>
+
+  <header class="topbar">
+    <div class="wrap nav">
+      <button class="brand" data-nav="search" aria-label="回到搜图"><span class="brand-mark"><svg><use href="#i-search"/></svg></span><span class="brand-copy"><b>搜图 <em>Pro</em></b><small>Image Compass</small></span></button>
+      <nav aria-label="主导航">
+        <button class="active" data-nav="search">搜图</button>
+        <button data-nav="batch">批量</button>
+        <button data-nav="projects">项目</button>
+        <button data-nav="history">历史</button>
+      </nav>
+      <div class="nav-actions">
+        <button class="icon-btn command-trigger" id="commandBtn" aria-label="命令菜单"><svg><use href="#i-command"/></svg><span>⌘K</span></button>
+        <button class="icon-btn" id="installBtn" aria-label="安装应用" hidden><svg><use href="#i-install"/></svg></button>
+        <button class="icon-btn" id="themeBtn" aria-label="切换深色模式"><span class="theme-icon-stack"><svg class="theme-icon theme-icon-moon"><use href="#i-moon"/></svg><svg class="theme-icon theme-icon-sun"><use href="#i-sun"/></svg></span></button>
+        <button class="icon-btn" id="settingsBtn" aria-label="设置"><svg><use href="#i-settings"/></svg></button>
+      </div>
+    </div>
+  </header>
+
+  <main id="searchView" class="view-shell">
+    <section class="hero wrap">
+      <div class="eyebrow"><span class="eyebrow-dot"></span>图片搜索与商品溯源工作台</div>
+      <h1>从一张图片开始，<span>把线索查到底。</span></h1>
+      <p>反向搜图、OCR、商品平台、图片预处理、批量研究统一在一个工作台里。基础处理默认在浏览器本地完成。</p>
+      <div class="hero-meta"><span><svg><use href="#i-shield"/></svg> 本地优先</span><span><svg><use href="#i-scan"/></svg> OCR / 视觉分析</span><span><svg><use href="#i-batch"/></svg> 批量任务</span><span><svg><use href="#i-command"/></svg> Command Palette</span></div>
+    </section>
+
+    <section class="wrap tool-card" id="toolCard">
+      <div id="uploader" class="uploader-wrap">
+        <div class="drop-zone" id="dropZone">
+          <div class="upload-icon"><svg><use href="#i-upload"/></svg></div><h2>把图片放进来</h2><p>拖拽、点击选择，或按 <kbd>Ctrl</kbd> + <kbd>V</kbd> 粘贴截图</p>
+          <button class="secondary-btn strong" id="chooseBtn"><svg><use href="#i-image"/></svg>选择图片</button><input id="fileInput" type="file" accept="image/*" hidden />
+          <div class="support-line"><span>JPG</span><span>PNG</span><span>WebP</span><span>GIF</span><span>≤ 20 MB</span></div>
+        </div>
+        <div class="or"><span>或使用公开图片链接</span></div>
+        <form class="url-row" id="urlForm"><svg><use href="#i-link"/></svg><input id="urlInput" placeholder="https://example.com/photo.jpg" autocomplete="off" aria-label="公开图片链接" /><button>载入图片</button></form>
+        <div class="privacy-note"><svg><use href="#i-shield"/></svg><span><strong>本地优先：</strong>裁剪、旋转、增强和缩略图默认在浏览器内完成；临时公网链接只有启用临时图片服务时才会创建。</span></div>
+      </div>
+
+      <div id="workbench" class="workbench hidden">
+        <div class="preview-panel">
+          <div class="panel-title"><div><span class="status-dot"></span>图片工作台</div><button class="icon-btn danger" id="removeBtn" aria-label="移除图片"><svg><use href="#i-x"/></svg></button></div>
+          <div class="image-stage" id="imageStage"><img id="previewImg" alt="待搜索图片" /><div id="cropShade" class="crop-shade hidden"></div><div id="cropBox" class="crop-box hidden"></div></div>
+          <div class="tool-row" aria-label="图片工具">
+            <button id="cropBtn"><svg><use href="#i-crop"/></svg>裁剪</button><button id="rotateBtn"><svg><use href="#i-rotate"/></svg>旋转</button><button id="flipBtn"><svg><use href="#i-flip"/></svg>翻转</button>
+            <button data-process="autocrop"><svg><use href="#i-wand"/></svg>裁白边</button><button data-process="contrast"><svg><use href="#i-contrast"/></svg>增强</button><button data-process="sharpen"><svg><use href="#i-sharpen"/></svg>锐化</button><button data-process="edge"><svg><use href="#i-edge"/></svg>线稿</button><button data-process="perspective"><svg><use href="#i-origin"/></svg>透视矫正</button><button data-process="upscale"><svg><use href="#i-zoom"/></svg>2×放大</button>
+            <button id="copyBtn"><svg><use href="#i-copy"/></svg>复制</button><button id="downloadBtn"><svg><use href="#i-download"/></svg>下载</button>
+          </div>
+          <div class="crop-actions hidden" id="cropActions"><span>拖动画面框选需要搜索的局部。</span><button class="secondary-btn compact" id="cropReset">重置</button><button class="primary-mini" id="applyCrop" disabled><svg><use href="#i-check"/></svg>应用裁剪</button></div>
+        </div>
+        <aside class="meta-panel">
+          <div class="meta-head"><div class="file-chip"><svg><use href="#i-image"/></svg></div><div><strong id="fileName">图片</strong><span id="sourceKind">本地文件</span></div></div>
+          <dl><div><dt>尺寸</dt><dd id="dims">—</dd></div><div><dt>格式</dt><dd id="format">—</dd></div><div><dt>大小</dt><dd id="size">—</dd></div><div><dt>处理</dt><dd class="local-badge">本地</dd></div></dl>
+          <div class="toggle-source hidden" id="sourceToggle"><span>搜索使用</span><div><button class="active" data-use="original">原图</button><button data-use="processed">处理图</button></div></div>
+          <div class="meta-tip" id="metaTip"><svg><use href="#i-info"/></svg><span>本地图片不会被伪装成已上传云端。</span></div>
+          <button class="analysis-launch" id="analyzeBtn"><span class="analysis-icon"><svg><use href="#i-scan"/></svg></span><span><b>智能分析图片</b><small>OCR · 分类 · 条码 · 搜索词</small></span><svg class="arrow"><use href="#i-arrow-up-right"/></svg></button>
+          <div class="temp-link-card" id="tempLinkCard"><div><svg><use href="#i-cloud"/></svg><span><b>临时公网链接</b><small id="tempLinkStatus">未配置服务</small></span></div><button class="secondary-btn compact" id="tempLinkBtn">创建</button></div>
+        </aside>
+      </div>
+    </section>
+
+    <section class="wrap research-panel hidden" id="researchPanel">
+      <div class="section-heading"><div><span class="section-kicker">RESEARCH MODE</span><h2>图片研究模式</h2><p>从 OCR、视觉标签和条码中提取线索，再生成可执行搜索策略。</p></div><div class="research-actions"><button class="secondary-btn hidden" id="batchObjectsBtn"><svg><use href="#i-batch"/></svg>主体加入批量</button><button class="secondary-btn" id="saveProjectBtn"><svg><use href="#i-save"/></svg>保存为项目</button><button class="secondary-btn" id="reanalyzeBtn"><svg><use href="#i-scan"/></svg>重新分析</button></div></div>
+      <div class="research-grid">
+        <article class="research-card"><div class="card-head"><span class="card-icon"><svg><use href="#i-text"/></svg></span><div><h3>OCR 文字</h3><p id="ocrStatus">等待分析</p></div></div><div id="ocrOutput" class="analysis-output muted-output">识别到的品牌、型号、包装文字会出现在这里。</div></article>
+        <article class="research-card"><div class="card-head"><span class="card-icon"><svg><use href="#i-sparkles"/></svg></span><div><h3>视觉标签</h3><p id="visionStatus">等待分析</p></div></div><div id="visionOutput" class="tag-cloud"><span class="ghost-tag">图片分类结果</span></div></article>
+        <article class="research-card"><div class="card-head"><span class="card-icon"><svg><use href="#i-barcode"/></svg></span><div><h3>条码 / 二维码</h3><p id="barcodeStatus">浏览器能力检测</p></div></div><div id="barcodeOutput" class="analysis-output muted-output">支持的浏览器会自动尝试识别。</div></article>
+        <article class="research-card"><div class="card-head"><span class="card-icon"><svg><use href="#i-scan"/></svg></span><div><h3>主体候选区域</h3><p id="objectsStatus">等待分析</p></div></div><div id="objectsOutput" class="object-list"><span class="ghost-tag">检测到的对象区域</span></div></article><article class="research-card recommendation-card"><div class="card-head"><span class="card-icon"><svg><use href="#i-origin"/></svg></span><div><h3>推荐策略</h3><p>根据当前线索动态建议</p></div></div><div id="recommendationOutput"></div></article>
+      </div>
+      <div class="query-workbench"><div class="query-head"><div><h3>搜索词工作台</h3><p>自动生成后仍可编辑；商品平台搜索和结果聚合都会使用这里的关键词。</p></div><button class="text-btn" id="addQueryBtn"><svg><use href="#i-plus"/></svg>添加搜索词</button></div><div id="queryList" class="query-list"></div></div>
+      <div class="marketplace-workbench"><div class="query-head"><div><h3>商品平台搜索</h3><p>使用文字线索同时搜索主流零售、B2B 和供应商平台。</p></div><div class="query-actions"><button class="secondary-btn compact" id="supplierSearchBtn"><svg><use href="#i-origin"/></svg>供应商线索</button><button class="primary-mini" id="federatedSearchBtn"><svg><use href="#i-search"/></svg>聚合商品</button></div></div><div id="marketplaceGrid" class="marketplace-grid"></div><div id="productResults" class="product-results hidden"></div></div>
+    </section>
+
+    <section class="wrap preset-block"><div class="section-heading"><div><span class="section-kicker">STEP 01</span><h2>你想做什么？</h2><p>先选任务，系统自动勾选更适合的反向图片搜索引擎。</p></div><span class="kbd-hint">1–5 快速切换</span></div><div class="preset-grid" id="presetGrid"></div></section>
+    <section class="wrap engines-section"><div class="section-heading engine-heading"><div><span class="section-kicker">STEP 02</span><h2>确认搜索引擎</h2><p id="engineHint">本地图片需要手动上传时会明确标注。</p></div><div class="section-actions"><span class="engine-summary" id="engineSummary">0 / 0 已选</span><button class="text-btn" id="customBtn"><svg><use href="#i-plus"/></svg>自定义引擎</button></div></div><div id="engineGroups" class="engine-groups"></div><div class="search-bar"><label class="privacy-switch"><input type="checkbox" id="privacyMode"/><span class="switch-track"><i></i></span><span class="privacy-copy"><b>隐私模式</b><small>不写入本机历史</small></span></label><div class="search-actions"><span>即将打开 <strong id="selectedCount">0</strong> 个标签页</span><button class="primary-btn" id="runSearch" disabled><svg><use href="#i-search"/></svg><span>搜索所选引擎</span></button></div></div></section>
+  </main>
+
+  <main id="batchView" class="wrap subpage view-shell hidden"><div class="subpage-head"><div><span class="section-kicker">BATCH MODE</span><h1>批量搜图</h1><p>一次拖入多张图片，统一设置任务并按队列执行。</p></div><button class="secondary-btn" id="batchExport"><svg><use href="#i-download"/></svg>导出 CSV</button></div><div class="batch-drop" id="batchDrop"><svg><use href="#i-batch"/></svg><div><h2>拖入多张图片</h2><p>最多 50 张；缩略图与队列信息只保存在当前会话。</p></div><button class="secondary-btn" id="batchChoose">选择图片</button><input id="batchInput" type="file" accept="image/*" multiple hidden></div><div class="batch-toolbar"><label>统一任务<select id="batchPreset"></select></label><button class="secondary-btn" id="applyBatchPreset">应用到全部</button><button class="primary-btn" id="runBatch"><svg><use href="#i-play"/></svg>执行队列</button></div><div id="batchList" class="batch-list"></div></main>
+
+  <main id="projectsView" class="wrap subpage view-shell hidden"><div class="subpage-head"><div><span class="section-kicker">RESEARCH PROJECTS</span><h1>搜索项目</h1><p>保存 OCR、搜索词、任务策略和缩略图，方便后续继续调查。</p></div><button class="secondary-btn" id="clearProjects"><svg><use href="#i-trash"/></svg>清空</button></div><div id="projectsContent"></div></main>
+
+  <main id="historyView" class="wrap subpage view-shell hidden"><div class="subpage-head"><div><span class="section-kicker">LOCAL HISTORY</span><h1>本机搜索历史</h1><p>记录只保存在当前浏览器；隐私模式不会新增记录。</p></div><button class="secondary-btn" id="clearHistory"><svg><use href="#i-trash"/></svg>清空</button></div><div id="historyContent"></div></main>
+
+  <main id="tipsView" class="wrap subpage view-shell hidden"><div class="subpage-head"><div><span class="section-kicker">SEARCH PLAYBOOK</span><h1>使用技巧</h1><p>提高商品溯源、原图检索和低清线稿命中率的操作方式。</p></div><button class="secondary-btn" data-nav="search">返回搜图</button></div><div class="tips-grid"><section><span>01</span><h2>局部优先</h2><p>复杂场景先裁产品主体或特殊零件，再反向搜索。</p></section><section><span>02</span><h2>OCR + 图片双线索</h2><p>包装、铭牌、Logo 同时做 OCR 与视觉搜索，通常比单独搜图更快。</p></section><section><span>03</span><h2>线稿先增强</h2><p>使用“裁白边”和“线稿”预处理，再搜索通风窗、五金等细节。</p></section><section><span>04</span><h2>商品平台组合</h2><p>品牌/型号明确后，优先同时搜索 Amazon、Alibaba、Home Depot 等平台。</p></section><section><span>05</span><h2>临时链接</h2><p>Vercel 部署默认使用 Blob 短时签名 URL；也可切换到兼容的 Cloudflare Worker。</p></section><section><span>06</span><h2>隐私边界</h2><p>第三方搜索引擎的数据处理政策独立于本站；进入第三方后以其政策为准。</p></section></div></main>
+
+  <footer><div class="wrap footer-inner"><span>搜图 Pro · Image Compass</span><div><button class="footer-link" data-nav="tips">使用技巧</button><button class="footer-link" id="shortcutHelp">快捷键</button><span>本地优先 · 第三方能力透明</span></div></div></footer>
+
+  <div class="modal-backdrop hidden" id="settingsModal"><div class="modal modal-wide" role="dialog" aria-modal="true"><div class="modal-head"><h2>设置</h2><button class="icon-btn" data-close="settingsModal" aria-label="关闭"><svg><use href="#i-x"/></svg></button></div><div class="modal-body settings-grid"><label class="field-label">默认任务<select id="defaultPreset"></select></label><label class="field-label">临时图片服务 URL<input id="tempEndpointInput" placeholder="Vercel 默认使用当前站点"><small>Vercel 默认使用同源 Blob API；也可填写兼容 Worker 地址。</small></label><label class="field-label">商品聚合 API URL<input id="productEndpointInput" placeholder="Vercel 默认使用当前站点"><small>Vercel 默认使用同源 API；配置 SERPAPI_KEY 后开启聚合结果。</small></label><label class="field-label">临时链接有效期<select id="ttlSelect"><option value="10">10 分钟</option><option value="30">30 分钟</option><option value="60">60 分钟</option><option value="120">120 分钟</option></select></label><label class="setting-toggle"><input type="checkbox" id="autoPresetToggle"><span class="switch-track"><i></i></span><span><b>智能分析后自动采用推荐任务</b><small>检测到商品、动漫或来源线索后自动同步搜索引擎。</small></span></label><div class="settings-note"><svg><use href="#i-info"/></svg><span>地址和偏好只保存在当前浏览器。未配置后端时，所有基础功能仍然可以使用。</span></div></div></div></div>
+  <div class="modal-backdrop hidden" id="customModal"><div class="modal" role="dialog" aria-modal="true"><div class="modal-head"><h2>添加自定义引擎</h2><button class="icon-btn" data-close="customModal" aria-label="关闭"><svg><use href="#i-x"/></svg></button></div><div class="modal-body"><label class="field-label">名称<input id="customName" placeholder="例如：我的商品搜索"></label><label class="field-label">URL 模板<input id="customTemplate" placeholder="https://example.com/search?url={imageUrl}"><small>公开图片 URL 模式，模板必须包含 {imageUrl}。</small></label><button class="primary-btn full" id="addCustom"><svg><use href="#i-plus"/></svg>添加引擎</button></div></div></div>
+
+  <div class="modal-backdrop hidden" id="commandModal"><div class="command-palette" role="dialog" aria-modal="true"><div class="command-search"><svg><use href="#i-search"/></svg><input id="commandInput" placeholder="输入命令…" autocomplete="off"><kbd>Esc</kbd></div><div id="commandList" class="command-list"></div></div></div>
+  <div class="modal-backdrop hidden" id="executionModal"><div class="modal modal-wide execution-modal" role="dialog" aria-modal="true"><div class="modal-head"><div><h2>搜索执行状态</h2><p id="executionSummary">正在打开搜索引擎</p></div><button class="icon-btn" data-close="executionModal" aria-label="关闭"><svg><use href="#i-x"/></svg></button></div><div id="executionList" class="execution-list"></div></div></div>
+  <div class="modal-backdrop hidden" id="shortcutModal"><div class="modal"><div class="modal-head"><h2>快捷键</h2><button class="icon-btn" data-close="shortcutModal"><svg><use href="#i-x"/></svg></button></div><div class="shortcut-grid"><span>⌘ / Ctrl + K</span><b>命令菜单</b><span>Ctrl / ⌘ + V</span><b>粘贴图片</b><span>1–5</span><b>切换任务</b><span>C</span><b>裁剪</b><span>R</span><b>旋转</b><span>Enter</span><b>执行搜索</b><span>Esc</span><b>退出当前操作</b></div></div></div>
+  <div class="toast-stack" id="toastStack" aria-live="polite" aria-atomic="true"></div>
+
+  <script src="./config.js"></script><script src="./app.js"></script>
+</body>
+</html>
