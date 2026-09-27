@@ -1,0 +1,1 @@
+const input=document.querySelector('#url');chrome.storage.sync.get('siteUrl',x=>input.value=x.siteUrl||'https://soutu-pro.netlify.app/');document.querySelector('#save').onclick=()=>chrome.storage.sync.set({siteUrl:input.value.trim()},()=>window.close());
