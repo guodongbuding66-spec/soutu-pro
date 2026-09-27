@@ -1,6 +1,6 @@
 {
   "name": "soutu-pro",
-  "version": "8.1.0",
+  "version": "8.2.0",
   "private": true,
   "type": "module",
   "description": "搜图 Pro — image search, OCR, product tracing and research workspace",
@@ -9,7 +9,7 @@
   },
   "scripts": {
     "dev": "python3 -m http.server 4173",
-    "build": "node build-static.mjs",
+    "build": "npm run check && node build-static.mjs",
     "check": "node --check app.js && node --check api/temp-token.js && node --check api/product-search.js && node --check api/supplier-search.js && node --check api/cleanup.js && node --check worker/src/index.js && node --check extension/background.js && node --check extension/popup.js"
   }
 }
