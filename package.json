@@ -9,7 +9,7 @@
   },
   "scripts": {
     "dev": "python3 -m http.server 4173",
-    "build": "node -e \"console.log('Static site + Vercel Functions: no frontend build step required')\"",
+    "build": "node build-static.mjs",
     "check": "node --check app.js && node --check api/temp-token.js && node --check api/product-search.js && node --check api/supplier-search.js && node --check api/cleanup.js && node --check worker/src/index.js && node --check extension/background.js && node --check extension/popup.js"
   }
 }
