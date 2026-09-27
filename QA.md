@@ -7,7 +7,7 @@
 
 ## 结论
 
-V8.2.0 已完成前端主要流程、响应式、PWA 静态资源、Vercel Functions 边界与生产运行时检查。当前 Production 部署状态为 READY，最近 30 分钟未发现 Vercel runtime error。
+V8.2.0 已完成前端主要流程、响应式、PWA 静态资源、Vercel Functions 边界与生产运行时检查。当前 Production 部署状态为 READY。运行时未发现业务异常；Vercel Functions 仍会记录 Node DEP0169 `url.parse()` deprecation warning，经仓库全文检索确认项目源码未使用 `url.parse()`，属于运行时/依赖层警告，不影响请求结果。
 
 ## 已回归流程
 
@@ -59,7 +59,8 @@ V8.2 修复：
 - /api/supplier-search 无 q -> 400
 - product/supplier q > 240 -> 400
 - product/supplier 正常 q 且无 SERPAPI_KEY -> 200 + enabled:false（预期降级）
-- 最近 30 分钟 Vercel runtime errors：0
+- 生产 API 请求均按预期返回；无业务 5xx
+- Vercel observability 会将 Node DEP0169 deprecation warning 归入 runtime errors；仓库源码搜索 `url.parse` 为 0 命中，属于平台/依赖层警告
 
 ### 部署质量
 - package version: 8.2.0
