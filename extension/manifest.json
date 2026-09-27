@@ -1,0 +1,10 @@
+{
+  "manifest_version": 3,
+  "name": "搜图 Pro",
+  "version": "1.0.0",
+  "description": "右键网页图片，直接交给搜图 Pro 的多引擎工作台。",
+  "permissions": ["contextMenus", "storage", "tabs"],
+  "host_permissions": ["https://*/*", "http://*/*"],
+  "background": {"service_worker": "background.js"},
+  "action": {"default_popup": "popup.html", "default_title": "搜图 Pro"}
+}
