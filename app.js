@@ -50,7 +50,7 @@
     source:null, originalUrl:null, processedUrl:null, useProcessed:false, cropMode:false, cropRect:null,
     selected:[], preset:'product', custom:readJson(KEYS.custom,[]), history:readJson(KEYS.history,[]), privacy:false,
     projects:readJson(KEYS.projects,[]), favorites:readJson(KEYS.favorites,[]), settings:{...defaultSettings,...readJson(KEYS.settings,{})},
-    analysis:{ocr:'',labels:[],barcodes:[],objects:[],queries:[],running:false}, tempLink:null, tempTimer:null,
+    analysis:{ocr:'',labels:[],barcodes:[],objects:[],queries:[],running:false}, tempLink:null, tempTimer:null, tempUnavailableReason:'',
     batch:[], view:'search', installPrompt:null, presetTouched:false
   };
 
@@ -203,11 +203,53 @@
   async function addDetectedObjectsToBatch(){if(!state.analysis.objects?.length||!activeUrl())return toast('没有可加入的主体区域','请先运行智能分析。','error');try{const img=await loadImage(activeUrl(),true).catch(()=>loadImage(activeUrl()));let added=0;for(const [i,o] of state.analysis.objects.slice(0,8).entries()){const [x,y,w,h]=o.bbox,c=document.createElement('canvas');c.width=Math.max(1,Math.round(w));c.height=Math.max(1,Math.round(h));c.getContext('2d').drawImage(img,x,y,w,h,0,0,c.width,c.height);const blob=await new Promise(res=>c.toBlob(res,'image/png',.94));if(!blob)continue;const file=new File([blob],`${o.label||'object'}-${i+1}.png`,{type:'image/png'}),url=URL.createObjectURL(blob),thumb=await makeThumb(url);state.batch.push({id:uid(),file,url,thumb,name:file.name,size:file.size,preset:state.analysis.recommended||state.preset||'product',status:'ready',width:c.width,height:c.height});added++;if(state.batch.length>=MAX_BATCH)break}renderBatch();setView('batch');toast(`已加入 ${added} 个主体区域`,'可为每个区域单独选择搜索任务并执行。','ok')}catch(e){toast('主体区域加入失败',e.message||'图片可能受跨域限制。','error')}}
 
   function isTempValid(){return !!(state.tempLink?.url&&state.tempLink.expiresAt>Date.now()+5000)}
-  function syncTempCard(){clearInterval(state.tempTimer);const ep=state.settings.tempEndpoint.trim();els.tempLinkBtn.disabled=!state.source||(!ep&& !directSourceUrl());if(directSourceUrl()&&!state.useProcessed){els.tempLinkStatus.textContent='原图已经是公开 URL';els.tempLinkBtn.textContent='无需创建';els.tempLinkBtn.disabled=true;return}if(isTempValid()){updateTempCountdown();state.tempTimer=setInterval(updateTempCountdown,1000);els.tempLinkBtn.textContent='重新创建'}else{els.tempLinkStatus.textContent=ep?'可创建短时 URL':'在设置中配置 Worker';els.tempLinkBtn.textContent='创建'}}
+  function syncTempCard(){
+    clearInterval(state.tempTimer);
+    const ep=state.settings.tempEndpoint.trim();
+    els.tempLinkCard?.classList.toggle('unavailable',!!state.tempUnavailableReason);
+    els.tempLinkBtn.disabled=!state.source||(!ep&&!directSourceUrl());
+    if(directSourceUrl()&&!state.useProcessed){els.tempLinkStatus.textContent='原图已经是公开 URL';els.tempLinkBtn.textContent='无需创建';els.tempLinkBtn.disabled=true;return}
+    if(isTempValid()){updateTempCountdown();state.tempTimer=setInterval(updateTempCountdown,1000);els.tempLinkBtn.textContent='重新创建';return}
+    if(state.tempUnavailableReason){els.tempLinkStatus.textContent=state.tempUnavailableReason;els.tempLinkBtn.textContent='重新检测';return}
+    els.tempLinkStatus.textContent=ep?'可创建短时 URL':'未配置临时图片服务';
+    els.tempLinkBtn.textContent='创建'
+  }
   function updateTempCountdown(){if(!isTempValid()){els.tempLinkStatus.textContent='链接已过期';clearInterval(state.tempTimer);renderEngines();return}const s=Math.max(0,Math.floor((state.tempLink.expiresAt-Date.now())/1000));els.tempLinkStatus.textContent=`剩余 ${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`}
-  async function createTempLink(){const ep=state.settings.tempEndpoint.trim().replace(/\/$/,'');if(!ep)return toast('未配置临时图片服务','在设置中填入 Vercel 或 Cloudflare 临时图片服务地址。','error');els.tempLinkBtn.disabled=true;els.tempLinkBtn.innerHTML='<span class="spinner"></span>上传中';try{const blob=await blobFromActive();let data;if(window.SOUTU_CONFIG?.tempUploadProvider==='vercel'&&ep===location.origin){const tokenRes=await fetch(`${ep}/api/temp-token?ttl=${Number(state.settings.ttl)||30}&size=${blob.size}&contentType=${encodeURIComponent(blob.type||'image/png')}`,{method:'POST'});data=await tokenRes.json();if(!tokenRes.ok||!data.uploadUrl||!data.url)throw new Error(data.error||'unable to create signed upload');const uploadRes=await fetch(data.uploadUrl,{method:'PUT',headers:{'content-type':blob.type||'image/png'},body:blob});if(!uploadRes.ok)throw new Error(`Blob upload failed (${uploadRes.status})`)}else{const r=await fetch(`${ep}/api/upload?ttl=${Number(state.settings.ttl)||30}`,{method:'POST',headers:{'content-type':blob.type||'image/png'},body:blob});data=await r.json();if(!r.ok||!data.url)throw new Error(data.error||'upload failed')}state.tempLink={url:data.url,expiresAt:Number(data.expiresAt)||Date.now()+30*60_000,deleteUrl:data.deleteUrl||''};toast('临时链接已创建',`将在约 ${state.settings.ttl} 分钟后失效。`,'ok');syncTempCard();renderEngines()}catch(e){toast('临时链接创建失败',e.message||'请检查临时图片服务配置。','error')}finally{els.tempLinkBtn.disabled=false;els.tempLinkBtn.textContent=isTempValid()?'重新创建':'创建'}}
+  async function createTempLink({silent=false}={}){
+    const ep=state.settings.tempEndpoint.trim().replace(/\/$/,'');
+    if(!ep){state.tempUnavailableReason='未配置临时图片服务 · 已使用手动上传';syncTempCard();if(!silent)toast('未配置临时图片服务','仍可复制图片后在第三方页面上传。');return false}
+    els.tempLinkBtn.disabled=true;els.tempLinkBtn.innerHTML='<span class="spinner"></span>上传中';
+    try{
+      const blob=await blobFromActive();let data;
+      if(window.SOUTU_CONFIG?.tempUploadProvider==='vercel'&&ep===location.origin){
+        const tokenRes=await fetch(`${ep}/api/temp-token?ttl=${Number(state.settings.ttl)||30}&size=${blob.size}&contentType=${encodeURIComponent(blob.type||'image/png')}`,{method:'POST'});
+        data=await tokenRes.json().catch(()=>({}));
+        if(!tokenRes.ok||!data.uploadUrl||!data.url){
+          if(data.code==='BLOB_NOT_CONFIGURED'){
+            state.tempUnavailableReason='Vercel Blob 未连接 · 已自动降级';
+            syncTempCard();renderEngines();
+            if(!silent)toast('Vercel Blob 尚未连接','已切换为“复制图片 + 手动上传”，连接 Blob 后可恢复直连。');
+            return false
+          }
+          throw new Error(data.error||'unable to create signed upload')
+        }
+        const uploadRes=await fetch(data.uploadUrl,{method:'PUT',headers:{'content-type':blob.type||'image/png'},body:blob});
+        if(!uploadRes.ok)throw new Error(`Blob upload failed (${uploadRes.status})`)
+      }else{
+        const r=await fetch(`${ep}/api/upload?ttl=${Number(state.settings.ttl)||30}`,{method:'POST',headers:{'content-type':blob.type||'image/png'},body:blob});
+        data=await r.json();if(!r.ok||!data.url)throw new Error(data.error||'upload failed')
+      }
+      state.tempUnavailableReason='';
+      state.tempLink={url:data.url,expiresAt:Number(data.expiresAt)||Date.now()+30*60_000,deleteUrl:data.deleteUrl||''};
+      if(!silent)toast('临时链接已创建',`将在约 ${state.settings.ttl} 分钟后失效。`,'ok');
+      syncTempCard();renderEngines();return true
+    }catch(e){
+      if(!silent)toast('临时链接创建失败',e.message||'请检查临时图片服务配置。','error');
+      return false
+    }finally{syncTempCard()}
+  }
   async function deleteTempLink(){clearInterval(state.tempTimer);const old=state.tempLink;state.tempLink=null;if(old?.deleteUrl)fetch(old.deleteUrl,{method:'DELETE'}).catch(()=>{});syncTempCard()}
-  async function ensurePublicUrl(){const direct=directSourceUrl();if(direct)return direct;if(isTempValid())return state.tempLink.url;if(state.settings.tempEndpoint){await createTempLink();if(isTempValid())return state.tempLink.url}return null}
+  async function ensurePublicUrl({silent=true}={}){const direct=directSourceUrl();if(direct)return direct;if(isTempValid())return state.tempLink.url;if(state.tempUnavailableReason)return null;if(state.settings.tempEndpoint){await createTempLink({silent});if(isTempValid())return state.tempLink.url}return null}
 
   function engineTarget(engine,publicUrl){return publicUrl&&engine.direct?engine.direct(publicUrl):engine.uploadPage}
   function openPreparedTab(){
@@ -227,24 +269,29 @@
     if(!state.source||!state.selected.length)return;
     els.runSearch.classList.add('busy');els.runSearch.querySelector('span').textContent='准备搜索…';
     const engines=allEngines().filter(e=>state.selected.includes(e.id));
-    // Must reserve tabs synchronously inside the click gesture. Waiting for uploads/copy first
-    // causes Chromium/Edge to treat window.open() as unsolicited popups.
-    const prepared=engines.map(e=>({e,win:openPreparedTab()}));
+    // Browsers normally grant one popup per user gesture. Reserve only the first tab and
+    // turn the remaining engines into explicit one-click launch actions.
+    const firstWin=openPreparedTab();
     openModal('executionModal');els.executionList.innerHTML='';
-    const publicUrl=await ensurePublicUrl();
-    if(engines.some(e=>!(publicUrl&&e.direct)))await quietCopy();
-    const statuses=[];
-    for(const plan of prepared){
-      const e=plan.e,direct=!!(publicUrl&&e.direct),url=engineTarget(e,publicUrl);
-      const status=plan.win&&navigatePreparedTab(plan.win,url)?'opened':'blocked';
-      statuses.push({id:e.id,name:e.name,direct,status,url});
-      renderExecution(statuses);
-    }
-    els.executionSummary.textContent=`${statuses.filter(x=>x.status==='opened').length} 已打开 · ${statuses.filter(x=>x.status==='blocked').length} 被拦截 · ${statuses.filter(x=>!x.direct).length} 需手动上传`;
+    const publicUrl=await ensurePublicUrl({silent:true});
+    const needsManual=engines.some(e=>!(publicUrl&&e.direct));
+    if(needsManual)await quietCopy();
+    const statuses=engines.map((e,index)=>{
+      const direct=!!(publicUrl&&e.direct),url=engineTarget(e,publicUrl);
+      let status='ready';
+      if(index===0&&firstWin)status=navigatePreparedTab(firstWin,url)?'opened':'ready';
+      return{id:e.id,name:e.name,direct,status,url}
+    });
+    renderExecution(statuses);
+    const opened=statuses.filter(x=>x.status==='opened').length,ready=statuses.filter(x=>x.status==='ready').length;
+    els.executionSummary.textContent=`${opened} 已打开 · ${ready} 待打开 · ${statuses.filter(x=>!x.direct).length} 需手动上传`;
+    if(state.tempUnavailableReason&&needsManual)toast('已切换到可靠手动模式','临时图片服务未连接；图片已尝试复制，逐个点击“打开”后粘贴/上传。');
     if(!state.privacy)await addHistory();
     els.runSearch.classList.remove('busy');els.runSearch.querySelector('span').textContent='搜索所选引擎'
   }
-  function renderExecution(items){els.executionList.innerHTML=items.map(x=>`<div class="execution-row"><span class="execution-state ${x.status}">${icon(x.status==='opened'?'check':'info')}</span><div><b>${escapeHtml(x.name)}</b><small>${x.direct?'已使用图片 URL':'已尝试复制图片；需在第三方页面上传/粘贴'}</small></div><span class="status-pill ${x.status}">${x.status==='opened'?'已打开':'被拦截'}</span>${x.status==='blocked'?`<button class="secondary-btn compact" data-retry-url="${escapeHtml(x.url)}">重试</button>`:''}</div>`).join('')}
+  function renderExecution(items){
+    els.executionList.innerHTML=items.map(x=>`<div class="execution-row" data-execution-id="${escapeHtml(x.id)}"><span class="execution-state ${x.status}">${icon(x.status==='opened'?'check':'info')}</span><div><b>${escapeHtml(x.name)}</b><small>${x.direct?'将直接使用临时图片 URL':'点击打开后粘贴或上传图片'}</small></div><span class="status-pill ${x.status}">${x.status==='opened'?'已打开':x.status==='blocked'?'被拦截':'待打开'}</span>${x.status==='opened'?'':`<button class="secondary-btn compact" data-execution-open="${escapeHtml(x.url)}" data-execution-manual="${x.direct?'0':'1'}">打开</button>`}</div>`).join('')
+  }
   async function addHistory(){let thumb='';try{thumb=await makeThumb(activeUrl())}catch{}const item={id:uid(),thumb,createdAt:Date.now(),label:state.source.name,preset:state.preset,engines:[...state.selected],source:state.source.kind,query:primaryQuery()};state.history=[item,...state.history].slice(0,30);writeJson(KEYS.history,state.history)}
   async function makeThumb(url){const img=await loadImage(url,true).catch(()=>loadImage(url));const c=document.createElement('canvas'),max=180,s=Math.min(1,max/Math.max(img.naturalWidth,img.naturalHeight));c.width=Math.max(1,Math.round(img.naturalWidth*s));c.height=Math.max(1,Math.round(img.naturalHeight*s));c.getContext('2d').drawImage(img,0,0,c.width,c.height);return c.toDataURL('image/jpeg',.72)}
 
@@ -297,7 +344,7 @@
   function applyTheme(dark,initial=false){if(!initial){const style=document.createElement('style');style.textContent='*,*::before,*::after{transition:none!important}';document.head.appendChild(style);document.documentElement.dataset.theme=dark?'dark':'light';void document.documentElement.offsetHeight;requestAnimationFrame(()=>style.remove())}else document.documentElement.dataset.theme=dark?'dark':'light';localStorage.setItem('soutu-theme',dark?'dark':'light');els.themeBtn.setAttribute('aria-label',dark?'切换浅色模式':'切换深色模式');document.querySelector('meta[name="theme-color"]')?.setAttribute('content',dark?'#0b0f14':'#f6f8fb')}
 
   function initSettings(){state.preset=state.settings.defaultPreset||'product';state.selected=[...(presets.find(p=>p.id===state.preset)||presets[0]).engines];els.defaultPreset.innerHTML=presets.map(p=>`<option value="${p.id}">${p.title}</option>`).join('');els.defaultPreset.value=state.preset;els.tempEndpointInput.value=state.settings.tempEndpoint||'';els.productEndpointInput.value=state.settings.productEndpoint||'';els.ttlSelect.value=String(state.settings.ttl||30);if(els.autoPresetToggle)els.autoPresetToggle.checked=state.settings.autoPreset!==false;els.batchPreset.innerHTML=presets.map(p=>`<option value="${p.id}">${p.title}</option>`).join('');els.batchPreset.value=state.settings.defaultPreset||'product'}
-  function saveSettings(){state.settings={...state.settings,defaultPreset:els.defaultPreset.value,tempEndpoint:els.tempEndpointInput.value.trim(),productEndpoint:els.productEndpointInput.value.trim(),ttl:Number(els.ttlSelect.value)||30,autoPreset:els.autoPresetToggle?els.autoPresetToggle.checked:true};writeJson(KEYS.settings,state.settings);syncTempCard();renderEngines()}
+  function saveSettings(){state.settings={...state.settings,defaultPreset:els.defaultPreset.value,tempEndpoint:els.tempEndpointInput.value.trim(),productEndpoint:els.productEndpointInput.value.trim(),ttl:Number(els.ttlSelect.value)||30,autoPreset:els.autoPresetToggle?els.autoPresetToggle.checked:true};state.tempUnavailableReason='';writeJson(KEYS.settings,state.settings);syncTempCard();renderEngines()}
 
   async function copyImage(){try{const blob=await blobFromActive();await navigator.clipboard.write([new ClipboardItem({[blob.type||'image/png']:blob})]);toast('图片已复制','可在第三方页面直接粘贴。','ok')}catch{toast('浏览器不允许直接复制','可右键图片选择“复制图片”。','error')}}
   function downloadImage(){const a=document.createElement('a');a.href=activeUrl();a.download='soutu-pro-image.png';a.click()}
@@ -310,12 +357,12 @@
     els.urlForm.onsubmit=e=>{e.preventDefault();const v=els.urlInput.value.trim();if(v)acceptUrl(v)};
     els.removeBtn.onclick=removeSource;els.cropBtn.onclick=()=>{state.cropMode=!state.cropMode;if(!state.cropMode)state.cropRect=null;syncCropUi()};els.rotateBtn.onclick=()=>transform('rotate');els.flipBtn.onclick=()=>transform('flip');els.applyCrop.onclick=()=>transform('crop');els.cropReset.onclick=()=>{state.cropRect=null;syncCropUi()};els.copyBtn.onclick=copyImage;els.downloadBtn.onclick=downloadImage;$$('[data-process]').forEach(b=>b.onclick=()=>processImage(b.dataset.process));
     let start=null;els.imageStage.addEventListener('pointerdown',e=>{if(!state.cropMode)return;const b=els.imageStage.getBoundingClientRect();start={x:Math.max(0,Math.min(1,(e.clientX-b.left)/b.width)),y:Math.max(0,Math.min(1,(e.clientY-b.top)/b.height))};state.cropRect={x:start.x,y:start.y,w:0,h:0};els.imageStage.setPointerCapture(e.pointerId);syncCropUi()});els.imageStage.addEventListener('pointermove',e=>{if(!state.cropMode||!start)return;const b=els.imageStage.getBoundingClientRect(),p={x:Math.max(0,Math.min(1,(e.clientX-b.left)/b.width)),y:Math.max(0,Math.min(1,(e.clientY-b.top)/b.height))};state.cropRect={x:Math.min(start.x,p.x),y:Math.min(start.y,p.y),w:Math.abs(start.x-p.x),h:Math.abs(start.y-p.y)};syncCropUi()});els.imageStage.addEventListener('pointerup',()=>start=null);
-    els.analyzeBtn.onclick=analyzeImage;els.reanalyzeBtn.onclick=analyzeImage;els.saveProjectBtn.onclick=saveProject;if(els.batchObjectsBtn)els.batchObjectsBtn.onclick=addDetectedObjectsToBatch;els.tempLinkBtn.onclick=createTempLink;els.recommendationOutput.onclick=e=>{const b=e.target.closest('[data-accept-recommend]');if(b)choosePreset(b.dataset.acceptRecommend)};
+    els.analyzeBtn.onclick=analyzeImage;els.reanalyzeBtn.onclick=analyzeImage;els.saveProjectBtn.onclick=saveProject;if(els.batchObjectsBtn)els.batchObjectsBtn.onclick=addDetectedObjectsToBatch;els.tempLinkBtn.onclick=()=>{state.tempUnavailableReason='';createTempLink({silent:false})};els.recommendationOutput.onclick=e=>{const b=e.target.closest('[data-accept-recommend]');if(b)choosePreset(b.dataset.acceptRecommend)};
     els.addQueryBtn.onclick=()=>{state.analysis.queries.push('');renderQueries();setTimeout(()=>$$('[data-query-index]').at(-1)?.focus(),0)};els.queryList.addEventListener('input',e=>{if(e.target.matches('[data-query-index]')){state.analysis.queries[Number(e.target.dataset.queryIndex)]=e.target.value;renderMarketplaces()}});els.queryList.addEventListener('click',e=>{const r=e.target.closest('[data-remove-query]');if(r){state.analysis.queries.splice(Number(r.dataset.removeQuery),1);renderAnalysis()}const f=e.target.closest('[data-fav-query]');if(f){const q=state.analysis.queries[Number(f.dataset.favQuery)]?.trim();if(q){state.favorites=state.favorites.includes(q)?state.favorites.filter(x=>x!==q):[q,...state.favorites].slice(0,30);writeJson(KEYS.favorites,state.favorites);renderQueries()}}});
     els.objectsOutput.onclick=e=>{const b=e.target.closest('[data-object-index]');if(!b)return;const o=state.analysis.objects[Number(b.dataset.objectIndex)];if(!o||!state.source)return;const [x,y,w,h]=o.bbox;state.cropMode=true;state.cropRect={x:x/state.source.width,y:y/state.source.height,w:w/state.source.width,h:h/state.source.height};syncCropUi();els.imageStage.scrollIntoView({behavior:reduced()?'auto':'smooth',block:'center'});toast('已选择主体区域',`${o.label} · 可直接应用裁剪。`,'ok')};
     els.marketplaceGrid.onclick=e=>{const b=e.target.closest('[data-market]');if(!b)return;const m=marketplaces.find(x=>x.id===b.dataset.market),q=primaryQuery();if(m&&q&&!openUrlNow(m.url(q)))toast('浏览器拦截了商品平台标签页','请允许本站弹出窗口后重试。','error')};els.federatedSearchBtn.onclick=federatedProductSearch;if(els.supplierSearchBtn)els.supplierSearchBtn.onclick=federatedSupplierSearch;
     els.presetGrid.onclick=e=>{const b=e.target.closest('[data-preset]');if(b)choosePreset(b.dataset.preset)};els.engineGroups.onclick=e=>{const groupSelect=e.target.closest('[data-group-select]'),groupClear=e.target.closest('[data-group-clear]');if(groupSelect||groupClear){const group=(groupSelect||groupClear).dataset.groupSelect||(groupSelect||groupClear).dataset.groupClear,ids=allEngines().filter(x=>x.category===group).map(x=>x.id);state.selected=groupSelect?[...new Set([...state.selected,...ids])]:state.selected.filter(x=>!ids.includes(x));renderEngines();syncSearchButton();return}const o=e.target.closest('[data-open-engine]');if(o){const en=allEngines().find(x=>x.id===o.dataset.openEngine),win=openPreparedTab();if(!win){toast('浏览器拦截了新标签页','请允许本站弹出窗口后重试。','error');return}ensurePublicUrl().then(u=>{if(!navigatePreparedTab(win,engineTarget(en,u)))toast('无法打开搜索引擎','请点击搜索按钮中的“重试”。','error')}).catch(()=>navigatePreparedTab(win,en.uploadPage));return}const s=e.target.closest('[data-engine]');if(s){const id=s.dataset.engine;state.selected=state.selected.includes(id)?state.selected.filter(x=>x!==id):[...state.selected,id];renderEngines();syncSearchButton()}};els.runSearch.onclick=runSearch;els.privacyMode.onchange=()=>state.privacy=els.privacyMode.checked;$$('[data-use]').forEach(b=>b.onclick=()=>{state.useProcessed=b.dataset.use==='processed';deleteTempLink();syncWorkbench()});
-    els.executionList.onclick=e=>{const b=e.target.closest('[data-retry-url]');if(b&&!openUrlNow(b.dataset.retryUrl))toast('浏览器仍在拦截新标签页','请在地址栏允许本站弹出窗口后再重试。','error')};
+    els.executionList.onclick=async e=>{const b=e.target.closest('[data-execution-open]');if(!b)return;const win=openPreparedTab();if(!win){const row=b.closest('.execution-row');row?.querySelector('.status-pill')?.classList.add('blocked');if(row?.querySelector('.status-pill'))row.querySelector('.status-pill').textContent='被拦截';toast('浏览器拦截了新标签页','请允许本站弹出窗口，或再次点击“打开”。','error');return}if(b.dataset.executionManual==='1')await quietCopy();navigatePreparedTab(win,b.dataset.executionOpen);const row=b.closest('.execution-row');const pill=row?.querySelector('.status-pill'),stateIcon=row?.querySelector('.execution-state');if(pill){pill.className='status-pill opened';pill.textContent='已打开'}if(stateIcon)stateIcon.className='execution-state opened';b.remove()};
     els.clearHistory.onclick=()=>{state.history=[];localStorage.removeItem(KEYS.history);renderHistory();toast('历史记录已清空','','ok')};els.historyContent.onclick=e=>{const d=e.target.closest('[data-del-history]');if(d){state.history=state.history.filter(x=>x.id!==d.dataset.delHistory);writeJson(KEYS.history,state.history);renderHistory()}const r=e.target.closest('[data-rerun-history]');if(r)restoreHistory(r.dataset.rerunHistory);const n=e.target.closest('[data-nav]');if(n)setView(n.dataset.nav)};
     els.projectsContent.onclick=e=>{const o=e.target.closest('[data-open-project]');if(o)restoreProject(o.dataset.openProject);const d=e.target.closest('[data-del-project]');if(d){state.projects=state.projects.filter(x=>x.id!==d.dataset.delProject);writeJson(KEYS.projects,state.projects);renderProjects()}const u=e.target.closest('[data-use-fav]');if(u){const q=state.favorites[Number(u.dataset.useFav)];if(q){setView('search');state.analysis.queries=[q];els.researchPanel.classList.remove('hidden');renderAnalysis();toast('收藏搜索词已载入',q,'ok')}}const f=e.target.closest('[data-del-fav]');if(f){state.favorites.splice(Number(f.dataset.delFav),1);writeJson(KEYS.favorites,state.favorites);renderProjects()}};els.clearProjects.onclick=()=>{state.projects=[];writeJson(KEYS.projects,[]);renderProjects()};
     els.batchChoose.onclick=()=>els.batchInput.click();els.batchInput.onchange=()=>addBatch(els.batchInput.files);['dragenter','dragover'].forEach(ev=>els.batchDrop.addEventListener(ev,e=>{e.preventDefault();els.batchDrop.classList.add('drag')}));['dragleave','drop'].forEach(ev=>els.batchDrop.addEventListener(ev,e=>{e.preventDefault();els.batchDrop.classList.remove('drag')}));els.batchDrop.addEventListener('drop',e=>addBatch(e.dataTransfer.files));els.applyBatchPreset.onclick=()=>{state.batch.forEach(x=>x.preset=els.batchPreset.value);renderBatch()};els.runBatch.onclick=runBatch;els.batchExport.onclick=exportBatchCsv;els.batchList.onclick=e=>{const r=e.target.closest('[data-run-batch]');if(r){const item=state.batch.find(x=>x.id===r.dataset.runBatch);if(item){const tabs=batchEngines(item).map(()=>openPreparedTab());runBatchItem(item,tabs)}}const d=e.target.closest('[data-del-batch]');if(d){state.batch=state.batch.filter(x=>x.id!==d.dataset.delBatch);renderBatch()}};els.batchList.onchange=e=>{if(e.target.matches('[data-batch-preset]')){const item=state.batch.find(x=>x.id===e.target.dataset.batchPreset);if(item)item.preset=e.target.value}};
