@@ -1,4 +1,4 @@
-const DEFAULT_SITE='https://soutu-pro.netlify.app/';
+const DEFAULT_SITE='https://soutu-pro.vercel.app/';
 chrome.runtime.onInstalled.addListener(()=>{
   chrome.contextMenus.create({id:'soutu-product',title:'搜图 Pro · 商品找同款',contexts:['image']});
   chrome.contextMenus.create({id:'soutu-source',title:'搜图 Pro · 找原图来源',contexts:['image']});
