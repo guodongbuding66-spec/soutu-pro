@@ -7,6 +7,7 @@ export default async function handler(req, res) {
   if (req.method !== 'GET') return json(res, 405, { enabled: false, message: 'Method not allowed' });
   const q = String(req.query?.q || '').trim();
   if (!q) return json(res, 400, { enabled: false, message: 'Missing q' });
+  if (q.length > 240) return json(res, 400, { enabled: false, message: 'Query is too long' });
   if (!process.env.SERPAPI_KEY) return json(res, 200, { enabled: false, provider: 'SerpAPI', message: 'SERPAPI_KEY is not configured' });
   try {
     const url = new URL('https://serpapi.com/search.json');
