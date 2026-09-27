@@ -11,10 +11,24 @@ export default async function handler(req, res) {
     if (size && size > MAX_BYTES) return res.status(413).json({ error: 'Image exceeds 20 MB limit' });
     if (!contentType.startsWith('image/')) return res.status(415).json({ error: 'Only image uploads are allowed' });
 
+    const hasStaticToken = !!process.env.BLOB_READ_WRITE_TOKEN;
+    const hasOidc = !!process.env.VERCEL_OIDC_TOKEN && !!process.env.BLOB_STORE_ID;
+    if (!hasStaticToken && !hasOidc) {
+      return res.status(503).json({
+        code: 'BLOB_NOT_CONFIGURED',
+        error: 'Vercel Blob store is not connected to this project',
+      });
+    }
+
+    const auth = hasStaticToken
+      ? { token: process.env.BLOB_READ_WRITE_TOKEN }
+      : { oidcToken: process.env.VERCEL_OIDC_TOKEN, storeId: process.env.BLOB_STORE_ID };
+
     const now = Date.now();
     const expiresAt = now + ttl * 60_000;
     const pathname = `temp/${expiresAt}-${crypto.randomUUID()}`;
     const token = await issueSignedToken({
+      ...auth,
       pathname,
       operations: ['put', 'get', 'delete'],
       validUntil: expiresAt + 24 * 60 * 60_000,
