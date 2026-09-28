@@ -127,3 +127,48 @@ Vercel Private Blob store `soutu-pro-blob` 已连接到项目并验证通过。
 - self-test payload: 68 bytes
 
 验证完成后已移除临时诊断入口，仅保留正式 POST `/api/temp-token`。
+
+
+## V9.0.0 回归（2026-09-28）
+
+### 构建与发布
+- package version: 9.0.0
+- GitHub main -> Vercel Production: READY
+- npm run check 覆盖 app.js、v9.js、新增 API、Worker、扩展 background/popup
+- build-static.mjs 已包含 v9.js / v9.css
+- Service Worker cache key: soutu-pro-v9-shell
+
+### 生产资源
+- / -> 200
+- /v9.js -> 200 application/javascript
+- /v9.css -> 200 text/css
+- 首页已包含“研究”导航与 V9 资源
+
+### V9 API
+- /api/image-proxy?url=https://soutu-pro.vercel.app/icon.svg -> 200 image/svg+xml
+- /api/url-status?url=https://soutu-pro.vercel.app/ -> 200，alive=true，成功读取页面标题
+- image-proxy 对 http://127.0.0.1 -> 400 Private network targets are blocked
+- url-status 对 http://127.0.0.1 -> alive=false / Private target blocked
+- 说明新增代理与状态接口的基础 SSRF 边界已在生产环境验证
+
+### 功能覆盖
+- 统一结果导入 / 扩展 collector payload
+- 基础去重、智能指纹去重
+- dHash / edge hash / color histogram / 清晰度 / 分辨率
+- 综合 / 视觉 / 结构 / 高清原图排序
+- 可选 MobileNet embedding 重排
+- 并排 / 透明叠加图片比较
+- 人工同款标注与本机权重学习
+- 工业产品结构模式、线稿增强、局部切片加入批量
+- 域名聚类、来源时间线、品牌/来源关系图
+- 商品参数、供应商反查、观察清单
+- EXIF、本地证据、调查项目
+- JSON / Excel / 打印-PDF 导出
+- 外贸工作台结构化导入包
+- Chrome / Edge 扩展 2.0 页面结果采集、大图抓取、产品参数与证据截图
+
+### 外部依赖边界
+- MobileNet / TensorFlow.js、SheetJS 与翻译接口为按需网络依赖；失败时必须保持基础研究页可用。
+- SERPAPI_KEY 未配置时商品/供应商站内聚合会明确显示未启用，B2B/零售平台直达仍可使用。
+- Google / Bing / Yandex 等第三方页面 DOM 可能改变；扩展采集使用宽松结构启发式而非承诺永久稳定。
+- 观察清单目前为主动刷新，不在后台定时抓取。
