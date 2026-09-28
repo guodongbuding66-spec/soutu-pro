@@ -1,15 +1,28 @@
 {
   "name": "搜图 Pro · Image Compass",
   "short_name": "搜图 Pro",
-  "description": "多引擎图片搜索、OCR、商品溯源与批量研究工作台",
+  "description": "反向搜图、AI 相似度、工业产品找同款、OCR、商品与供应商溯源、证据和批量研究工作台",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#f6f8fb",
   "theme_color": "#2563eb",
   "lang": "zh-CN",
-  "categories": ["productivity", "utilities"],
+  "categories": [
+    "productivity",
+    "utilities"
+  ],
   "icons": [
-    {"src":"/icon.svg","sizes":"any","type":"image/svg+xml","purpose":"any"},
-    {"src":"/maskable.svg","sizes":"any","type":"image/svg+xml","purpose":"maskable"}
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/maskable.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
   ]
 }
