@@ -10,6 +10,7 @@
   <link rel="manifest" href="./manifest.webmanifest" />
   <link rel="icon" href="./icon.svg" type="image/svg+xml" />
   <link rel="stylesheet" href="./styles.css" />
+  <link rel="stylesheet" href="./v9.css" />
 </head>
 <body>
   <svg class="svg-sprite" aria-hidden="true">
@@ -68,6 +69,7 @@
         <button class="active" data-nav="search">搜图</button>
         <button data-nav="batch">批量</button>
         <button data-nav="projects">项目</button>
+        <button data-nav="research">研究</button>
         <button data-nav="history">历史</button>
       </nav>
       <div class="nav-actions">
@@ -150,6 +152,8 @@
 
   <main id="projectsView" class="wrap subpage view-shell hidden"><div class="subpage-head"><div><span class="section-kicker">RESEARCH PROJECTS</span><h1>搜索项目</h1><p>保存 OCR、搜索词、任务策略和缩略图，方便后续继续调查。</p></div><button class="secondary-btn" id="clearProjects"><svg><use href="#i-trash"/></svg>清空</button></div><div id="projectsContent"></div></main>
 
+  <main id="researchHubView" class="wrap subpage view-shell hidden"><div id="v9Root"></div></main>
+
   <main id="historyView" class="wrap subpage view-shell hidden"><div class="subpage-head"><div><span class="section-kicker">LOCAL HISTORY</span><h1>本机搜索历史</h1><p>记录只保存在当前浏览器；隐私模式不会新增记录。</p></div><button class="secondary-btn" id="clearHistory"><svg><use href="#i-trash"/></svg>清空</button></div><div id="historyContent"></div></main>
 
   <main id="tipsView" class="wrap subpage view-shell hidden"><div class="subpage-head"><div><span class="section-kicker">SEARCH PLAYBOOK</span><h1>使用技巧</h1><p>提高商品溯源、原图检索和低清线稿命中率的操作方式。</p></div><button class="secondary-btn" data-nav="search">返回搜图</button></div><div class="tips-grid"><section><span>01</span><h2>局部优先</h2><p>复杂场景先裁产品主体或特殊零件，再反向搜索。</p></section><section><span>02</span><h2>OCR + 图片双线索</h2><p>包装、铭牌、Logo 同时做 OCR 与视觉搜索，通常比单独搜图更快。</p></section><section><span>03</span><h2>线稿先增强</h2><p>使用“裁白边”和“线稿”预处理，再搜索通风窗、五金等细节。</p></section><section><span>04</span><h2>商品平台组合</h2><p>品牌/型号明确后，优先同时搜索 Amazon、Alibaba、Home Depot 等平台。</p></section><section><span>05</span><h2>临时链接</h2><p>Vercel 部署默认使用 Blob 短时签名 URL；也可切换到兼容的 Cloudflare Worker。</p></section><section><span>06</span><h2>隐私边界</h2><p>第三方搜索引擎的数据处理政策独立于本站；进入第三方后以其政策为准。</p></section></div></main>
@@ -161,9 +165,9 @@
 
   <div class="modal-backdrop hidden" id="commandModal"><div class="command-palette" role="dialog" aria-modal="true"><div class="command-search"><svg><use href="#i-search"/></svg><input id="commandInput" placeholder="输入命令…" autocomplete="off"><kbd>Esc</kbd></div><div id="commandList" class="command-list"></div></div></div>
   <div class="modal-backdrop hidden" id="executionModal"><div class="modal modal-wide execution-modal" role="dialog" aria-modal="true"><div class="modal-head"><div><h2>搜索执行状态</h2><p id="executionSummary">正在打开搜索引擎</p></div><button class="icon-btn" data-close="executionModal" aria-label="关闭"><svg><use href="#i-x"/></svg></button></div><div id="executionList" class="execution-list"></div></div></div>
-  <div class="modal-backdrop hidden" id="shortcutModal"><div class="modal"><div class="modal-head"><h2>快捷键</h2><button class="icon-btn" data-close="shortcutModal"><svg><use href="#i-x"/></svg></button></div><div class="shortcut-grid"><span>⌘ / Ctrl + K</span><b>命令菜单</b><span>Ctrl / ⌘ + V</span><b>粘贴图片</b><span>1–5</span><b>切换任务</b><span>C</span><b>裁剪</b><span>R</span><b>旋转</b><span>Enter</span><b>执行搜索</b><span>Esc</span><b>退出当前操作</b></div></div></div>
+  <div class="modal-backdrop hidden" id="shortcutModal"><div class="modal"><div class="modal-head"><h2>快捷键</h2><button class="icon-btn" data-close="shortcutModal"><svg><use href="#i-x"/></svg></button></div><div class="shortcut-grid"><span>⌘ / Ctrl + K</span><b>命令菜单</b><span>Ctrl / ⌘ + V</span><b>粘贴图片</b><span>1–6</span><b>切换任务</b><span>C</span><b>裁剪</b><span>R</span><b>旋转</b><span>Enter</span><b>执行搜索</b><span>Esc</span><b>退出当前操作</b></div></div></div>
   <div class="toast-stack" id="toastStack" aria-live="polite" aria-atomic="true"></div>
 
-  <script src="./config.js"></script><script src="./app.js"></script>
+  <script src="./config.js"></script><script src="./app.js"></script><script src="./v9.js"></script>
 </body>
 </html>
