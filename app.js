@@ -10,11 +10,11 @@
 
   const builtinEngines = [
     { id:'google', name:'Google Lens', short:'G', category:'通用', desc:'商品、文字、地点与相似内容', uploadPage:'https://lens.google.com/', direct:url=>`https://lens.google.com/uploadbyurl?url=${encodeURIComponent(url)}` },
-    { id:'bing', name:'Bing Visual Search', short:'B', category:'通用', desc:'相似图片、购物与网页结果', uploadPage:'https://www.bing.com/visualsearch', direct:url=>`https://www.bing.com/images/searchbyimage/upload?cbir=sbi&imgurl=${encodeURIComponent(url)}&rdr=1` },
+    { id:'bing', name:'Bing Visual Search', short:'B', category:'通用', desc:'相似图片、购物与网页结果', uploadPage:'https://www.bing.com/images/feed', direct:url=>`https://www.bing.com/images/search?view=detailv2&iss=sbi&FORM=SBIHMP&sbisrc=UrlPaste&q=imgurl:${encodeURIComponent(url)}&idpbck=1` },
     { id:'yandex', name:'Yandex Images', short:'Y', category:'通用', desc:'局部物体与视觉近似匹配', uploadPage:'https://yandex.com/images/', direct:url=>`https://yandex.com/images/search?rpt=imageview&url=${encodeURIComponent(url)}` },
     { id:'tineye', name:'TinEye', short:'T', category:'通用', desc:'追踪图片复用、修改版本与来源', uploadPage:'https://tineye.com/', direct:url=>`https://tineye.com/search?url=${encodeURIComponent(url)}` },
     { id:'google-shopping', name:'Lens · 商品', short:'Gs', category:'商品', desc:'同款、替代品与相关商品页', uploadPage:'https://lens.google.com/', direct:url=>`https://lens.google.com/uploadbyurl?url=${encodeURIComponent(url)}` },
-    { id:'bing-shopping', name:'Bing · 商品', short:'Bs', category:'商品', desc:'视觉搜索后继续筛购物结果', uploadPage:'https://www.bing.com/visualsearch', direct:url=>`https://www.bing.com/images/searchbyimage/upload?cbir=sbi&imgurl=${encodeURIComponent(url)}&rdr=1` },
+    { id:'bing-shopping', name:'Bing · 商品', short:'Bs', category:'商品', desc:'视觉搜索后继续筛购物结果', uploadPage:'https://www.bing.com/images/feed', direct:url=>`https://www.bing.com/images/search?view=detailv2&iss=sbi&FORM=SBISHP&sbisrc=UrlPaste&q=imgurl:${encodeURIComponent(url)}&idpbck=1` },
     { id:'saucenao', name:'SauceNAO', short:'S', category:'动漫/插画', desc:'插画与二次元图片来源', uploadPage:'https://saucenao.com/', direct:url=>`https://saucenao.com/search.php?url=${encodeURIComponent(url)}` },
     { id:'trace', name:'trace.moe', short:'tr', category:'动漫/插画', desc:'动画截图定位作品、集数与时间点', uploadPage:'https://trace.moe/' },
     { id:'ascii2d', name:'Ascii2D', short:'A2', category:'动漫/插画', desc:'颜色与特征两种方式找插画来源', uploadPage:'https://ascii2d.net/' },
