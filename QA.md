@@ -110,3 +110,20 @@ V8.2 修复：
 当前 V8.2.0 生产地址：
 
 https://soutu-pro.vercel.app
+
+
+## Blob 端到端验证（2026-09-28）
+
+Vercel Private Blob store `soutu-pro-blob` 已连接到项目并验证通过。
+
+验证结果：
+- credentials configured: true
+- auth mode: token
+- BLOB_STORE_ID present: true
+- signed URL issuance: passed
+- PUT: passed
+- GET: passed
+- DELETE: passed
+- self-test payload: 68 bytes
+
+验证完成后已移除临时诊断入口，仅保留正式 POST `/api/temp-token`。
