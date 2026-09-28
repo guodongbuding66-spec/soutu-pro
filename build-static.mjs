@@ -5,7 +5,9 @@ const outDir = path.resolve('public');
 const files = [
   'index.html',
   'styles.css',
+  'v9.css',
   'app.js',
+  'v9.js',
   'config.js',
   'manifest.webmanifest',
   'icon.svg',
