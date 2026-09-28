@@ -2,8 +2,6 @@ import { issueSignedToken, presignUrl } from '@vercel/blob';
 
 const MAX_BYTES = 20 * 1024 * 1024;
 
-const TEST_PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=', 'base64');
-
 async function authConfig() {
   const hasStaticToken = !!process.env.BLOB_READ_WRITE_TOKEN;
   const hasOidc = !!process.env.VERCEL_OIDC_TOKEN && !!process.env.BLOB_STORE_ID;
@@ -56,27 +54,6 @@ async function buildSignedUrls({ pathname, contentType, size, ttlMinutes, auth }
 }
 
 export default async function handler(req, res) {
-  if (req.method === 'GET') {
-    const cfg = await authConfig();
-    if (!cfg.auth) return res.status(503).json({ configured:false, code:'BLOB_NOT_CONFIGURED' });
-    if (String(req.query?.selftest || '') !== '1') {
-      return res.status(200).json({ configured:true, authMode:cfg.hasStaticToken?'token':'oidc', storeIdPresent:!!process.env.BLOB_STORE_ID });
-    }
-    try {
-      const pathname=`health/${Date.now()}-${crypto.randomUUID()}.png`;
-      const signed=await buildSignedUrls({pathname,contentType:'image/png',size:TEST_PNG.length,ttlMinutes:5,auth:cfg.auth});
-      const putRes=await fetch(signed.uploadUrl,{method:'PUT',headers:{'content-type':'image/png'},body:TEST_PNG});
-      if(!putRes.ok) throw new Error(`PUT failed (${putRes.status})`);
-      const getRes=await fetch(signed.url,{cache:'no-store'});
-      if(!getRes.ok) throw new Error(`GET failed (${getRes.status})`);
-      const bytes=Buffer.from(await getRes.arrayBuffer());
-      const delRes=await fetch(signed.deleteUrl,{method:'DELETE'});
-      if(!delRes.ok) throw new Error(`DELETE failed (${delRes.status})`);
-      return res.status(200).json({configured:true,authMode:cfg.hasStaticToken?'token':'oidc',signedUrls:true,put:true,get:true,delete:true,bytes:bytes.length});
-    } catch (error) {
-      return res.status(500).json({configured:true,selftest:false,error:error?.message||'Blob self-test failed'});
-    }
-  }
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
   try {
     const ttl = Math.min(120, Math.max(5, Number(req.query?.ttl || 30)));
