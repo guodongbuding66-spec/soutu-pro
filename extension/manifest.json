@@ -1,22 +1,10 @@
 {
   "manifest_version": 3,
   "name": "搜图 Pro",
-  "version": "1.1.0",
-  "description": "右键网页图片，直接交给搜图 Pro 的多引擎工作台。",
-  "permissions": [
-    "contextMenus",
-    "storage",
-    "tabs"
-  ],
-  "host_permissions": [
-    "https://*/*",
-    "http://*/*"
-  ],
-  "background": {
-    "service_worker": "background.js"
-  },
-  "action": {
-    "default_popup": "popup.html",
-    "default_title": "搜图 Pro"
-  }
+  "version": "2.0.0",
+  "description": "采集 Google/Bing/Yandex 搜图结果、商品参数和网页图片，并交给搜图 Pro 统一去重、比较与留证。",
+  "permissions": ["contextMenus", "storage", "tabs", "activeTab", "scripting", "downloads"],
+  "host_permissions": ["https://*/*", "http://*/*"],
+  "background": {"service_worker": "background.js"},
+  "action": {"default_popup": "popup.html", "default_title": "搜图 Pro · 结果采集器"}
 }
