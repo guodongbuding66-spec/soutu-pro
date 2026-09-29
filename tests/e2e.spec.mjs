@@ -448,11 +448,13 @@ test('V9 universal search: modes, filters, waterfall, favorites and history rest
   await expect(page.locator('.universal-confidence')).toContainText('%');
 
   await page.locator('#universalType').selectOption('all');
-  await page.locator('#universalResolution').selectOption('1');
+  await page.locator('#universalResolution').selectOption('4');
   await expect(page.locator('.universal-result-card')).toHaveCount(1);
+  await expect(page.locator('.universal-result-card')).toContainText('Garden Shed Video');
+  await page.locator('#universalResolution').selectOption('all');
   await page.locator('#universalLicense').selectOption('public-domain');
   await expect(page.locator('.universal-result-card')).toHaveCount(1);
-  await page.locator('#universalResolution').selectOption('all');
+  await expect(page.locator('.universal-result-card')).toContainText('Garden Shed Original');
   await page.locator('#universalLicense').selectOption('all');
   await expect(page.locator('.universal-result-card')).toHaveCount(2);
   await page.locator('#universalType').selectOption('image');
