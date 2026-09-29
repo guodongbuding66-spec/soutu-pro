@@ -150,6 +150,19 @@ test('execution targets refresh expired temporary image URLs before reopening',a
   expect(opened.filter(x=>String(x).includes('lens.google.com/uploadbyurl')).length).toBeGreaterThanOrEqual(2);
 });
 
+test('blocked search popup never navigates the workbench away',async({page})=>{
+  await page.addInitScript(()=>localStorage.setItem('soutu-pro-settings-v5',JSON.stringify({tempEndpoint:'',productEndpoint:'',ttl:30,defaultPreset:'product',autoPreset:true})));
+  await page.goto('http://127.0.0.1:4173/',{waitUntil:'domcontentloaded'});
+  await page.locator('#fileInput').setInputFiles({name:'blocked.svg',mimeType:'image/svg+xml',buffer:fixture});
+  await page.locator('[data-preset="product"]').click();
+  await page.locator('#runSearch').click();
+  await page.evaluate(()=>{window.open=()=>null});
+  await page.locator('[data-execution-id="google"] [data-execution-open]').click();
+  await expect(page.locator('#toastStack')).toContainText('浏览器拦截了搜索窗口');
+  await expect(page.locator('#executionModal')).toBeVisible();
+  expect(page.url()).toBe('http://127.0.0.1:4173/');
+});
+
 test('remote image can be rehosted for stronger direct search and restored',async({page})=>{
   await page.addInitScript(()=>{
     window.SOUTU_CONFIG={tempUploadEndpoint:'http://127.0.0.1:4173',tempUploadProvider:'vercel',productSearchEndpoint:'',tempUploadTtlMinutes:30};
