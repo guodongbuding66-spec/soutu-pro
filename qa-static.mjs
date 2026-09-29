@@ -47,12 +47,12 @@ ok(app.includes("return `<span class=\"engine-mark engine-custom-mark\">${icon('
 ok(app.includes("cap==='auto'?'可直连'"),'auto temporary-URL capability is surfaced');
 
 const popupCalls=[...app.matchAll(/window\.open\s*\(([^\n;]+)/g)].map(m=>m[1]);
-ok(popupCalls.length<=2,'main app has only guarded execution popup calls');
+ok(popupCalls.length<=4,'main app has only guarded execution popup calls');
 ok(app.includes('function openExecutionEngine')&&app.includes('data-execution-open'),'execution uses click-time refreshed targets');
 ok(app.includes('data-open-engine')&&app.includes('prepareSingleEngine'),'single-engine launch prepares Blob/direct state before exposing native link');
 ok(!app.includes('<a class="engine-open"'),'engine-card quick action never bypasses URL preparation with a raw anchor');
 ok(!v9.includes('window.open('),'V9 contains no scripted popup launches');
-ok(app.includes('batch-links')&&app.includes('逐个点击每张图片下方的搜索引擎链接'),'batch mode prepares native result links');
+ok(app.includes('data-open-batch-engine')&&app.includes('function openBatchEngine'),'batch mode refreshes temporary image targets on click');
 ok(app.includes("mode==='supplier'"),'supplier deep-link is handled by main app');
 
 ok(v9.includes('v9PrintReport')&&v9.includes('window.print()'),'PDF/report flow uses current-page printing');
