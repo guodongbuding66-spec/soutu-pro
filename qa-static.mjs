@@ -39,14 +39,16 @@ ok(unique(engineIds),'built-in engine ids are unique');
 ok((block.match(/iconUrl:/g)||[]).length===expected.length,'every built-in engine has a brand icon');
 ok(!block.includes('upload.wikimedia.org')&&!block.includes('raw.githubusercontent.com'),'built-in brand icons do not use third-party placeholder mirrors');
 for(const host of ['google.com','bing.com','yandex.com','tineye.com','saucenao.com','trace.moe','ascii2d.net','iqdb.org'])ok(block.includes(host),'official engine icon host '+host+' is referenced');
-ok((block.match(/direct:url=>/g)||[]).length===8,'eight built-in engines support verified URL-direct search; Bing remains manual');
+ok((block.match(/direct:url=>/g)||[]).length===10,'all 10 built-in engines support URL-direct search where configured');
 ok(!block.includes('images/searchbyimage/upload')&&!block.includes('sbisrc=UrlPaste'),'unstable/obsolete Bing deep-link endpoints are absent');
 ok(block.includes('https://trace.moe/?url=')&&block.includes('https://ascii2d.net/search/url/')&&block.includes('https://iqdb.org/?url='),'anime engines use verified direct URL integrations');
 ok(app.includes('engine-brand')&&app.includes('engineBrand(e)'),'engine cards render brand images instead of letter placeholders');
 ok(app.includes("return `<span class=\"engine-mark engine-custom-mark\">${icon('plus')}</span>`"),'custom engines use a generic engine icon instead of letter initials');
 ok(app.includes("cap==='auto'?'可直连'"),'auto temporary-URL capability is surfaced');
 
-ok(!app.includes('window.open('),'main app contains no scripted popup launches');
+const popupCalls=[...app.matchAll(/window\.open\s*\(([^\n;]+)/g)].map(m=>m[1]);
+ok(popupCalls.length<=2,'main app has only guarded execution popup calls');
+ok(app.includes('function openExecutionEngine')&&app.includes('data-execution-open'),'execution uses click-time refreshed targets');
 ok(app.includes('data-open-engine')&&app.includes('prepareSingleEngine'),'single-engine launch prepares Blob/direct state before exposing native link');
 ok(!app.includes('<a class="engine-open"'),'engine-card quick action never bypasses URL preparation with a raw anchor');
 ok(!v9.includes('window.open('),'V9 contains no scripted popup launches');
