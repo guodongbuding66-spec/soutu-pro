@@ -378,6 +378,7 @@
 
   function importPayload(payload){if(!payload)return;const results=(payload.results||payload.images||[]).map((r,i)=>normalizeResult(r,payload,i));if(!results.length)return;state.results=dedupeBasic([...results,...state.results]).slice(0,MAX_RESULTS);state.importedAt=Date.now();persist();render();bridge()?.setView?.('research');bridge()?.toast?.('采集结果已导入',`${results.length} 条 · ${payload.source||payload.kind||'网页采集'}`,'ok')}
   window.SOUTU_V9_IMPORT=payload=>importPayload(payload);
+  window.SOUTU_V9_FINGERPRINT=url=>imageFeatures(url);
   function importPendingUniversal(){try{const raw=localStorage.getItem('soutu-pro-v9-pending-import');if(!raw)return;localStorage.removeItem('soutu-pro-v9-pending-import');importPayload(JSON.parse(raw))}catch(e){console.warn('pending universal import invalid',e)}}
 
   function normalizeResult(r,payload,i){const url=r.url||r.href||r.link||'',rawImg=r.image||r.thumbnail||r.src||'',img=/^https?:/i.test(rawImg)?rawImg:'';return{id:r.id||uid(),title:r.title||r.alt||r.product?.name||`结果 ${i+1}`,url:/^https?:/i.test(url)?url:'',image:img,thumbnail:/^https?:/i.test(r.thumbnail||'')?r.thumbnail:img,domain:r.domain||domainOf(url),price:r.price||r.product?.price||'',snippet:r.snippet||r.text||'',engine:r.engine||payload.source||payload.engine||'',source:r.source||payload.pageTitle||'',date:r.date||r.published||'',capturedAt:r.capturedAt||payload.capturedAt||Date.now(),product:r.product||{},scores:r.scores||{},manualLabel:r.manualLabel||'',width:r.width||0,height:r.height||0};}
