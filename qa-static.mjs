@@ -14,6 +14,7 @@ const extPopupJs=read('./extension/popup.js');
 const proxy=read('./api/image-proxy.js');
 const statusApi=read('./api/url-status.js');
 const tempApi=read('./api/temp-token.js');
+const worker=read('./worker/src/index.js');
 
 const checks=[];
 function ok(condition,label){if(!condition)throw new Error('QA failed: '+label);checks.push(label)}
@@ -63,9 +64,13 @@ for(const [src,name] of [[proxy,'image proxy'],[statusApi,'URL status']]){
   ok(src.includes("dns.lookup"),name+' resolves DNS before fetch');
   ok(src.includes("redirect:'manual'"),name+' validates redirects manually');
   ok(src.includes('Private')||src.includes('privateIp'),name+' blocks private networks');
+  ok(src.includes("::ffff:"),name+' blocks IPv4-mapped IPv6');
+  ok(src.includes("startsWith('ff')"),name+' blocks IPv6 multicast targets');
 }
 ok(proxy.includes('MAX_BYTES')&&proxy.includes("type.startsWith('image/')"),'image proxy enforces image type and size');
 ok(tempApi.includes('MAX_BYTES = 20 * 1024 * 1024')&&tempApi.includes("contentType.startsWith('image/')"),'Blob upload enforces image-only 20 MB limit');
+ok(worker.includes('body.byteLength>20*1024*1024'),'Cloudflare Worker validates actual upload byte length');
+ok((worker.match(/q.length>240/g)||[]).length>=2,'Cloudflare Worker limits product and supplier query lengths');
 
 ok(styles.includes('.engine-brand img'),'brand icon CSS exists');
 ok(styles.includes('.batch-links a'),'batch native-link CSS exists');
