@@ -90,7 +90,7 @@
     historyContent:$('#historyContent'),clearHistory:$('#clearHistory'),projectsContent:$('#projectsContent'),clearProjects:$('#clearProjects'),
     batchDrop:$('#batchDrop'),batchChoose:$('#batchChoose'),batchInput:$('#batchInput'),batchPreset:$('#batchPreset'),applyBatchPreset:$('#applyBatchPreset'),runBatch:$('#runBatch'),batchList:$('#batchList'),batchExport:$('#batchExport'),
     themeBtn:$('#themeBtn'),settingsBtn:$('#settingsBtn'),installBtn:$('#installBtn'),commandBtn:$('#commandBtn'),versionBadge:$('#versionBadge'),updateBtn:$('#updateBtn'),settingsModal:$('#settingsModal'),customModal:$('#customModal'),commandModal:$('#commandModal'),executionModal:$('#executionModal'),shortcutModal:$('#shortcutModal'),shortcutHelp:$('#shortcutHelp'),
-    defaultPreset:$('#defaultPreset'),tempEndpointInput:$('#tempEndpointInput'),productEndpointInput:$('#productEndpointInput'),ttlSelect:$('#ttlSelect'),autoPresetToggle:$('#autoPresetToggle'),refreshDiagnosticsBtn:$('#refreshDiagnosticsBtn'),resetClientCacheBtn:$('#resetClientCacheBtn'),systemStatusGrid:$('#systemStatusGrid'),systemStatusNote:$('#systemStatusNote'),customName:$('#customName'),customTemplate:$('#customTemplate'),addCustom:$('#addCustom'),
+    defaultPreset:$('#defaultPreset'),tempEndpointInput:$('#tempEndpointInput'),productEndpointInput:$('#productEndpointInput'),ttlSelect:$('#ttlSelect'),autoPresetToggle:$('#autoPresetToggle'),refreshDiagnosticsBtn:$('#refreshDiagnosticsBtn'),resetClientCacheBtn:$('#resetClientCacheBtn'),systemStatusGrid:$('#systemStatusGrid'),providerHealthDetail:$('#providerHealthDetail'),systemStatusNote:$('#systemStatusNote'),customName:$('#customName'),customTemplate:$('#customTemplate'),addCustom:$('#addCustom'),
     commandInput:$('#commandInput'),commandList:$('#commandList'),executionList:$('#executionList'),executionSummary:$('#executionSummary'),toastStack:$('#toastStack')
   };
 
@@ -773,6 +773,9 @@ els.federatedSearchBtn.onclick=federatedProductSearch;if(els.supplierSearchBtn)e
       {label:'本机数据',value:storage?formatBytes(storage):'0 B',tone:storage<4*1024*1024?'ok':'warn'}
     ];
     els.systemStatusGrid.innerHTML=items.map(x=>`<div class="system-status-item ${x.tone}"><span><i></i>${escapeHtml(x.label)}</span><b title="${escapeHtml(x.value)}">${escapeHtml(x.value)}</b></div>`).join('');
+    if(els.providerHealthDetail){
+      els.providerHealthDetail.innerHTML=providers.length?`<div class="provider-health-title"><b>Universal API Providers</b><span>最近一次搜索状态</span></div><div class="provider-health-pills">${providers.map(p=>{const tone=p.enabled?'ok':p.configured?'bad':'warn',label=p.enabled?`${p.count||0} 条`:p.configured?'异常':'缺 Key';return `<span class="${tone}" title="${escapeHtml(p.message||'')}"><i></i><b>${escapeHtml(p.name)}</b><small>${escapeHtml(label)}</small></span>`}).join('')}</div>`:'<div class="provider-health-empty">执行一次 Universal Search 后，这里会记录各 API Provider 的真实状态。</div>';
+    }
     const checked=state.engineHealthCheckedAt?new Date(state.engineHealthCheckedAt).toLocaleString():'未执行';
     const providerChecked=state.providerHealthCheckedAt?new Date(state.providerHealthCheckedAt).toLocaleString():'暂无';
     els.systemStatusNote.textContent=`引擎检测：${checked} · API 状态：${providerChecked} · 清理缓存不会删除项目、历史或收藏。`
