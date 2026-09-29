@@ -120,7 +120,7 @@ test('execution targets refresh expired temporary image URLs before reopening',a
     localStorage.setItem('soutu-pro-settings-v5',JSON.stringify({tempEndpoint:'http://127.0.0.1:4173',productEndpoint:'',ttl:30,defaultPreset:'product',autoPreset:true}));
   });
   let tokenCount=0;
-  await page.route('**/api/temp-token?**',route=>{
+  await page.route('**/api/temp-token**',route=>{
     tokenCount++;
     route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({uploadUrl:`http://127.0.0.1:4173/mock-upload/${tokenCount}`,url:`https://cdn.example.com/image-${tokenCount}.png`,expiresAt:Date.now()+25})});
   });
