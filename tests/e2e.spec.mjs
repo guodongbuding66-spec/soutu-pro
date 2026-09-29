@@ -288,6 +288,17 @@ test('V9 universal search: modes, filters, waterfall, favorites and history rest
   await page.locator('[data-favorite-result]').click();
   await expect(page.locator('[data-favorite-result]')).toContainText('已收藏');
 
+  await expect(page.locator('#universalResearchbar')).toBeVisible();
+  await page.locator('#universalSelectAllBtn').click();
+  await expect(page.locator('#universalResearchStats')).toContainText('已选');
+  await page.locator('#universalTimelineBtn').click();
+  await expect(page.locator('#universalInsights')).toBeVisible();
+  await page.locator('#universalTimelineBtn').click();
+  await page.locator('#universalResearchBtn').click();
+  await expect(page.locator('#researchHubView')).toBeVisible();
+  await expect(page.locator('#v9Root .v9-result-card')).toHaveCount(1);
+  await page.locator('[data-nav="search"]').first().click();
+
   await page.locator('[data-nav="projects"]').first().click();
   await expect(page.locator('.favorite-result-card')).toHaveCount(1);
   await expect(page.locator('#projectsContent')).toContainText('Garden Shed Original');
