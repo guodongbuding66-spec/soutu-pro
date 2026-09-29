@@ -499,6 +499,7 @@
     const id=row?.dataset.executionId,engine=allEngines().find(x=>x.id===id);if(!engine)return;
     const btn=row.querySelector('[data-execution-open]'),pill=row.querySelector('.status-pill');
     const popup=window.open('about:blank','_blank');
+    if(popup)try{popup.opener=null}catch{}
     if(btn){btn.disabled=true;btn.textContent='正在准备…'}if(pill){pill.className='status-pill ready';pill.textContent='校验中'}
     try{
       let target=engine.uploadPage;
@@ -510,7 +511,7 @@
         const copied=await quietCopy();
         if(!copied)throw new Error('浏览器未允许复制图片，请手动选择文件。');
       }
-      if(popup&&!popup.closed)popup.location.replace(target);else window.open(target,'_blank','noopener,noreferrer');
+      if(popup&&!popup.closed)popup.location.replace(target);else location.assign(target);
       if(pill){pill.className='status-pill opened';pill.textContent='已打开'}if(btn)btn.textContent='再次打开'
     }catch(err){
       if(popup&&!popup.closed)popup.close();
@@ -585,12 +586,13 @@
   async function openBatchEngine(item,engineId,button){
     const engine=allEngines().find(e=>e.id===engineId);if(!item||!engine)return;
     const popup=window.open('about:blank','_blank');
+    if(popup)try{popup.opener=null}catch{}
     const old=button?.innerHTML;if(button){button.disabled=true;button.classList.add('busy')}
     try{
       let target=engine.uploadPage;
       if(engine.direct){const publicUrl=await createBatchPublicUrl(item);if(!publicUrl)throw new Error('临时图片服务不可用');target=engineTarget(engine,publicUrl)}
       else throw new Error('该引擎暂不支持批量一键直连');
-      if(popup&&!popup.closed)popup.location.replace(target);else window.open(target,'_blank','noopener,noreferrer')
+      if(popup&&!popup.closed)popup.location.replace(target);else location.assign(target)
     }catch(e){if(popup&&!popup.closed)popup.close();toast('批量搜索打开失败',e?.message||'请重试。','error')}
     finally{if(button){button.disabled=false;button.classList.remove('busy');button.innerHTML=old}}
   }
