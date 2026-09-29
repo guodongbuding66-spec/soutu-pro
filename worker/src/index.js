@@ -38,7 +38,7 @@ export default {
     }
     // Optional supplier lead search. Uses the same SERPAPI_KEY and limits results to major B2B marketplaces.
     if(url.pathname==='/api/supplier-search'&&req.method==='GET'){
-      const q=(url.searchParams.get('q')||'').trim(); if(!q)return json({error:'query_required'},400,headers);
+      const q=(url.searchParams.get('q')||'').trim(); if(!q)return json({error:'query_required'},400,headers); if(q.length>240)return json({error:'query_too_long'},400,headers);
       if(!env.SERPAPI_KEY)return json({enabled:false,provider:'serpapi',message:'SERPAPI_KEY is not configured'},501,headers);
       const supplierQuery=`${q} (site:alibaba.com OR site:made-in-china.com OR site:globalsources.com)`;
       const api=new URL('https://serpapi.com/search.json');api.searchParams.set('engine','google');api.searchParams.set('q',supplierQuery);api.searchParams.set('api_key',env.SERPAPI_KEY);api.searchParams.set('hl','en');api.searchParams.set('num','20');
