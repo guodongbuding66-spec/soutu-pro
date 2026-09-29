@@ -46,6 +46,10 @@ assert(popupCalls.every(x=>x.includes("'about:blank'")||x.includes("target,'_bla
 assert(app.includes('function openExecutionEngine'),'dynamic execution opener missing');
 assert(app.includes('data-execution-open'),'click-time execution controls missing');
 assert(!app.includes('data-execution-link'),'stale fixed execution links must not remain');
+assert(!app.includes('location.assign(target)'),'blocked popup fallback must never navigate the workbench away');
+assert(app.includes('function prepareSearchPopup'),'search popup preparation UI missing');
+assert(html.includes('id="engineHealthBtn"')&&html.includes('id="engineHealthSummary"'),'engine health controls missing');
+assert(app.includes('forceTempLink')&&app.includes('增强直连'),'remote rehosting flow missing');
 assert(app.includes('data-open-batch-engine')&&app.includes('function openBatchEngine'),'batch results must refresh targets at click time');
 assert(app.includes("id:'industrial'"),'industrial product preset missing');
 assert(html.includes('1–6 快速切换'),'preset shortcut copy is stale');
