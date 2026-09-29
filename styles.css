@@ -354,3 +354,25 @@ html[data-theme="dark"] .engine-card[data-tone] .engine-mark{border-color:var(--
   .engine-card-status{gap:4px}
   .engine-health{height:20px;padding-inline:6px}
 }
+
+/* System status center */
+.system-status-panel{grid-column:1/-1;margin-top:4px;padding:14px;border:1px solid var(--line);border-radius:13px;background:var(--panel-subtle)}
+.system-status-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:11px}
+.system-status-head h3{font-size:13px;margin:3px 0 0}
+.system-status-head>div:last-child{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+.system-status-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}
+.system-status-item{min-width:0;padding:9px 10px;border:1px solid var(--line);border-radius:10px;background:var(--panel)}
+.system-status-item span{display:flex;align-items:center;gap:6px;font-size:9px;color:var(--muted);margin-bottom:5px}
+.system-status-item span i{width:6px;height:6px;border-radius:50%;background:var(--muted)}
+.system-status-item b{display:block;font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.system-status-item.ok span i{background:var(--success)}
+.system-status-item.warn span i{background:#d97706}
+.system-status-item.bad span i{background:var(--danger)}
+.system-status-note{font-size:9px;line-height:1.5;color:var(--muted);margin:9px 1px 0}
+.danger-outline{color:var(--danger)!important}
+@media(max-width:760px){
+  .system-status-head{flex-direction:column}
+  .system-status-head>div:last-child{width:100%;justify-content:flex-start}
+  .system-status-grid{grid-template-columns:1fr 1fr}
+}
+@media(max-width:430px){.system-status-grid{grid-template-columns:1fr}}
