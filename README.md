@@ -1,4 +1,4 @@
-# 搜图 Pro · Image Compass V9.1.3
+# 搜图 Pro · Image Compass V9.1.4
 
 面向高频图片调查、商品找同款、来源溯源和采购研究的浏览器工作台。核心路径是：**放入图片 → 预处理/智能分析 → 自动任务建议 → 多引擎搜索 → 商品/供应商研究 → 保存项目或批量继续**。
 
@@ -57,7 +57,7 @@
 python3 -m http.server 4173
 ```
 
-## Vercel 原生部署（V9.1.3）
+## Vercel 原生部署（V9.1.4）
 
 - `/api/temp-token` 使用 `@vercel/blob@2.4.0` 生成浏览器直传 URL、短时读取 URL 与删除 URL。
 - 临时读取 URL 到期后即失效；`/api/cleanup` 每日清理已经过期的 Blob 对象。
