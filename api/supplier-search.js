@@ -18,7 +18,7 @@ export default async function handler(req, res) {
     url.searchParams.set('q', `${q} (site:alibaba.com OR site:made-in-china.com OR site:globalsources.com)`);
     url.searchParams.set('api_key', process.env.SERPAPI_KEY);
     url.searchParams.set('hl', 'en');
-    const r = await fetch(url);
+    const r = await fetch(url, { signal: AbortSignal.timeout(10000) });
     const data = await r.json();
     if (!r.ok || data.error) throw new Error(data.error || `Provider returned ${r.status}`);
     const items = (data.organic_results || []).slice(0, 20).map(x => ({
