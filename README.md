@@ -124,3 +124,24 @@ V9 把搜图 Pro 从多引擎入口升级成可持续调查的结果工作台。
 - 浏览器扩展只在用户主动点击采集时读取当前标签页。
 - 第三方搜索、翻译、模型 CDN 与商品聚合受第三方可用性和政策影响；不可用时 UI 会明确降级，不伪造结果。
 - 价格 / 页面生命周期当前是本机观察清单 + 主动刷新，不是后台自动监控。
+
+
+## 免费媒体 / 社媒搜索 API
+
+`/api/media-search?q=关键词` 会聚合可用的免费媒体搜索源，并在前端“免费 API 聚合”中统一展示。
+
+无需 Key 可直接使用：
+- Openverse
+- Wikimedia Commons
+- NASA Images
+- Mastodon（实例是否支持全文状态搜索取决于实例配置）
+- Bluesky（公共端点若对部署出口限流/拒绝，会自动标记不可用而不是伪造结果）
+
+配置免费开发者 Key 后自动启用：
+- `YOUTUBE_API_KEY`
+- `PEXELS_API_KEY`
+- `UNSPLASH_ACCESS_KEY`
+- `PIXABAY_API_KEY`
+- `FLICKR_API_KEY`
+
+TikTok、抖音、小红书、Instagram、Facebook、Pinterest、X、Reddit、Bilibili、微博、Threads、LinkedIn 等没有适合本站“任意公开内容搜索”的稳定免费官方 API 时，前端使用官方站内搜索入口，不冒充 API 聚合结果。
