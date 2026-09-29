@@ -51,6 +51,7 @@
     {id:'pinterest',name:'Pinterest',group:'灵感',iconUrl:'https://www.pinterest.com/favicon.ico',url:q=>`https://www.pinterest.com/search/pins/?q=${encodeURIComponent(q)}`},
     {id:'x',name:'X',group:'社媒',iconUrl:'https://x.com/favicon.ico',url:q=>`https://x.com/search?q=${encodeURIComponent(q)}&src=typed_query`},
     {id:'reddit',name:'Reddit',group:'社区',iconUrl:'https://www.redditstatic.com/desktop2x/img/favicon/favicon-32x32.png',url:q=>`https://www.reddit.com/search/?q=${encodeURIComponent(q)}`},
+    {id:'bluesky-search',name:'Bluesky',group:'社媒',iconUrl:'https://bsky.app/static/apple-touch-icon.png',url:q=>`https://bsky.app/search?q=${encodeURIComponent(q)}`},
     {id:'xiaohongshu',name:'小红书',group:'国内社媒',iconUrl:'https://www.xiaohongshu.com/favicon.ico',url:q=>`https://www.xiaohongshu.com/search_result?keyword=${encodeURIComponent(q)}`},
     {id:'douyin',name:'抖音',group:'国内视频',iconUrl:'https://www.douyin.com/favicon.ico',url:q=>`https://www.douyin.com/search/${encodeURIComponent(q)}`},
     {id:'bilibili',name:'哔哩哔哩',group:'国内视频',iconUrl:'https://www.bilibili.com/favicon.ico',url:q=>`https://search.bilibili.com/all?keyword=${encodeURIComponent(q)}`},
@@ -297,7 +298,7 @@
   function filteredPlatforms(){const all=[...socialPlatforms,...marketplaces].filter(platformAllowed);return state.universal.platform==='all'?all:all.filter(x=>x.id===state.universal.platform)}
   const apiPlatformOptions=[
     {id:'openverse',name:'Openverse'},{id:'wikimedia-commons',name:'Wikimedia Commons'},{id:'nasa-images',name:'NASA Images'},
-    {id:'art-institute-chicago',name:'Art Institute Chicago'},{id:'library-of-congress',name:'Library of Congress'},
+    {id:'art-institute-chicago',name:'Art Institute Chicago'},{id:'library-of-congress',name:'Library of Congress'},{id:'internet-archive',name:'Internet Archive'},
     {id:'mastodon',name:'Mastodon'},{id:'bluesky',name:'Bluesky'},{id:'pexels',name:'Pexels'},{id:'unsplash',name:'Unsplash'},{id:'pixabay',name:'Pixabay'},{id:'flickr',name:'Flickr'}
   ];
   function providerSlug(v=''){return String(v).toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')}
@@ -307,7 +308,7 @@
   function universalParams(){
     const p=new URLSearchParams({q:state.universal.expanded[0]||primaryQuery()});
     for(const k of ['country','language','time','type','platform'])if(state.universal[k]&&state.universal[k]!=='all')p.set(k,state.universal[k]);
-    const apiIds=new Set(['openverse','wikimedia-commons','nasa-images','art-institute-chicago','library-of-congress','mastodon','bluesky','youtube','pexels','unsplash','pixabay','flickr']);
+    const apiIds=new Set(['openverse','wikimedia-commons','nasa-images','art-institute-chicago','library-of-congress','internet-archive','mastodon','youtube','pexels','unsplash','pixabay','flickr']);
     if(apiIds.has(state.universal.platform))p.set('providers',state.universal.platform);
     return p
   }
