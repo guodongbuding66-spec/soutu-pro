@@ -85,7 +85,7 @@
     presetGrid:$('#presetGrid'),engineGroups:$('#engineGroups'),engineHint:$('#engineHint'),engineSummary:$('#engineSummary'),selectedCount:$('#selectedCount'),runSearch:$('#runSearch'),privacyMode:$('#privacyMode'),customBtn:$('#customBtn'),
     historyContent:$('#historyContent'),clearHistory:$('#clearHistory'),projectsContent:$('#projectsContent'),clearProjects:$('#clearProjects'),
     batchDrop:$('#batchDrop'),batchChoose:$('#batchChoose'),batchInput:$('#batchInput'),batchPreset:$('#batchPreset'),applyBatchPreset:$('#applyBatchPreset'),runBatch:$('#runBatch'),batchList:$('#batchList'),batchExport:$('#batchExport'),
-    themeBtn:$('#themeBtn'),settingsBtn:$('#settingsBtn'),installBtn:$('#installBtn'),commandBtn:$('#commandBtn'),settingsModal:$('#settingsModal'),customModal:$('#customModal'),commandModal:$('#commandModal'),executionModal:$('#executionModal'),shortcutModal:$('#shortcutModal'),shortcutHelp:$('#shortcutHelp'),
+    themeBtn:$('#themeBtn'),settingsBtn:$('#settingsBtn'),installBtn:$('#installBtn'),commandBtn:$('#commandBtn'),versionBadge:$('#versionBadge'),updateBtn:$('#updateBtn'),settingsModal:$('#settingsModal'),customModal:$('#customModal'),commandModal:$('#commandModal'),executionModal:$('#executionModal'),shortcutModal:$('#shortcutModal'),shortcutHelp:$('#shortcutHelp'),
     defaultPreset:$('#defaultPreset'),tempEndpointInput:$('#tempEndpointInput'),productEndpointInput:$('#productEndpointInput'),ttlSelect:$('#ttlSelect'),autoPresetToggle:$('#autoPresetToggle'),customName:$('#customName'),customTemplate:$('#customTemplate'),addCustom:$('#addCustom'),
     commandInput:$('#commandInput'),commandList:$('#commandList'),executionList:$('#executionList'),executionSummary:$('#executionSummary'),toastStack:$('#toastStack')
   };
@@ -663,7 +663,18 @@ els.federatedSearchBtn.onclick=federatedProductSearch;if(els.supplierSearchBtn)e
   }
 
   async function initFromUrl(){const qs=new URLSearchParams(location.search),image=qs.get('image'),preset=qs.get('preset'),mode=qs.get('mode');if(preset&&presets.some(p=>p.id===preset))choosePreset(preset,false);if(image){els.urlInput.value=image;await acceptUrl(image);if(mode==='supplier'){await analyzeImage();await federatedSupplierSearch()}}}
-  function initPwa(){if('serviceWorker'in navigator)navigator.serviceWorker.register('./sw.js').catch(()=>{})}
+  function initPwa(){
+    if(els.versionBadge)els.versionBadge.textContent=`v${APP_VERSION}`;
+    if(!('serviceWorker'in navigator))return;
+    let reloading=false;
+    navigator.serviceWorker.addEventListener('controllerchange',()=>{if(reloading)return;reloading=true;location.reload()});
+    navigator.serviceWorker.register('./sw.js').then(reg=>{
+      const showUpdate=()=>{if(reg.waiting&&els.updateBtn){els.updateBtn.hidden=false;els.updateBtn.onclick=()=>{els.updateBtn.disabled=true;els.updateBtn.textContent='正在更新…';reg.waiting?.postMessage({type:'SKIP_WAITING'})}}};
+      showUpdate();
+      reg.addEventListener('updatefound',()=>{const w=reg.installing;if(!w)return;w.addEventListener('statechange',()=>{if(w.state==='installed'&&navigator.serviceWorker.controller)showUpdate()})});
+      reg.update().catch(()=>{});
+    }).catch(()=>{})
+  }
   window.SOUTU_BRIDGE={
     source:()=>state.source?{...state.source,activeUrl:activeUrl()}:null,
     analysis:()=>JSON.parse(JSON.stringify(state.analysis||{})),
