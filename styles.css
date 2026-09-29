@@ -328,3 +328,6 @@ html[data-theme="dark"] .engine-card[data-tone] .engine-mark{border-color:var(--
 .universal-researchbar .query-actions .active{background:var(--ink);color:var(--surface)}
 @media(max-width:900px){.universal-researchbar{display:block}.universal-researchbar .query-actions{margin-top:10px;display:flex;overflow:auto}.universal-timeline,.universal-clusters{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:620px){.universal-research-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.universal-researchbar .query-actions>*{flex:0 0 auto}.universal-timeline,.universal-clusters{grid-template-columns:1fr}.universal-insight-head{display:block}.universal-insight-head span{display:block;margin-top:4px}}
+
+.universal-evidence-badges{display:flex!important;justify-content:flex-start!important;gap:5px!important;flex-wrap:wrap;margin-top:8px}
+.universal-evidence-badges span{display:inline-flex!important;max-width:100%;padding:4px 6px;border-radius:7px;background:color-mix(in srgb,var(--page) 78%,var(--surface));border:1px solid var(--line);font-size:9px!important;line-height:1;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
