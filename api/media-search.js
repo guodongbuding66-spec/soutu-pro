@@ -128,6 +128,43 @@ async function nasaImages(q) {
   });
 }
 
+async function artInstitute(q) {
+  const url = new URL('https://api.artic.edu/api/v1/artworks/search');
+  url.searchParams.set('q', q);
+  url.searchParams.set('limit', String(MAX_PER_PROVIDER));
+  url.searchParams.set('fields', 'id,title,artist_display,date_display,image_id,thumbnail,is_public_domain');
+  const d = await jsonFetch(url, {headers:{'AIC-User-Agent':'soutu-pro'}});
+  const iiif = d?.config?.iiif_url || 'https://www.artic.edu/iiif/2';
+  return (d?.data || []).filter(x => x.image_id).map(x => item('Art Institute Chicago', {
+    type:'image', title:x.title || 'Artwork',
+    snippet:[x.artist_display, x.date_display].filter(Boolean).join(' · '),
+    link:`https://www.artic.edu/artworks/${x.id}`,
+    thumbnail:`${iiif}/${x.image_id}/full/843,/0/default.jpg`,
+    author:x.artist_display || '', meta:{publicDomain:!!x.is_public_domain}
+  }));
+}
+
+async function libraryCongress(q) {
+  const url = new URL('https://www.loc.gov/photos/');
+  url.searchParams.set('q', q);
+  url.searchParams.set('fo', 'json');
+  url.searchParams.set('c', String(MAX_PER_PROVIDER));
+  url.searchParams.set('at', 'results');
+  const d = await jsonFetch(url);
+  const rows = Array.isArray(d?.results) ? d.results : Array.isArray(d) ? d : [];
+  return rows.map(x => {
+    const img = Array.isArray(x.image_url) ? x.image_url[x.image_url.length - 1] : (x.image_url || '');
+    const contributors = Array.isArray(x.contributor) ? x.contributor.join(', ') : (x.contributor || '');
+    return item('Library of Congress', {
+      type:'image', title:x.title || 'Library of Congress image',
+      snippet:[x.date, x.description, x.location].flat().filter(Boolean).join(' · '),
+      link:x.id || x.url, thumbnail:img, author:contributors,
+      publishedAt:x.date ? (/^\d{4}-\d{2}-\d{2}/.test(String(x.date)) ? x.date : null) : null,
+      meta:{format:x.original_format}
+    });
+  });
+}
+
 async function pixabay(q) {
   const key = process.env.PIXABAY_API_KEY;
   if (!key) return null;
@@ -213,6 +250,8 @@ const providers = [
   ['Openverse', openverse, () => true],
   ['Wikimedia Commons', wikimedia, () => true],
   ['NASA Images', nasaImages, () => true],
+  ['Art Institute Chicago', artInstitute, () => true],
+  ['Library of Congress', libraryCongress, () => true],
   ['Mastodon', mastodon, () => true],
   ['Bluesky', bluesky, () => true],
   ['YouTube', youtube, () => !!process.env.YOUTUBE_API_KEY],
