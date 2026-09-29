@@ -301,11 +301,33 @@
     finally{b.disabled=false;b.innerHTML=`${icon('sparkles')}AI 重排`}
   }
   async function smartDedupe(){
-    if(!state.results.length)return;const b=document.querySelector('#v9Dedupe');if(!b)return;b.disabled=true;b.textContent='计算指纹…';
+    if(!state.results.length)return;
+    const b=document.querySelector('#v9Dedupe');if(!b)return;b.disabled=true;b.textContent='计算指纹…';
     try{
       const list=state.results.slice(0,50);
-      for(let i=0;i<list.length;i++){await computeFeaturesForResult(list[i],false);list[i].duplicateOf='';for(let j=0;j<i;j++){if(list[j].features&&list[i].features&&hamming(list[j].features.dhash,list[i].features.dhash)<=.06&&hamming(list[j].features.edgehash,list[i].features.edgehash)<=.12){list[i].duplicateOf=list[j].id;break}}}
-      state.hideDuplicates=true;persist();render();bridge()?.toast?.('智能去重完成','相似指纹结果已合并显示。','ok');
+      for(let i=0;i<list.length;i++){
+        const current=list[i];
+        current.duplicateOf='';
+        const currentUrl=canonicalUrl(current.url||'');
+        const imgUrl=remoteImageUrl(current);
+        if(imgUrl){
+          const feat=await imageFeatures(imgUrl);
+          if(feat){
+            current.width=feat.width;current.height=feat.height;
+            current.quality={megapixels:(feat.width*feat.height)/1e6,sharpness:feat.sharpness};
+            current.features={dhash:feat.dhash,edgehash:feat.edgehash,hist:feat.hist};
+          }
+        }
+        for(let j=0;j<i;j++){
+          const prev=list[j];
+          const sameCanonical=currentUrl&&currentUrl===canonicalUrl(prev.url||'');
+          const sameFingerprint=prev.features&&current.features
+            && hamming(prev.features.dhash,current.features.dhash)<=.06
+            && hamming(prev.features.edgehash,current.features.edgehash)<=.12;
+          if(sameCanonical||sameFingerprint){current.duplicateOf=prev.id;break}
+        }
+      }
+      state.hideDuplicates=true;persist();render();bridge()?.toast?.('智能去重完成','同链接与相似图片指纹已合并显示。','ok');
     }catch(e){bridge()?.toast?.('智能去重未完成',e.message||'部分远程图片无法读取。','error')}
     finally{b.disabled=false;b.innerHTML=state.hideDuplicates?`${icon('grid')}显示重复项`:`${icon('grid')}智能去重`}
   }
