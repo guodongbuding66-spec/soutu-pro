@@ -761,7 +761,7 @@ els.federatedSearchBtn.onclick=federatedProductSearch;if(els.supplierSearchBtn)e
       {label:'网络状态',value:navigator.onLine?'在线':'离线',tone:navigator.onLine?'ok':'bad'},
       {label:'剪贴板图片',value:navigator.clipboard&&window.ClipboardItem?'支持':'受限',tone:navigator.clipboard&&window.ClipboardItem?'ok':'warn'},
       {label:'安全上下文',value:window.isSecureContext?'HTTPS / 安全':'非安全上下文',tone:window.isSecureContext?'ok':'warn'},
-      {label:'本机数据',value:formatBytes(storage),tone:storage<4*1024*1024?'ok':'warn'}
+      {label:'本机数据',value:storage?formatBytes(storage):'0 B',tone:storage<4*1024*1024?'ok':'warn'}
     ];
     els.systemStatusGrid.innerHTML=items.map(x=>`<div class="system-status-item ${x.tone}"><span><i></i>${escapeHtml(x.label)}</span><b title="${escapeHtml(x.value)}">${escapeHtml(x.value)}</b></div>`).join('');
     const checked=state.engineHealthCheckedAt?new Date(state.engineHealthCheckedAt).toLocaleTimeString():'未执行';
