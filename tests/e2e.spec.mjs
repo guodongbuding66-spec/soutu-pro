@@ -91,7 +91,7 @@ test('core product flow, local image tools, batch, projects and V9 research',asy
   await expect(page.locator('#batchList .batch-row')).toHaveCount(2);
   await page.locator('#runBatch').click();
   await expect(page.locator('#batchList .batch-links')).toHaveCount(2);
-  expect(await page.locator('#batchList .batch-links a').count()).toBeGreaterThan(0);
+  expect(await page.locator('#batchList .batch-links [data-open-batch-engine]').count()).toBeGreaterThan(0);
 
   await page.locator('[data-nav="research"]').first().click();
   await expect(page.locator('#v9Root')).not.toBeEmpty();
