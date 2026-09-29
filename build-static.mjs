@@ -14,8 +14,7 @@ const files = [
   'icon.svg',
   'maskable.svg',
   'sw.js',
-  'standalone.html',
-  'qa-dom-result.json'
+  'standalone.html'
 ];
 
 fs.rmSync(outDir, { recursive: true, force: true });
