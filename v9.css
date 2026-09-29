@@ -16,3 +16,14 @@
 @media(max-width:430px){.v9-hero-actions,.v9-controls{grid-template-columns:1fr}.v9-controls input{grid-column:auto}.v9-stats{grid-template-columns:1fr 1fr}.v9-result-image{height:210px}.v9-compare-grid{grid-template-columns:1fr}}
 .v9-case-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}.v9-case-grid article{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:14px;border:1px solid var(--line);border-radius:14px;background:var(--panel)}.v9-case-grid h3{margin:3px 0 5px;font-size:13px}.v9-case-grid p{margin:0;color:var(--text-2);font-size:10px}.v9-case-grid small{display:block;margin-top:5px;color:var(--muted);font-size:8px}.v9-case-grid button{min-height:32px;border:1px solid var(--line);border-radius:8px;background:var(--panel-subtle);padding:0 8px;color:var(--text-2);font-size:9px}.v9-supplier-panel{padding:16px}.v9-supplier-panel h3{font-size:15px;margin:0 0 10px}.v9-supplier-links{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.v9-supplier-links a{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:12px;border:1px solid var(--line);border-radius:11px;background:var(--panel-subtle);color:var(--text);text-decoration:none;font-size:10px;font-weight:750}.v9-supplier-links svg{width:12px;height:12px}.v9-provider-note{margin-top:10px;padding:11px;border:1px solid var(--line);border-radius:10px;background:var(--panel-subtle);font-size:10px}.v9-provider-note b{display:block}.v9-provider-note p{margin:4px 0 0;color:var(--muted)}
 @media(max-width:720px){.v9-case-grid{grid-template-columns:1fr}.v9-case-grid article{align-items:flex-start;flex-direction:column}.v9-supplier-links{grid-template-columns:1fr}}
+.v9-print-report{display:none}
+@media print{
+  body>*:not(#researchHubView){display:none!important}
+  #researchHubView{display:block!important;padding:0!important;max-width:none!important}
+  #researchHubView>*:not(#v9Root){display:none!important}
+  #v9Root>*:not(.v9-print-report){display:none!important}
+  .v9-print-report{display:block!important;color:#111;background:#fff;padding:18mm;font:12px/1.45 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+  .v9-print-report h1{font-size:22px;margin:0 0 10px}.v9-print-report p{margin:0 0 16px;color:#444}
+  .v9-print-report table{width:100%;border-collapse:collapse;table-layout:fixed}.v9-print-report th,.v9-print-report td{padding:7px;border:1px solid #d9dde5;text-align:left;vertical-align:top;word-break:break-word}
+  .v9-print-report th{background:#f5f6f8}.v9-print-report img{max-width:105px;max-height:80px;object-fit:contain}.v9-print-report small{color:#667085}
+}
