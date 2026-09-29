@@ -128,6 +128,30 @@ async function nasaImages(q) {
   });
 }
 
+async function internetArchive(q) {
+  const url = new URL('https://archive.org/advancedsearch.php');
+  url.searchParams.set('q', q);
+  url.searchParams.set('fl[]', 'identifier,title,creator,date,mediatype');
+  url.searchParams.set('rows', String(MAX_PER_PROVIDER));
+  url.searchParams.set('page', '1');
+  url.searchParams.set('output', 'json');
+  const d = await jsonFetch(url);
+  return (d?.response?.docs || []).map(x => {
+    const id = x.identifier;
+    const type = x.mediatype === 'movies' ? 'video' : 'image';
+    return item('Internet Archive', {
+      type,
+      title:x.title || id || 'Internet Archive item',
+      snippet:[x.creator,x.date,x.mediatype].filter(Boolean).join(' · '),
+      link:id ? `https://archive.org/details/${encodeURIComponent(id)}` : '',
+      thumbnail:id ? `https://archive.org/services/img/${encodeURIComponent(id)}` : '',
+      author:Array.isArray(x.creator)?x.creator.join(', '):(x.creator||''),
+      publishedAt:x.date ? (/^\d{4}-\d{2}-\d{2}/.test(String(x.date)) ? String(x.date) : /^\d{4}$/.test(String(x.date)) ? `${x.date}-01-01` : null) : null,
+      meta:{mediatype:x.mediatype}
+    });
+  });
+}
+
 async function artInstitute(q) {
   const url = new URL('https://api.artic.edu/api/v1/artworks/search');
   url.searchParams.set('q', q);
@@ -252,6 +276,7 @@ const providers = [
   ['NASA Images', nasaImages, () => true],
   ['Art Institute Chicago', artInstitute, () => true],
   ['Library of Congress', libraryCongress, () => true],
+  ['Internet Archive', internetArchive, () => true],
   ['Mastodon', mastodon, () => true],
   ['Bluesky', bluesky, () => true],
   ['YouTube', youtube, () => !!process.env.YOUTUBE_API_KEY],
@@ -273,7 +298,7 @@ export default async function handler(req, res) {
   const publishedAfter = sinceMs ? new Date(Date.now() - sinceMs).toISOString() : '';
   const filters = {country, language, type, time, publishedAfter};
   const requested = new Set(String(req.query?.providers || '').split(',').map(x=>x.trim().toLowerCase()).filter(Boolean));
-  const selected = requested.size ? providers.filter(([name]) => requested.has(name.toLowerCase().replace(/\s+/g,'-')) || requested.has(name.toLowerCase())) : providers;
+  const selected = requested.size ? providers.filter(([name]) => requested.has(name.toLowerCase().replace(/\s+/g,'-')) || requested.has(name.toLowerCase())) : providers.filter(([name]) => name !== 'Bluesky');
   const settled = await Promise.all(selected.map(async ([name, fn, configured]) => {
     const enabled = configured();
     if (!enabled) return {name, enabled:false, configured:false, items:[], message:'API key not configured'};
