@@ -282,6 +282,10 @@ test('V9 universal search: modes, filters, waterfall, favorites and history rest
 
   await page.locator('#universalSearchBtn').click();
   await expect(page.locator('.universal-result-card')).toHaveCount(1);
+  await page.locator('#universalType').selectOption('all');
+  await expect(page.locator('.universal-result-card')).toHaveCount(2);
+  await page.locator('#universalType').selectOption('image');
+  await expect(page.locator('.universal-result-card')).toHaveCount(1);
   await expect(page.locator('#universalMeta')).toContainText('1 条结果');
   await expect(page.locator('.universal-result-card')).toContainText('Garden Shed Original');
 
