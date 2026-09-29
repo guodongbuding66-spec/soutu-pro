@@ -15,7 +15,7 @@
   const MAX_AI_RESULTS = 16;
 
   const read = (k, fallback) => { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : fallback; } catch { return fallback; } };
-  const write = (k, v) => localStorage.setItem(k, JSON.stringify(v));
+  const write = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch { return false; } };
   const escapeHtml = (v='') => String(v).replace(/[&<>'"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
   const uid = () => crypto.randomUUID?.() || `${Date.now()}-${Math.random().toString(16).slice(2)}`;
   const bridge = () => window.SOUTU_BRIDGE || null;
@@ -47,13 +47,29 @@
   }
   state.weights = normalizeWeights(state.weights);
 
+  function compactResult(r){
+    const image=String(r.image||r.thumbnail||'');
+    return {...r,
+      title:String(r.title||'').slice(0,320),
+      snippet:String(r.snippet||'').slice(0,700),
+      image:/^https?:/i.test(image)?image:'',
+      thumbnail:/^https?:/i.test(String(r.thumbnail||''))?r.thumbnail:'',
+      product:r.product&&typeof r.product==='object'?Object.fromEntries(Object.entries(r.product).map(([k,v])=>[k,typeof v==='string'?v.slice(0,500):v])):{}
+    };
+  }
   function persist() {
-    write(KEYS.results, state.results.slice(0, MAX_RESULTS));
-    write(KEYS.watch, state.watch.slice(0, 100));
-    write(KEYS.cases, state.cases.slice(0, 80));
-    write(KEYS.evidence, state.evidence.slice(0, 160));
-    write(KEYS.weights, state.weights);
-    write(KEYS.view, state.mode);
+    let results=state.results.slice(0, MAX_RESULTS).map(compactResult);
+    if(!write(KEYS.results,results)){
+      results=results.slice(0,80);
+      state.results=results;
+      write(KEYS.results,results);
+      bridge()?.toast?.('本机存储接近上限','已自动压缩研究结果，原始网页链接仍保留。','error');
+    }
+    if(!write(KEYS.watch,state.watch.slice(0,100)))write(KEYS.watch,state.watch.slice(0,40));
+    if(!write(KEYS.cases,state.cases.slice(0,40)))write(KEYS.cases,state.cases.slice(0,12));
+    if(!write(KEYS.evidence,state.evidence.slice(0,120)))write(KEYS.evidence,state.evidence.slice(0,50));
+    write(KEYS.weights,state.weights);
+    write(KEYS.view,state.mode);
   }
 
   function root() { return document.querySelector('#v9Root'); }
@@ -119,6 +135,7 @@
       </section>
       <section class="v9-integration"><div><span class="section-kicker">WORKFLOW</span><h2>继续到业务工具</h2><p>把当前商品线索整理成结构化导入包，再进入 AI 外贸工作台继续开发客户。</p></div><div class="v9-action-row"><button class="secondary-btn" id="v9CopyTrade">复制外贸导入包</button><a class="primary-btn" href="https://ai-foreign-trade-os.pages.dev/" target="_blank" rel="noopener noreferrer">打开 AI 外贸工作台 ${icon('arrow-up-right')}</a></div></section>
       <div class="modal-backdrop hidden" id="v9CompareModal"><div class="modal modal-wide v9-compare-modal"><div class="modal-head"><h2>图片与商品对比</h2><button class="icon-btn" id="v9CompareClose" aria-label="关闭">${icon('x')}</button></div><div id="v9CompareBody"></div></div></div>
+      <section id="v9PrintReport" class="v9-print-report" aria-hidden="true"></section>
     `;
   }
 
@@ -261,7 +278,12 @@
   function download(name,blob){const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)}
   function exportJson(){download(`soutu-pro-v9-${Date.now()}.json`,new Blob([JSON.stringify({version:V9_VERSION,exportedAt:new Date().toISOString(),query:sourceQuery(),results:state.results,evidence:state.evidence,watch:state.watch},null,2)],{type:'application/json'}))}
   async function exportXlsx(){try{await loadScript('https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js','XLSX');const rows=state.results.map(r=>({title:r.title,url:r.url,domain:r.domain||domainOf(r.url),price:r.price||r.product?.price||'',brand:r.product?.brand||'',sku:r.product?.sku||'',model:r.product?.model||'',similarity:scorePct(r.scores?.overall),visual:scorePct(r.scores?.visual),structure:scorePct(r.scores?.structure),label:r.manualLabel||''}));const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(rows),'Results');XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(state.evidence),'Evidence');XLSX.writeFile(wb,`soutu-pro-v9-${Date.now()}.xlsx`)}catch(e){bridge()?.toast?.('Excel 导出失败',e.message||'SheetJS 未加载。','error')}}
-  function printReport(){const w=window.open('about:blank','_blank');if(!w)return;const items=filteredResults().slice(0,40);const absProxy=u=>`${location.origin}${proxyUrl(u)}`;w.document.write(`<!doctype html><meta charset="utf-8"><title>搜图 Pro 调查报告</title><style>body{font:13px system-ui;margin:32px;color:#111}h1{font-size:24px}table{width:100%;border-collapse:collapse}th,td{padding:8px;border:1px solid #ddd;text-align:left;vertical-align:top}img{max-width:120px;max-height:90px}small{color:#666}</style><h1>搜图 Pro · 图片调查报告</h1><p>生成时间：${new Date().toLocaleString()}<br>搜索词：${escapeHtml(sourceQuery())}<br>结果：${items.length} 条 · 证据：${state.evidence.length} 条</p><table><thead><tr><th>图片</th><th>标题 / 来源</th><th>价格</th><th>相似度</th><th>判断</th></tr></thead><tbody>${items.map(r=>`<tr><td>${remoteImageUrl(r)?`<img src="${escapeHtml(absProxy(remoteImageUrl(r)))}">`:''}</td><td><b>${escapeHtml(r.title||'')}</b><br><small>${escapeHtml(r.domain||domainOf(r.url))}</small><br>${escapeHtml(r.url||'')}</td><td>${escapeHtml(r.price||r.product?.price||'')}</td><td>${scorePct(r.scores?.overall)}%</td><td>${escapeHtml(r.manualLabel||'')}</td></tr>`).join('')}</tbody></table><script>onload=()=>setTimeout(()=>print(),500)<\/script>`);w.document.close();}
+  function printReport(){
+    const box=document.querySelector('#v9PrintReport');if(!box)return;
+    const items=filteredResults().slice(0,40);
+    box.innerHTML=`<h1>搜图 Pro · 图片调查报告</h1><p>生成时间：${new Date().toLocaleString()}<br>搜索词：${escapeHtml(sourceQuery())}<br>结果：${items.length} 条 · 证据：${state.evidence.length} 条</p><table><thead><tr><th>图片</th><th>标题 / 来源</th><th>价格</th><th>相似度</th><th>判断</th></tr></thead><tbody>${items.map(r=>`<tr><td>${remoteImageUrl(r)?`<img src="${escapeHtml(proxyUrl(remoteImageUrl(r)))}" alt="">`:''}</td><td><b>${escapeHtml(r.title||'')}</b><br><small>${escapeHtml(r.domain||domainOf(r.url))}</small><br>${escapeHtml(r.url||'')}</td><td>${escapeHtml(r.price||r.product?.price||'')}</td><td>${scorePct(r.scores?.overall)}%</td><td>${escapeHtml(r.manualLabel||'')}</td></tr>`).join('')}</tbody></table>`;
+    requestAnimationFrame(()=>window.print());
+  }
 
   function copyTradePackage(){const selected=state.results.filter(r=>state.selected.has(r.id));const top=(selected.length?selected:filteredResults().slice(0,5));const pack={source:'soutu-pro',createdAt:new Date().toISOString(),query:sourceQuery(),products:top.map(r=>({name:r.title,brand:r.product?.brand||'',sku:r.product?.sku||'',model:r.product?.model||'',price:r.price||r.product?.price||'',source_url:r.url,supplier_hint:/alibaba|made-in-china|globalsources/i.test(r.domain||domainOf(r.url))?r.domain||domainOf(r.url):'',similarity:scorePct(r.scores?.overall)})),evidence:state.evidence.slice(0,20)};navigator.clipboard.writeText(JSON.stringify(pack,null,2)).then(()=>bridge()?.toast?.('外贸导入包已复制','打开 AI 外贸工作台后可粘贴到项目备注或导入流程。','ok')).catch(()=>{});}
 
@@ -271,7 +293,7 @@
   function parseTiff(v,start){const le=v.getUint16(start)===0x4949;const u16=o=>v.getUint16(o,le),u32=o=>v.getUint32(o,le);const base=start,first=base+u32(base+4),out={};const readAscii=(ptr,count)=>{let s='';for(let i=0;i<count-1&&ptr+i<v.byteLength;i++){const c=v.getUint8(ptr+i);if(!c)break;s+=String.fromCharCode(c)}return s};const parseIfd=(pos)=>{const n=u16(pos);for(let i=0;i<n;i++){const e=pos+2+i*12,tag=u16(e),type=u16(e+2),count=u32(e+4),size=(type===3?2:type===4?4:type===5?8:1)*count,ptr=size<=4?e+8:base+u32(e+8);if(type===2){const s=readAscii(ptr,count);if(tag===0x010F)out.Make=s;if(tag===0x0110)out.Model=s;if(tag===0x0131)out.Software=s;if(tag===0x0132)out.DateTime=s;if(tag===0x9003)out.DateTimeOriginal=s}if(tag===0x8769)parseIfd(base+u32(e+8));if(tag===0x8825)parseGps(base+u32(e+8));}};const rat=ptr=>u32(ptr)/Math.max(1,u32(ptr+4));const parseGps=(pos)=>{const n=u16(pos),g={};for(let i=0;i<n;i++){const e=pos+2+i*12,tag=u16(e),count=u32(e+4),ptr=base+u32(e+8);if(tag===1)g.latRef=String.fromCharCode(v.getUint8(e+8));if(tag===3)g.lonRef=String.fromCharCode(v.getUint8(e+8));if(tag===2&&count===3)g.lat=[rat(ptr),rat(ptr+8),rat(ptr+16)];if(tag===4&&count===3)g.lon=[rat(ptr),rat(ptr+8),rat(ptr+16)]}const d=x=>x?x[0]+x[1]/60+x[2]/3600:null;if(g.lat){out.latitude=d(g.lat)*(g.latRef==='S'?-1:1)}if(g.lon){out.longitude=d(g.lon)*(g.lonRef==='W'?-1:1)}};try{parseIfd(first)}catch{}return out;}
 
   function importPayload(payload){if(!payload)return;const results=(payload.results||payload.images||[]).map((r,i)=>normalizeResult(r,payload,i));if(!results.length)return;state.results=dedupeBasic([...results,...state.results]).slice(0,MAX_RESULTS);state.importedAt=Date.now();persist();render();bridge()?.setView?.('research');bridge()?.toast?.('采集结果已导入',`${results.length} 条 · ${payload.source||payload.kind||'网页采集'}`,'ok')}
-  function normalizeResult(r,payload,i){const url=r.url||r.href||r.link||'',img=r.image||r.thumbnail||r.src||'';return{id:r.id||uid(),title:r.title||r.alt||r.product?.name||`结果 ${i+1}`,url,image:img,thumbnail:r.thumbnail||img,domain:r.domain||domainOf(url),price:r.price||r.product?.price||'',snippet:r.snippet||r.text||'',engine:r.engine||payload.source||payload.engine||'',source:r.source||payload.pageTitle||'',date:r.date||r.published||'',capturedAt:r.capturedAt||payload.capturedAt||Date.now(),product:r.product||{},scores:r.scores||{},manualLabel:r.manualLabel||'',width:r.width||0,height:r.height||0};}
+  function normalizeResult(r,payload,i){const url=r.url||r.href||r.link||'',rawImg=r.image||r.thumbnail||r.src||'',img=/^https?:/i.test(rawImg)?rawImg:'';return{id:r.id||uid(),title:r.title||r.alt||r.product?.name||`结果 ${i+1}`,url:/^https?:/i.test(url)?url:'',image:img,thumbnail:/^https?:/i.test(r.thumbnail||'')?r.thumbnail:img,domain:r.domain||domainOf(url),price:r.price||r.product?.price||'',snippet:r.snippet||r.text||'',engine:r.engine||payload.source||payload.engine||'',source:r.source||payload.pageTitle||'',date:r.date||r.published||'',capturedAt:r.capturedAt||payload.capturedAt||Date.now(),product:r.product||{},scores:r.scores||{},manualLabel:r.manualLabel||'',width:r.width||0,height:r.height||0};}
   function decodeCollectorHash(){const h=location.hash||'';if(!h.startsWith('#collector='))return;try{let raw=h.slice(11).replace(/-/g,'+').replace(/_/g,'/');raw+='='.repeat((4-raw.length%4)%4);const bin=atob(raw),bytes=Uint8Array.from(bin,ch=>ch.charCodeAt(0)),json=new TextDecoder().decode(bytes);importPayload(JSON.parse(json));history.replaceState(null,'',location.pathname+location.search)}catch(e){console.warn('collector payload invalid',e)}}
   function demo(){importPayload({source:'demo',results:[{title:'示例商品 A',url:'https://example.com/a',domain:'example.com',price:'$199',product:{brand:'Demo',sku:'A-100'}},{title:'示例供应商 B',url:'https://www.alibaba.com/',domain:'alibaba.com',product:{brand:'Demo'}}]})}
 
