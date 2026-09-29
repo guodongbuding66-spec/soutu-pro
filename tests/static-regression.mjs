@@ -64,7 +64,7 @@ assert(v9css.includes('#researchHubView'),'V9 research CSS missing');
 assert(v9.includes('SOUTU_V9')||v9.includes('V9_VERSION'),'V9 runtime marker missing');
 assert(v9.includes(`const V9_VERSION = '${pkg.version}';`),'V9 runtime/package version mismatch');
 assert(html.includes(`?v=${pkg.version}`),'frontend cache-bust version mismatch');
-assert(sw.includes('soutu-pro-v9-1-1-shell'),'service worker cache version stale');
+assert(sw.includes(`soutu-pro-v${pkg.version.replaceAll('.','-')}-shell`),'service worker cache version stale');
 assert(app.includes("https://s.globalsources.com/favicon.ico"),'Global Sources must use working official favicon host');
 assert(css.includes('.engine-brand img{display:block;width:32px;height:32px'),'official engine logos must be visually primary');
 
