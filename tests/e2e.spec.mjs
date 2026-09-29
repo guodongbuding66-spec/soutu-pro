@@ -118,6 +118,19 @@ test('core product flow, local image tools, batch, projects and V9 research',asy
 });
 
 
+test('settings system status exposes version runtime and cache recovery controls',async({page})=>{
+  await page.goto('http://127.0.0.1:4173/',{waitUntil:'domcontentloaded'});
+  await page.locator('#settingsBtn').click();
+  await expect(page.locator('#settingsModal')).toBeVisible();
+  await expect(page.locator('#systemStatusGrid .system-status-item')).toHaveCount(9);
+  await expect(page.locator('#systemStatusGrid')).toContainText('v9.1.3');
+  await expect(page.locator('#systemStatusGrid')).toContainText('网络状态');
+  await expect(page.locator('#refreshDiagnosticsBtn')).toBeEnabled();
+  await expect(page.locator('#resetClientCacheBtn')).toBeEnabled();
+  await page.locator('#refreshDiagnosticsBtn').click();
+  await expect(page.locator('#toastStack')).toContainText('诊断信息已刷新');
+});
+
 test('execution targets refresh expired temporary image URLs before reopening',async({page,context})=>{
   await context.grantPermissions(['clipboard-read','clipboard-write'],{origin:'http://127.0.0.1:4173'});
   await page.addInitScript(()=>{
