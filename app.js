@@ -84,17 +84,21 @@
   function directSourceUrl(){return state.source?.kind==='url'&&!state.useProcessed?state.source.publicUrl:null}
   function toast(title,desc='',tone='default'){const div=document.createElement('div');div.className=`toast ${tone}`;div.innerHTML=`<div>${icon(tone==='ok'?'check':tone==='error'?'x':'info')}</div><span><strong>${escapeHtml(title)}</strong>${desc?`<small>${escapeHtml(desc)}</small>`:''}</span>`;els.toastStack.appendChild(div);setTimeout(()=>{div.classList.add('leaving');setTimeout(()=>div.remove(),160)},3400)}
   function animate(el,keyframes,options){if(!el||reduced())return;try{el.animate(keyframes,options)}catch{}}
+  function withTimeout(promise,timeoutMs,label='operation'){return Promise.race([
+    Promise.resolve(promise),
+    new Promise((_,reject)=>setTimeout(()=>reject(new Error(`${label} timed out after ${Math.round(timeoutMs/1000)}s`)),timeoutMs))
+  ])}
   function loadScript(src,key,timeoutMs=15000){return new Promise((resolve,reject)=>{
-    if(window[key])return resolve(window[key]);
+    if(window[key])return resolve(true);
     let settled=false,timer=null;
-    const finish=(ok,value,script)=>{if(settled)return;settled=true;clearTimeout(timer);if(!ok&&script){script.dataset.failed='1';script.remove()}ok?resolve(value):reject(value instanceof Error?value:new Error(String(value||`${key} load failed`)))};
+    const finish=(ok,value,script)=>{if(settled)return;settled=true;clearTimeout(timer);if(!ok&&script){script.dataset.failed='1';script.remove()}ok?resolve(true):reject(value instanceof Error?value:new Error(String(value||`${key} load failed`)))};
     let s=document.querySelector(`script[data-lib="${key}"]`);
     if(s?.dataset.failed==='1'){s.remove();s=null}
     if(!s){s=document.createElement('script');s.src=src;s.async=true;s.dataset.lib=key;document.head.appendChild(s)}
-    s.addEventListener('load',()=>finish(true,window[key],s),{once:true});
+    s.addEventListener('load',()=>finish(true,true,s),{once:true});
     s.addEventListener('error',()=>finish(false,new Error(`${key} network load failed`),s),{once:true});
     timer=setTimeout(()=>finish(false,new Error(`${key} load timed out after ${Math.round(timeoutMs/1000)}s`),s),timeoutMs);
-    if(window[key])finish(true,window[key],s)
+    if(window[key])finish(true,true,s)
   })}
 
   async function probe(url){const once=src=>new Promise((resolve,reject)=>{const img=new Image();img.onload=()=>resolve({width:img.naturalWidth,height:img.naturalHeight});img.onerror=reject;img.src=src});try{return await once(url)}catch(e){if(/^https?:/i.test(String(url||'')))return once(`/api/image-proxy?url=${encodeURIComponent(url)}`);throw e}}
@@ -200,7 +204,7 @@
 
   async function autoPerspectiveCanvas(sourceCanvas){
     await loadScript('https://cdn.jsdelivr.net/npm/@techstark/opencv-js@4.10.0-release.1/dist/opencv.js','cv');
-    let cv=window.cv;if(cv&&typeof cv.then==='function')cv=await cv;if(!cv?.Mat)throw new Error('OpenCV unavailable');
+    let cv=window.cv;if(cv&&typeof cv.then==='function')cv=await withTimeout(cv,15000,'OpenCV initialization');if(!cv?.Mat)throw new Error('OpenCV unavailable');
     const src=cv.imread(sourceCanvas),gray=new cv.Mat(),blur=new cv.Mat(),edges=new cv.Mat(),contours=new cv.MatVector(),hier=new cv.Mat();
     try{
       cv.cvtColor(src,gray,cv.COLOR_RGBA2GRAY);cv.GaussianBlur(gray,blur,new cv.Size(5,5),0);cv.Canny(blur,edges,60,160);cv.findContours(edges,contours,hier,cv.RETR_LIST,cv.CHAIN_APPROX_SIMPLE);
