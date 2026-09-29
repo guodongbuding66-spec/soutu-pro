@@ -307,7 +307,10 @@ export default async function handler(req, res) {
       if (type !== 'all') items = items.filter(x => x.type === type);
       if (publishedAfter) {
         const cutoff = Date.parse(publishedAfter);
-        items = items.filter(x => !x.publishedAt || Date.parse(x.publishedAt) >= cutoff);
+        items = items.filter(x => {
+          const published = Date.parse(x.publishedAt || '');
+          return Number.isFinite(published) && published >= cutoff;
+        });
       }
       return {name, enabled:true, configured:true, items:items.filter(x=>x.link).slice(0,MAX_PER_PROVIDER)};
     } catch (error) {
