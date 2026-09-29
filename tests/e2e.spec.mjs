@@ -122,9 +122,11 @@ test('settings system status exposes version runtime and cache recovery controls
   await page.goto('http://127.0.0.1:4173/',{waitUntil:'domcontentloaded'});
   await page.locator('#settingsBtn').click();
   await expect(page.locator('#settingsModal')).toBeVisible();
-  await expect(page.locator('#systemStatusGrid .system-status-item')).toHaveCount(9);
+  await expect(page.locator('#systemStatusGrid .system-status-item')).toHaveCount(10);
   await expect(page.locator('#systemStatusGrid')).toContainText('v9.1.3');
   await expect(page.locator('#systemStatusGrid')).toContainText('网络状态');
+  await expect(page.locator('#systemStatusGrid')).toContainText('API Providers');
+  await expect(page.locator('#providerHealthDetail')).toContainText('Universal Search');
   await expect(page.locator('#refreshDiagnosticsBtn')).toBeEnabled();
   await expect(page.locator('#resetClientCacheBtn')).toBeEnabled();
   await page.locator('#refreshDiagnosticsBtn').click();
