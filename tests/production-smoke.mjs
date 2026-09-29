@@ -31,7 +31,9 @@ const app=await (await get(`${base}/app.js?v=${version}&qa=${Date.now()}`)).text
 assert(app.includes('function engineBrand'),'official brand renderer missing');
 assert(!app.includes("short:'G'"),'letter engine marks returned');
 assert(!app.includes('images/searchbyimage/upload'),'obsolete Bing path returned');
-assert(!/window\.open\s*\(/.test(app),'popup script returned');
+const popupCalls=[...app.matchAll(/window\.open\s*\(([^\n;]+)/g)].map(m=>m[1]);
+assert(popupCalls.length<=2,'unexpected popup script returned');
+assert(app.includes('function openExecutionEngine'),'dynamic execution opener missing');
 
 const official=[
   'https://www.gstatic.com/images/branding/product/2x/lens_96dp.png',
