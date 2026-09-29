@@ -1,6 +1,8 @@
 (() => {
   'use strict';
 
+  const APP_VERSION='9.1.2';
+
   const MAX_FILE = 20 * 1024 * 1024;
   const MAX_BATCH = 50;
   const KEYS = {
