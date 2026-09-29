@@ -147,7 +147,7 @@ html[data-theme="dark"] .tool-card{box-shadow:0 22px 60px rgba(0,0,0,.34)}
 .toast{will-change:transform,opacity}
 @keyframes searchSpin{to{transform:rotate(360deg)}}
 @keyframes buttonPulse{0%{opacity:0}40%{opacity:1}100%{opacity:0}}
-@media(max-width:600px){.preset-card{min-height:112px}.preset-grid{gap:8px}.search-bar{bottom:7px}.engine-card:before{top:10px;bottom:10px}}
+@media(max-width:600px){.preset-card{min-height:112px}.preset-grid{gap:8px}.search-bar{position:static;bottom:auto;margin-top:16px;backdrop-filter:none;box-shadow:0 8px 24px rgba(15,23,42,.07)}.engine-card:before{top:10px;bottom:10px}}
 @media(prefers-reduced-motion:reduce){.primary-btn:before{display:none}.primary-btn.searching svg{animation:none}}
 /* V5 — research, batch, project and command surfaces */
 .command-trigger{width:auto;min-width:66px;padding:0 9px;grid-auto-flow:column;gap:7px}.command-trigger span{font-size:10px;font-weight:800;color:var(--muted-2)}
