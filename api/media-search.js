@@ -149,11 +149,15 @@ async function pixabay(q) {
   ];
 }
 
-async function youtube(q) {
+async function youtube(q, filters={}) {
   const key = process.env.YOUTUBE_API_KEY;
   if (!key) return null;
   const url = new URL('https://www.googleapis.com/youtube/v3/search');
-  url.search = new URLSearchParams({part:'snippet',q,type:'video',maxResults:String(MAX_PER_PROVIDER),key});
+  const params = new URLSearchParams({part:'snippet',q,type:'video',maxResults:String(MAX_PER_PROVIDER),key});
+  if (filters.country && filters.country !== 'all') params.set('regionCode', filters.country);
+  if (filters.language && filters.language !== 'all') params.set('relevanceLanguage', filters.language);
+  if (filters.publishedAfter) params.set('publishedAfter', filters.publishedAfter);
+  url.search = params;
   const d = await jsonFetch(url);
   return (d?.items || []).map(v => item('YouTube', {
     type:'video', title:v.snippet?.title, snippet:v.snippet?.description,
@@ -222,13 +226,25 @@ export default async function handler(req, res) {
   if (req.method !== 'GET') return res.status(405).json({error:'Method not allowed'});
   const q = cleanQuery(req.query?.q);
   if (!q) return res.status(400).json({error:'Missing q'});
+  const country = cleanQuery(req.query?.country || 'all');
+  const language = cleanQuery(req.query?.language || 'all');
+  const type = cleanQuery(req.query?.type || 'all');
+  const time = cleanQuery(req.query?.time || 'all');
+  const sinceMs = time === 'day' ? 86400000 : time === 'week' ? 604800000 : time === 'month' ? 2592000000 : time === 'year' ? 31536000000 : 0;
+  const publishedAfter = sinceMs ? new Date(Date.now() - sinceMs).toISOString() : '';
+  const filters = {country, language, type, time, publishedAfter};
   const requested = new Set(String(req.query?.providers || '').split(',').map(x=>x.trim().toLowerCase()).filter(Boolean));
   const selected = requested.size ? providers.filter(([name]) => requested.has(name.toLowerCase().replace(/\s+/g,'-')) || requested.has(name.toLowerCase())) : providers;
   const settled = await Promise.all(selected.map(async ([name, fn, configured]) => {
     const enabled = configured();
     if (!enabled) return {name, enabled:false, configured:false, items:[], message:'API key not configured'};
     try {
-      const items = (await fn(q)) || [];
+      let items = (await fn(q, filters)) || [];
+      if (type !== 'all') items = items.filter(x => x.type === type);
+      if (publishedAfter) {
+        const cutoff = Date.parse(publishedAfter);
+        items = items.filter(x => !x.publishedAt || Date.parse(x.publishedAt) >= cutoff);
+      }
       return {name, enabled:true, configured:true, items:items.filter(x=>x.link).slice(0,MAX_PER_PROVIDER)};
     } catch (error) {
       return {name, enabled:false, configured:true, items:[], message:error?.name==='AbortError'?'Request timed out':String(error?.message || 'Provider error').slice(0,160)};
@@ -237,7 +253,7 @@ export default async function handler(req, res) {
   const items = settled.flatMap(x => x.items);
   res.setHeader('Cache-Control','s-maxage=300, stale-while-revalidate=600');
   return res.status(200).json({
-    enabled:true, query:q, items,
+    enabled:true, query:q, filters, items,
     providers:settled.map(({items,...rest}) => ({...rest,count:items.length})),
     total:items.length
   });
