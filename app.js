@@ -525,11 +525,21 @@
   function renderExecution(items){
     els.executionList.innerHTML=items.map(x=>{const e=allEngines().find(v=>v.id===x.id);return `<div class="execution-row" data-execution-id="${escapeHtml(x.id)}"><span class="execution-engine-brand">${e?engineBrand(e):icon('search')}</span><div><b>${escapeHtml(x.name)}</b><small>${x.direct?'点击时重新校验图片链接，过期会自动刷新':x.copied?'图片已复制；打开后可直接粘贴':'请先复制图片，再打开上传/粘贴'}</small></div><span class="status-pill ready">待打开</span><div class="execution-actions">${x.direct?'':`<button class="secondary-btn compact" data-copy-execution>${icon('copy')}复制图片</button>`}<button class="secondary-btn compact execution-link" type="button" data-execution-open>打开</button></div></div>`}).join('')
   }
+  function prepareSearchPopup(label='搜索'){
+    const popup=window.open('about:blank','_blank');
+    if(!popup)return null;
+    try{
+      popup.document.title=`搜图 Pro · ${label}`;
+      popup.document.body.innerHTML=`<main style="font-family:system-ui,-apple-system,sans-serif;display:grid;place-items:center;min-height:90vh;color:#1f2937"><div style="text-align:center"><div style="width:34px;height:34px;border:3px solid #dbe3f0;border-top-color:#4f46e5;border-radius:50%;margin:0 auto 16px;animation:s 1s linear infinite"></div><b>正在准备 ${escapeHtml(label)}</b><p style="font-size:13px;color:#6b7280">正在校验图片链接并生成搜索地址…</p><style>@keyframes s{to{transform:rotate(360deg)}}</style></div></main>`;
+      popup.opener=null
+    }catch{}
+    return popup
+  }
   async function openExecutionEngine(row){
     const id=row?.dataset.executionId,engine=allEngines().find(x=>x.id===id);if(!engine)return;
     const btn=row.querySelector('[data-execution-open]'),pill=row.querySelector('.status-pill');
-    const popup=window.open('about:blank','_blank');
-    if(popup)try{popup.opener=null}catch{}
+    const popup=prepareSearchPopup(engine.name);
+    if(!popup){toast('浏览器拦截了搜索窗口','请允许本站打开新窗口后重试。','error');return}
     if(btn){btn.disabled=true;btn.textContent='正在准备…'}if(pill){pill.className='status-pill ready';pill.textContent='校验中'}
     try{
       let target=engine.uploadPage;
@@ -541,7 +551,7 @@
         const copied=await quietCopy();
         if(!copied)throw new Error('浏览器未允许复制图片，请手动选择文件。');
       }
-      if(popup&&!popup.closed)popup.location.replace(target);else location.assign(target);
+      if(popup&&!popup.closed)popup.location.replace(target);else throw new Error('搜索窗口已被浏览器关闭，请重试。');
       if(pill){pill.className='status-pill opened';pill.textContent='已打开'}if(btn)btn.textContent='再次打开'
     }catch(err){
       if(popup&&!popup.closed)popup.close();
