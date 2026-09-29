@@ -9,8 +9,8 @@
   <title>搜图 Pro · 图片搜索与商品溯源工作台</title>
   <link rel="manifest" href="./manifest.webmanifest" />
   <link rel="icon" href="./icon.svg" type="image/svg+xml" />
-  <link rel="stylesheet" href="./styles.css?v=9.1.1" />
-  <link rel="stylesheet" href="./v9.css?v=9.1.1" />
+  <link rel="stylesheet" href="./styles.css?v=9.2.0" />
+  <link rel="stylesheet" href="./v9.css?v=9.2.0" />
 </head>
 <body>
   <svg class="svg-sprite" aria-hidden="true">
@@ -141,7 +141,7 @@
         <article class="research-card"><div class="card-head"><span class="card-icon"><svg><use href="#i-scan"/></svg></span><div><h3>主体候选区域</h3><p id="objectsStatus">等待分析</p></div></div><div id="objectsOutput" class="object-list"><span class="ghost-tag">检测到的对象区域</span></div></article><article class="research-card recommendation-card"><div class="card-head"><span class="card-icon"><svg><use href="#i-origin"/></svg></span><div><h3>推荐策略</h3><p>根据当前线索动态建议</p></div></div><div id="recommendationOutput"></div></article>
       </div>
       <div class="query-workbench"><div class="query-head"><div><h3>搜索词工作台</h3><p>自动生成后仍可编辑；商品平台搜索和结果聚合都会使用这里的关键词。</p></div><button class="text-btn" id="addQueryBtn"><svg><use href="#i-plus"/></svg>添加搜索词</button></div><div id="queryList" class="query-list"></div></div>
-      <div class="marketplace-workbench"><div class="query-head"><div><h3>商品平台搜索</h3><p>使用文字线索同时搜索主流零售、B2B 和供应商平台。</p></div><div class="query-actions"><button class="secondary-btn compact" id="supplierSearchBtn"><svg><use href="#i-origin"/></svg>供应商线索</button><button class="primary-mini" id="federatedSearchBtn"><svg><use href="#i-search"/></svg>聚合商品</button></div></div><div id="marketplaceGrid" class="marketplace-grid"></div><div id="productResults" class="product-results hidden"></div></div>
+      <div class="marketplace-workbench"><div class="query-head"><div><h3>全网平台搜索</h3><p>同时搜索社媒、视频、视觉灵感、零售、B2B 与供应商平台；支持免费 API 聚合和官方站内搜索入口。</p></div><div class="query-actions"><button class="secondary-btn compact" id="mediaSearchBtn"><svg><use href="#i-sparkles"/></svg>免费 API 聚合</button><button class="secondary-btn compact" id="supplierSearchBtn"><svg><use href="#i-origin"/></svg>供应商线索</button><button class="primary-mini" id="federatedSearchBtn"><svg><use href="#i-search"/></svg>聚合商品</button></div></div><div id="marketplaceGrid" class="marketplace-grid"></div><div id="productResults" class="product-results hidden"></div></div>
     </section>
 
     <section class="wrap preset-block"><div class="section-heading"><div><span class="section-kicker">STEP 01</span><h2>你想做什么？</h2><p>先选任务，系统自动勾选更适合的反向图片搜索引擎。</p></div><span class="kbd-hint">1–6 快速切换</span></div><div class="preset-grid" id="presetGrid"></div></section>
@@ -168,6 +168,6 @@
   <div class="modal-backdrop hidden" id="shortcutModal"><div class="modal"><div class="modal-head"><h2>快捷键</h2><button class="icon-btn" data-close="shortcutModal"><svg><use href="#i-x"/></svg></button></div><div class="shortcut-grid"><span>⌘ / Ctrl + K</span><b>命令菜单</b><span>Ctrl / ⌘ + V</span><b>粘贴图片</b><span>1–6</span><b>切换任务</b><span>C</span><b>裁剪</b><span>R</span><b>旋转</b><span>Enter</span><b>执行搜索</b><span>Esc</span><b>退出当前操作</b></div></div></div>
   <div class="toast-stack" id="toastStack" aria-live="polite" aria-atomic="true"></div>
 
-  <script src="./config.js?v=9.1.1"></script><script src="./app.js?v=9.1.1"></script><script src="./v9.js?v=9.1.1"></script>
+  <script src="./config.js?v=9.2.0"></script><script src="./app.js?v=9.2.0"></script><script src="./v9.js?v=9.2.0"></script>
 </body>
 </html>
