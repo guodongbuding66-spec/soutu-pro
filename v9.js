@@ -242,14 +242,31 @@
 
   async function computeFeaturesForResult(r, withAI=false) {
     const imgUrl=remoteImageUrl(r); if(!imgUrl)return r;
-    const [src,feat]=await Promise.all([sourceFeatures(),imageFeatures(imgUrl)]);if(!src||!feat)return r;
+    // Result fingerprints must not depend on source-image decoding. Dedupe compares
+    // result-to-result and should continue to work even when the source image cannot
+    // be decoded or is temporarily unavailable.
+    const [src,feat]=await Promise.all([sourceFeatures().catch(()=>null),imageFeatures(imgUrl)]);
+    if(!feat)return r;
+    r.width=feat.width;
+    r.height=feat.height;
+    r.quality={megapixels:(feat.width*feat.height)/1e6,sharpness:feat.sharpness};
+    r.features={dhash:feat.dhash,edgehash:feat.edgehash,hist:feat.hist};
+
+    const text=jaccard(sourceQuery()||getAnalysis().ocr||'', productText(r));
+    if(!src){
+      r.scores={visual:r.scores?.visual||0,structure:r.scores?.structure||0,text:clamp01(text)};
+      r.scores.overall=clamp01(r.scores.visual*state.weights.visual+r.scores.structure*state.weights.structure+r.scores.text*state.weights.text);
+      return r;
+    }
+
     const visual=(1-hamming(src.dhash,feat.dhash))*.62+cosine(src.hist,feat.hist)*.38;
     const structure=1-hamming(src.edgehash,feat.edgehash);
-    const text=jaccard(sourceQuery()||getAnalysis().ocr||'', productText(r));
     let ai=0;
     if(withAI){try{ai=await aiSimilarity(bridge()?.activeUrl?.(),imgUrl)}catch{ai=0}}
     const visualFinal=ai?visual*.35+ai*.65:visual;
-    r.width=feat.width;r.height=feat.height;r.quality={megapixels:(feat.width*feat.height)/1e6,sharpness:feat.sharpness};r.features={dhash:feat.dhash,edgehash:feat.edgehash};r.scores={visual:clamp01(visualFinal),structure:clamp01(structure),text:clamp01(text)};r.scores.overall=clamp01(r.scores.visual*state.weights.visual+r.scores.structure*state.weights.structure+r.scores.text*state.weights.text);return r;
+    r.scores={visual:clamp01(visualFinal),structure:clamp01(structure),text:clamp01(text)};
+    r.scores.overall=clamp01(r.scores.visual*state.weights.visual+r.scores.structure*state.weights.structure+r.scores.text*state.weights.text);
+    return r;
   }
 
   function v9Timeout(promise,ms,label='operation'){return Promise.race([Promise.resolve(promise),new Promise((_,reject)=>setTimeout(()=>reject(new Error(`${label} timed out after ${Math.round(ms/1000)}s`)),ms))])}
