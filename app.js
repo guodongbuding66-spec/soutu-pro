@@ -84,7 +84,18 @@
   function directSourceUrl(){return state.source?.kind==='url'&&!state.useProcessed?state.source.publicUrl:null}
   function toast(title,desc='',tone='default'){const div=document.createElement('div');div.className=`toast ${tone}`;div.innerHTML=`<div>${icon(tone==='ok'?'check':tone==='error'?'x':'info')}</div><span><strong>${escapeHtml(title)}</strong>${desc?`<small>${escapeHtml(desc)}</small>`:''}</span>`;els.toastStack.appendChild(div);setTimeout(()=>{div.classList.add('leaving');setTimeout(()=>div.remove(),160)},3400)}
   function animate(el,keyframes,options){if(!el||reduced())return;try{el.animate(keyframes,options)}catch{}}
-  function loadScript(src,key){return new Promise((resolve,reject)=>{if(window[key])return resolve(window[key]);const found=document.querySelector(`script[data-lib="${key}"]`);if(found){found.addEventListener('load',()=>resolve(window[key]),{once:true});found.addEventListener('error',reject,{once:true});return}const s=document.createElement('script');s.src=src;s.async=true;s.dataset.lib=key;s.onload=()=>resolve(window[key]);s.onerror=reject;document.head.appendChild(s)})}
+  function loadScript(src,key,timeoutMs=15000){return new Promise((resolve,reject)=>{
+    if(window[key])return resolve(window[key]);
+    let settled=false,timer=null;
+    const finish=(ok,value,script)=>{if(settled)return;settled=true;clearTimeout(timer);if(!ok&&script){script.dataset.failed='1';script.remove()}ok?resolve(value):reject(value instanceof Error?value:new Error(String(value||`${key} load failed`)))};
+    let s=document.querySelector(`script[data-lib="${key}"]`);
+    if(s?.dataset.failed==='1'){s.remove();s=null}
+    if(!s){s=document.createElement('script');s.src=src;s.async=true;s.dataset.lib=key;document.head.appendChild(s)}
+    s.addEventListener('load',()=>finish(true,window[key],s),{once:true});
+    s.addEventListener('error',()=>finish(false,new Error(`${key} network load failed`),s),{once:true});
+    timer=setTimeout(()=>finish(false,new Error(`${key} load timed out after ${Math.round(timeoutMs/1000)}s`),s),timeoutMs);
+    if(window[key])finish(true,window[key],s)
+  })}
 
   async function probe(url){const once=src=>new Promise((resolve,reject)=>{const img=new Image();img.onload=()=>resolve({width:img.naturalWidth,height:img.naturalHeight});img.onerror=reject;img.src=src});try{return await once(url)}catch(e){if(/^https?:/i.test(String(url||'')))return once(`/api/image-proxy?url=${encodeURIComponent(url)}`);throw e}}
   async function fileData(file){return new Promise((resolve,reject)=>{const r=new FileReader();r.onload=()=>resolve(String(r.result));r.onerror=reject;r.readAsDataURL(file)})}
