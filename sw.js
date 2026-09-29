@@ -6,6 +6,7 @@ self.addEventListener('message',event=>{if(event.data?.type==='SKIP_WAITING')sel
 self.addEventListener('fetch',event=>{
   const req=event.request,url=new URL(req.url);
   if(req.method!=='GET'||url.origin!==location.origin)return;
+  if(url.pathname.startsWith('/api/'))return;
   if(req.mode==='navigate'){
     event.respondWith(fetch(req,{cache:'no-store'}).then(res=>{
       const copy=res.clone();caches.open(CACHE).then(c=>c.put('/index.html',copy));return res;
