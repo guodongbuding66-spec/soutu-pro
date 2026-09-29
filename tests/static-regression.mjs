@@ -57,6 +57,8 @@ assert(!app.includes('data-execution-link'),'stale fixed execution links must no
 assert(!app.includes('location.assign(target)'),'blocked popup fallback must never navigate the workbench away');
 assert(app.includes('function prepareSearchPopup'),'search popup preparation UI missing');
 assert(html.includes('id="engineHealthBtn"')&&html.includes('id="engineHealthSummary"'),'engine health controls missing');
+assert(html.includes('id="systemStatusGrid"')&&html.includes('id="resetClientCacheBtn"'),'system status center missing');
+assert(app.includes('function renderSystemStatus')&&app.includes('function resetClientCache'),'system diagnostics runtime missing');
 assert(app.includes('forceTempLink')&&app.includes('增强直连'),'remote rehosting flow missing');
 assert(app.includes('data-open-batch-engine')&&app.includes('function openBatchEngine'),'batch results must refresh targets at click time');
 assert(app.includes("id:'industrial'"),'industrial product preset missing');
