@@ -12,6 +12,9 @@ const sw=read('sw.js');
 const build=read('build-static.mjs');
 const manifest=JSON.parse(read('extension/manifest.json'));
 const pkg=JSON.parse(read('package.json'));
+const cleanup=read('api/cleanup.js');
+const productApi=read('api/product-search.js');
+const supplierApi=read('api/supplier-search.js');
 const extBg=read('extension/background.js');
 const extPopup=read('extension/popup.js');
 const collector=read('extension/collector.js');
@@ -28,6 +31,9 @@ assert(html.includes('./v9.css')&&html.includes('./v9.js'),'V9 assets missing fr
 assert(build.includes("'v9.css'")&&build.includes("'v9.js'"),'V9 assets missing from static build');
 assert(sw.includes('/v9.css')&&sw.includes('/v9.js'),'V9 assets missing from service worker');
 assert(config.includes("tempUploadProvider: 'vercel'"),'Vercel Blob provider missing');
+assert(cleanup.includes('CRON_SECRET')&&cleanup.includes('x-vercel-cron-schedule'),'cleanup cron authorization guard missing');
+assert(productApi.includes('AbortSignal.timeout(10000)'),'product provider timeout missing');
+assert(supplierApi.includes('AbortSignal.timeout(10000)'),'supplier provider timeout missing');
 
 const engineBlock=app.slice(app.indexOf('const builtinEngines'),app.indexOf('const presets'));
 const engineIds=[...engineBlock.matchAll(/id:'([^']+)'/g)].map(m=>m[1]);
