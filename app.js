@@ -506,7 +506,22 @@
     }finally{syncTempCard()}
   }
   async function deleteTempLink(){clearInterval(state.tempTimer);const old=state.tempLink;state.tempLink=null;if(old?.deleteUrl)fetch(old.deleteUrl,{method:'DELETE'}).catch(()=>{});syncTempCard()}
-  async function ensurePublicUrl({silent=true}={}){const direct=directSourceUrl();if(direct)return direct;if(isTempValid())return state.tempLink.url;if(state.tempUnavailableReason&&silent&&Date.now()-(state.tempUnavailableAt||0)<5000)return null;if(state.settings.tempEndpoint){await createTempLink({silent});if(isTempValid())return state.tempLink.url}return null}
+  async function ensurePublicUrl({silent=true}={}){
+    const originalRemote=state.source?.kind==='url'&&!state.useProcessed?state.source.publicUrl:null;
+    const direct=directSourceUrl();if(direct)return direct;
+    if(isTempValid())return state.tempLink.url;
+    if(state.tempUnavailableReason&&silent&&Date.now()-(state.tempUnavailableAt||0)<5000){
+      if(state.forceTempLink&&originalRemote){state.forceTempLink=false;syncTempCard();renderEngines();return originalRemote}
+      return null
+    }
+    if(state.settings.tempEndpoint){await createTempLink({silent});if(isTempValid())return state.tempLink.url}
+    if(state.forceTempLink&&originalRemote){
+      state.forceTempLink=false;syncTempCard();renderEngines();
+      if(!silent)toast('增强直连不可用','已自动退回原始图片 URL。','error');
+      return originalRemote
+    }
+    return null
+  }
 
   function engineTarget(engine,publicUrl){return publicUrl&&engine.direct?engine.direct(publicUrl):engine.uploadPage}
   async function quietCopy(){try{const b=await blobFromActive();await navigator.clipboard.write([new ClipboardItem({[b.type||'image/png']:b})]);return true}catch{return false}}
@@ -686,7 +701,7 @@ els.federatedSearchBtn.onclick=federatedProductSearch;if(els.supplierSearchBtn)e
     if(els.universalResearchBtn)els.universalResearchBtn.onclick=sendUniversalToResearch;
     if(els.universalModes)els.universalModes.onclick=e=>{const b=e.target.closest('[data-universal-mode]');if(b)setUniversalMode(b.dataset.universalMode)};
     [[els.universalPlatform,'platform'],[els.universalCountry,'country'],[els.universalLanguage,'language'],[els.universalTime,'time'],[els.universalType,'type'],[els.universalResolution,'resolution'],[els.universalLicense,'license']].forEach(([el,key])=>{if(el)el.onchange=()=>{state.universal[key]=el.value;state.universal.expanded=[];expandUniversalKeywords();renderMarketplaces();if(state.universal.results.length)renderUniversalResults(state.universal.rawResults,state.universal.providers||[])}});
-    els.presetGrid.onclick=e=>{const b=e.target.closest('[data-preset]');if(b)choosePreset(b.dataset.preset)};els.engineGroups.onclick=e=>{const open=e.target.closest('[data-open-engine]');if(open){prepareSingleEngine(open.dataset.openEngine);return}const groupSelect=e.target.closest('[data-group-select]'),groupClear=e.target.closest('[data-group-clear]');if(groupSelect||groupClear){const group=(groupSelect||groupClear).dataset.groupSelect||(groupSelect||groupClear).dataset.groupClear,ids=allEngines().filter(x=>x.category===group).map(x=>x.id);state.selected=groupSelect?[...new Set([...state.selected,...ids])]:state.selected.filter(x=>!ids.includes(x));renderEngines();syncSearchButton();return}const s=e.target.closest('[data-engine]');if(s){const id=s.dataset.engine;state.selected=state.selected.includes(id)?state.selected.filter(x=>x!==id):[...state.selected,id];renderEngines();syncSearchButton()}};els.runSearch.onclick=runSearch;els.privacyMode.onchange=()=>state.privacy=els.privacyMode.checked;$$('[data-use]').forEach(b=>b.onclick=()=>{state.useProcessed=b.dataset.use==='processed';deleteTempLink();syncWorkbench()});
+    els.presetGrid.onclick=e=>{const b=e.target.closest('[data-preset]');if(b)choosePreset(b.dataset.preset)};els.engineGroups.onclick=e=>{const open=e.target.closest('[data-open-engine]');if(open){prepareSingleEngine(open.dataset.openEngine);return}const groupSelect=e.target.closest('[data-group-select]'),groupClear=e.target.closest('[data-group-clear]');if(groupSelect||groupClear){const group=(groupSelect||groupClear).dataset.groupSelect||(groupSelect||groupClear).dataset.groupClear,ids=allEngines().filter(x=>x.category===group).map(x=>x.id);state.selected=groupSelect?[...new Set([...state.selected,...ids])]:state.selected.filter(x=>!ids.includes(x));renderEngines();syncSearchButton();return}const s=e.target.closest('[data-engine]');if(s){const id=s.dataset.engine;state.selected=state.selected.includes(id)?state.selected.filter(x=>x!==id):[...state.selected,id];renderEngines();syncSearchButton()}};els.runSearch.onclick=runSearch;els.privacyMode.onchange=()=>state.privacy=els.privacyMode.checked;$('[data-use]').forEach(b=>b.onclick=()=>{state.useProcessed=b.dataset.use==='processed';if(!state.useProcessed)state.forceTempLink=false;deleteTempLink();syncWorkbench()});
     els.executionList.onclick=async e=>{
       const copy=e.target.closest('[data-copy-execution]');
       if(copy){const done=await quietCopy();copy.innerHTML=done?`${icon('check')}已复制`:`${icon('info')}复制失败`;if(!done)toast('复制失败','浏览器没有授予剪贴板写入权限，可在目标页面手动选择文件。','error');return}
