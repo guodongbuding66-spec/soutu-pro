@@ -70,7 +70,7 @@
     source:null, originalUrl:null, processedUrl:null, useProcessed:false, cropMode:false, cropRect:null,
     selected:[], preset:'product', custom:readJson(KEYS.custom,[]), history:readJson(KEYS.history,[]), privacy:false,
     projects:readJson(KEYS.projects,[]), favorites:readJson(KEYS.favorites,[]), universalFavorites:readJson(KEYS.universalFavorites,[]), settings:{...defaultSettings,...readJson(KEYS.settings,{})},
-    analysis:{ocr:'',labels:[],barcodes:[],objects:[],queries:[],running:false}, tempLink:null, tempTimer:null, tempUnavailableReason:'', tempUnavailableAt:0,
+    analysis:{ocr:'',labels:[],barcodes:[],objects:[],queries:[],running:false}, tempLink:null, tempTimer:null, tempUnavailableReason:'', tempUnavailableAt:0, forceTempLink:false, engineHealth:{}, engineHealthCheckedAt:0,
     batch:[], view:'search', installPrompt:null, presetTouched:false,
     universal:{mode:'all',platform:'all',country:'all',language:'all',time:'all',type:'all',resolution:'all',license:'all',rawResults:[],results:[],providers:[],query:'',expanded:[],selected:new Set(),grouped:false,timeline:false,clusterFocus:null}
   };
@@ -84,7 +84,7 @@
     fileName:$('#fileName'),sourceKind:$('#sourceKind'),dims:$('#dims'),format:$('#format'),size:$('#size'),metaTip:$('#metaTip'),sourceToggle:$('#sourceToggle'),
     analyzeBtn:$('#analyzeBtn'),researchPanel:$('#researchPanel'),reanalyzeBtn:$('#reanalyzeBtn'),saveProjectBtn:$('#saveProjectBtn'),batchObjectsBtn:$('#batchObjectsBtn'),ocrStatus:$('#ocrStatus'),ocrOutput:$('#ocrOutput'),visionStatus:$('#visionStatus'),visionOutput:$('#visionOutput'),barcodeStatus:$('#barcodeStatus'),barcodeOutput:$('#barcodeOutput'),objectsStatus:$('#objectsStatus'),objectsOutput:$('#objectsOutput'),recommendationOutput:$('#recommendationOutput'),queryList:$('#queryList'),addQueryBtn:$('#addQueryBtn'),marketplaceGrid:$('#marketplaceGrid'),federatedSearchBtn:$('#federatedSearchBtn'),supplierSearchBtn:$('#supplierSearchBtn'),mediaSearchBtn:$('#mediaSearchBtn'),productResults:$('#productResults'),universalModes:$('#universalModes'),universalPlatform:$('#universalPlatform'),universalCountry:$('#universalCountry'),universalLanguage:$('#universalLanguage'),universalTime:$('#universalTime'),universalType:$('#universalType'),universalResolution:$('#universalResolution'),universalLicense:$('#universalLicense'),keywordExpansion:$('#keywordExpansion'),expandKeywordsBtn:$('#expandKeywordsBtn'),batchOpenSourcesBtn:$('#batchOpenSourcesBtn'),universalSearchBtn:$('#universalSearchBtn'),universalMeta:$('#universalMeta'),universalResearchbar:$('#universalResearchbar'),universalResearchStats:$('#universalResearchStats'),universalClusterBtn:$('#universalClusterBtn'),universalTimelineBtn:$('#universalTimelineBtn'),universalSelectAllBtn:$('#universalSelectAllBtn'),universalSaveSelectedBtn:$('#universalSaveSelectedBtn'),universalExportBtn:$('#universalExportBtn'),universalExportJsonBtn:$('#universalExportJsonBtn'),universalResearchBtn:$('#universalResearchBtn'),universalInsights:$('#universalInsights'),
     tempLinkCard:$('#tempLinkCard'),tempLinkStatus:$('#tempLinkStatus'),tempLinkBtn:$('#tempLinkBtn'),
-    presetGrid:$('#presetGrid'),engineGroups:$('#engineGroups'),engineHint:$('#engineHint'),engineSummary:$('#engineSummary'),selectedCount:$('#selectedCount'),runSearch:$('#runSearch'),privacyMode:$('#privacyMode'),customBtn:$('#customBtn'),
+    presetGrid:$('#presetGrid'),engineGroups:$('#engineGroups'),engineHint:$('#engineHint'),engineSummary:$('#engineSummary'),selectedCount:$('#selectedCount'),runSearch:$('#runSearch'),privacyMode:$('#privacyMode'),customBtn:$('#customBtn'),engineHealthBtn:$('#engineHealthBtn'),engineHealthSummary:$('#engineHealthSummary'),
     historyContent:$('#historyContent'),clearHistory:$('#clearHistory'),projectsContent:$('#projectsContent'),clearProjects:$('#clearProjects'),
     batchDrop:$('#batchDrop'),batchChoose:$('#batchChoose'),batchInput:$('#batchInput'),batchPreset:$('#batchPreset'),applyBatchPreset:$('#applyBatchPreset'),runBatch:$('#runBatch'),batchList:$('#batchList'),batchExport:$('#batchExport'),
     themeBtn:$('#themeBtn'),settingsBtn:$('#settingsBtn'),installBtn:$('#installBtn'),commandBtn:$('#commandBtn'),versionBadge:$('#versionBadge'),updateBtn:$('#updateBtn'),settingsModal:$('#settingsModal'),customModal:$('#customModal'),commandModal:$('#commandModal'),executionModal:$('#executionModal'),shortcutModal:$('#shortcutModal'),shortcutHelp:$('#shortcutHelp'),
@@ -101,7 +101,7 @@
   function uid(){return crypto.randomUUID?.()||`${Date.now()}-${Math.random().toString(16).slice(2)}`}
   function allEngines(){return [...builtinEngines,...state.custom.map(c=>({...c,direct:url=>c.template.replace('{imageUrl}',encodeURIComponent(url))}))]}
   function activeUrl(){return state.useProcessed&&state.processedUrl?state.processedUrl:state.originalUrl}
-  function directSourceUrl(){return state.source?.kind==='url'&&!state.useProcessed?state.source.publicUrl:null}
+  function directSourceUrl(){return state.source?.kind==='url'&&!state.useProcessed&&!state.forceTempLink?state.source.publicUrl:null}
   function toast(title,desc='',tone='default'){const div=document.createElement('div');div.className=`toast ${tone}`;div.innerHTML=`<div>${icon(tone==='ok'?'check':tone==='error'?'x':'info')}</div><span><strong>${escapeHtml(title)}</strong>${desc?`<small>${escapeHtml(desc)}</small>`:''}</span>`;els.toastStack.appendChild(div);setTimeout(()=>{div.classList.add('leaving');setTimeout(()=>div.remove(),160)},3400)}
   function animate(el,keyframes,options){if(!el||reduced())return;try{el.animate(keyframes,options)}catch{}}
   function withTimeout(promise,timeoutMs,label='operation'){return Promise.race([
@@ -144,10 +144,10 @@
   async function acceptFile(file,kind='upload'){
     if(!file||!file.type.startsWith('image/'))return toast('请选择图片文件','支持 JPG、PNG、WebP、GIF 等常见格式。','error');
     if(file.size>MAX_FILE)return toast('图片过大',`最大 20 MB，当前 ${formatBytes(file.size)}。`,'error');
-    try{const url=await fileData(file),d=await probe(url);await deleteTempLink();state.source={kind,name:file.name||'剪贴板图片',publicUrl:null,size:file.size,format:(file.type.split('/')[1]||'IMAGE').toUpperCase(),...d};state.originalUrl=url;state.processedUrl=null;state.useProcessed=false;state.cropRect=null;state.cropMode=false;clearAnalysis();syncWorkbench();window.dispatchEvent(new CustomEvent('soutu:source-changed'));toast(kind==='paste'?'已读取剪贴板图片':'图片已就绪','可直接搜图，或先进行 OCR / 视觉分析。','ok');scrollTool()}catch{toast('图片读取失败','文件可能已经损坏。','error')}
+    try{const url=await fileData(file),d=await probe(url);await deleteTempLink();state.source={kind,name:file.name||'剪贴板图片',publicUrl:null,size:file.size,format:(file.type.split('/')[1]||'IMAGE').toUpperCase(),...d};state.originalUrl=url;state.processedUrl=null;state.useProcessed=false;state.forceTempLink=false;state.cropRect=null;state.cropMode=false;clearAnalysis();syncWorkbench();window.dispatchEvent(new CustomEvent('soutu:source-changed'));toast(kind==='paste'?'已读取剪贴板图片':'图片已就绪','可直接搜图，或先进行 OCR / 视觉分析。','ok');scrollTool()}catch{toast('图片读取失败','文件可能已经损坏。','error')}
   }
   async function acceptUrl(raw){
-    try{const u=new URL(raw);if(!/^https?:$/.test(u.protocol))throw new Error();const d=await probe(raw);await deleteTempLink();state.source={kind:'url',name:decodeURIComponent(u.pathname.split('/').pop()||u.hostname),publicUrl:raw,size:0,format:(u.pathname.split('.').pop()||'远程').toUpperCase(),...d};state.originalUrl=raw;state.processedUrl=null;state.useProcessed=false;state.cropRect=null;state.cropMode=false;clearAnalysis();syncWorkbench();window.dispatchEvent(new CustomEvent('soutu:source-changed'));toast('图片链接已载入','支持 URL 参数的引擎可直接进入结果页。','ok');scrollTool()}catch{toast('无法载入图片链接','链接可能无效、需要登录或被防盗链拦截。','error')}
+    try{const u=new URL(raw);if(!/^https?:$/.test(u.protocol))throw new Error();const d=await probe(raw);await deleteTempLink();state.source={kind:'url',name:decodeURIComponent(u.pathname.split('/').pop()||u.hostname),publicUrl:raw,size:0,format:(u.pathname.split('.').pop()||'远程').toUpperCase(),...d};state.originalUrl=raw;state.processedUrl=null;state.useProcessed=false;state.forceTempLink=false;state.cropRect=null;state.cropMode=false;clearAnalysis();syncWorkbench();window.dispatchEvent(new CustomEvent('soutu:source-changed'));toast('图片链接已载入','支持 URL 参数的引擎可直接进入结果页。','ok');scrollTool()}catch{toast('无法载入图片链接','链接可能无效、需要登录或被防盗链拦截。','error')}
   }
   function scrollTool(){requestAnimationFrame(()=>$('#toolCard')?.scrollIntoView({behavior:reduced()?'auto':'smooth',block:'center'}))}
 
@@ -156,7 +156,7 @@
     els.previewImg.src=activeUrl();els.fileName.textContent=state.source.name;els.sourceKind.textContent=state.source.kind==='url'?'图片链接':state.source.kind==='paste'?'剪贴板图片':state.source.kind==='project'?'项目缩略图':'本地文件';els.dims.textContent=`${state.source.width} × ${state.source.height}`;els.format.textContent=state.source.format;els.size.textContent=formatBytes(state.source.size);els.sourceToggle.classList.toggle('hidden',!state.processedUrl);$$('[data-use]').forEach(b=>b.classList.toggle('active',(b.dataset.use==='processed')===state.useProcessed));
     const canDirect=!!directSourceUrl()||isTempValid();const tip=canDirect?'当前图片已有可访问 URL，支持直链的引擎可以直接进入搜索结果。':'当前为本地处理图。未配置临时图片服务时，部分第三方引擎需要手动上传。';els.metaTip.innerHTML=`${icon('info')}<span>${escapeHtml(tip)}</span>`;els.engineHint.textContent=canDirect?'直链能力已就绪；不支持 URL 参数的引擎仍会打开上传页。':'配置临时图片服务后，本地图片也能获得短时 URL，提高一键搜索覆盖率。';syncTempCard();renderEngines();syncSearchButton()
   }
-  async function removeSource(){await deleteTempLink();state.source=null;state.originalUrl=null;state.processedUrl=null;state.useProcessed=false;state.cropMode=false;state.cropRect=null;clearAnalysis();els.uploader.classList.remove('hidden');els.workbench.classList.add('hidden');els.fileInput.value='';els.urlInput.value='';renderEngines();syncSearchButton()}
+  async function removeSource(){await deleteTempLink();state.source=null;state.originalUrl=null;state.processedUrl=null;state.useProcessed=false;state.forceTempLink=false;state.cropMode=false;state.cropRect=null;clearAnalysis();els.uploader.classList.remove('hidden');els.workbench.classList.add('hidden');els.fileInput.value='';els.urlInput.value='';renderEngines();syncSearchButton()}
 
   function renderPresets(){const map={product:'shopping',source:'origin',hd:'expand',anime:'sparkles',industrial:'scan',all:'grid'};els.presetGrid.innerHTML=presets.map(p=>`<button class="preset-card ${state.preset===p.id?'active':''}" data-preset="${p.id}" aria-pressed="${state.preset===p.id}"><span class="preset-icon">${icon(map[p.id])}</span><span class="preset-check">${icon('check')}</span><strong>${p.title}</strong><span class="preset-desc">${p.desc}</span></button>`).join('')}
   function choosePreset(id,announce=true){const p=presets.find(x=>x.id===id);if(!p)return;state.preset=id;state.selected=[...p.engines];if(announce)state.presetTouched=true;renderPresets();renderEngines();syncSearchButton();if(announce)toast(`已切换：${p.title}`,'搜索引擎选择已同步。','ok')}
@@ -175,6 +175,30 @@
     if(state.source&&state.settings.tempEndpoint)return'auto';
     return'manual'
   }
+  function engineHealthClass(id){return state.engineHealth[id]?.state||'unknown'}
+  async function checkEngineHealth(){
+    if(!els.engineHealthBtn)return;
+    els.engineHealthBtn.disabled=true;els.engineHealthBtn.innerHTML=`${icon('scan')}检测中…`;
+    const engines=builtinEngines,unique=new Map();
+    for(const e of engines){const key=e.uploadPage;if(!unique.has(key))unique.set(key,[]);unique.get(key).push(e.id)}
+    let ok=0,degraded=0,down=0;
+    await Promise.all([...unique.entries()].map(async([url,ids])=>{
+      let entry={state:'down',status:0,error:''};
+      try{
+        const r=await fetch(`/api/url-status?url=${encodeURIComponent(url)}`,{cache:'no-store'});
+        const d=await r.json();
+        const status=Number(d.status)||0;
+        entry=status>=200&&status<400?{state:'ok',status}:{state:[401,403,429].includes(status)?'degraded':'down',status,error:d.error||''}
+      }catch(e){entry={state:'down',status:0,error:e?.message||'network error'}}
+      ids.forEach(id=>state.engineHealth[id]={...entry,checkedAt:Date.now()})
+    }));
+    Object.values(state.engineHealth).forEach(x=>{if(x.state==='ok')ok++;else if(x.state==='degraded')degraded++;else down++});
+    state.engineHealthCheckedAt=Date.now();
+    if(els.engineHealthSummary)els.engineHealthSummary.textContent=`正常 ${ok} · 受限 ${degraded} · 异常 ${down}`;
+    els.engineHealthBtn.disabled=false;els.engineHealthBtn.innerHTML=`${icon('scan')}重新检测`;
+    renderEngines();
+    toast('搜索引擎状态检测完成',`正常 ${ok} · 受限 ${degraded} · 异常 ${down}`,down?'error':'ok')
+  }
   function engineBrand(e){
     if(e.iconUrl){
       const src=`/api/image-proxy?url=${encodeURIComponent(e.iconUrl)}`;
@@ -190,7 +214,7 @@
     els.engineHint.textContent=state.source?`${directCount} 个可直连 · ${manualCount} 个需要在第三方页面上传/粘贴`:'选好任务与搜索引擎；上传图片后会显示实际执行方式。';
     els.engineGroups.innerHTML=groups.map(group=>{
       const items=engines.filter(e=>e.category===group);if(!items.length)return'';const meta=groupMeta[group]||{title:group,desc:'',icon:'search'};const selectedInGroup=items.filter(e=>state.selected.includes(e.id)).length;
-      return`<section class="engine-group engine-group-panel"><header class="engine-group-head"><div class="engine-group-title"><span class="engine-group-icon">${icon(meta.icon)}</span><span><b>${escapeHtml(meta.title)}</b><small>${escapeHtml(meta.desc)} · 已选 ${selectedInGroup}/${items.length}</small></span></div><div class="engine-group-actions"><button data-group-select="${escapeHtml(group)}">全选</button><button data-group-clear="${escapeHtml(group)}">清空</button></div></header><div class="engine-grid">${items.map(e=>{const selected=state.selected.includes(e.id),cap=engineCapability(e),tone=engineTones[e.id]||'custom';return`<article class="engine-card ${selected?'selected':''} capability-${cap}" data-engine-id="${e.id}" data-tone="${tone}"><button class="select-engine" data-engine="${e.id}" aria-pressed="${selected}">${engineBrand(e)}<span class="engine-copy"><span class="engine-title-line"><b>${escapeHtml(e.name)}</b><span class="engine-capability ${cap}">${icon(cap==='manual'?'hand':'bolt')}${cap==='direct'?'直连':cap==='auto'?'可直连':'手动'}</span></span><small>${escapeHtml(e.desc)}</small><span class="engine-help">${cap==='direct'?'当前图片 URL 已就绪':cap==='auto'?'搜索时自动创建临时图片 URL':'打开后上传或粘贴图片'}</span></span><span class="engine-check ${selected?'checked':''}">${icon('check')}</span></button><button class="engine-open" type="button" data-open-engine="${escapeHtml(e.id)}" aria-label="准备并打开 ${escapeHtml(e.name)}" title="准备单引擎搜索">${icon('arrow-up-right')}</button></article>`}).join('')}</div></section>`
+      return`<section class="engine-group engine-group-panel"><header class="engine-group-head"><div class="engine-group-title"><span class="engine-group-icon">${icon(meta.icon)}</span><span><b>${escapeHtml(meta.title)}</b><small>${escapeHtml(meta.desc)} · 已选 ${selectedInGroup}/${items.length}</small></span></div><div class="engine-group-actions"><button data-group-select="${escapeHtml(group)}">全选</button><button data-group-clear="${escapeHtml(group)}">清空</button></div></header><div class="engine-grid">${items.map(e=>{const selected=state.selected.includes(e.id),cap=engineCapability(e),tone=engineTones[e.id]||'custom';return`<article class="engine-card ${selected?'selected':''} capability-${cap}" data-engine-id="${e.id}" data-tone="${tone}"><button class="select-engine" data-engine="${e.id}" aria-pressed="${selected}">${engineBrand(e)}<span class="engine-copy"><span class="engine-title-line"><b>${escapeHtml(e.name)}</b><span class="engine-card-status"><span class="engine-health ${engineHealthClass(e.id)}" title="${escapeHtml(state.engineHealth[e.id]?.status?`HTTP ${state.engineHealth[e.id].status}`:'尚未检测')}"><i></i>${engineHealthClass(e.id)==='ok'?'正常':engineHealthClass(e.id)==='degraded'?'受限':engineHealthClass(e.id)==='down'?'异常':'未检测'}</span><span class="engine-capability ${cap}">${icon(cap==='manual'?'hand':'bolt')}${cap==='direct'?'直连':cap==='auto'?'可直连':'手动'}</span></span></span><small>${escapeHtml(e.desc)}</small><span class="engine-help">${cap==='direct'?'当前图片 URL 已就绪':cap==='auto'?'搜索时自动创建临时图片 URL':'打开后上传或粘贴图片'}</span></span><span class="engine-check ${selected?'checked':''}">${icon('check')}</span></button><button class="engine-open" type="button" data-open-engine="${escapeHtml(e.id)}" aria-label="准备并打开 ${escapeHtml(e.name)}" title="准备单引擎搜索">${icon('arrow-up-right')}</button></article>`}).join('')}</div></section>`
     }).join('')
   }
   function syncSearchButton(){els.selectedCount.textContent=state.selected.length;els.runSearch.disabled=!state.source||!state.selected.length}
@@ -432,16 +456,21 @@
   function isTempValid(){return !!(state.tempLink?.url&&state.tempLink.expiresAt>Date.now()+5000)}
   function syncTempCard(){
     clearInterval(state.tempTimer);
-    const ep=state.settings.tempEndpoint.trim();
+    const ep=state.settings.tempEndpoint.trim(),remote=state.source?.kind==='url'&&!state.useProcessed;
     els.tempLinkCard?.classList.toggle('unavailable',!!state.tempUnavailableReason);
     els.tempLinkBtn.disabled=!state.source||(!ep&&!directSourceUrl());
-    if(directSourceUrl()&&!state.useProcessed){els.tempLinkStatus.textContent='原图已经是公开 URL';els.tempLinkBtn.textContent='无需创建';els.tempLinkBtn.disabled=true;return}
-    if(isTempValid()){updateTempCountdown();state.tempTimer=setInterval(updateTempCountdown,1000);els.tempLinkBtn.textContent='重新创建';return}
+    if(remote&&!state.forceTempLink){
+      els.tempLinkStatus.textContent=ep?'原图可直连；防盗链时可重新托管':'原图已是公开 URL';
+      els.tempLinkBtn.textContent=ep?'增强直连':'无需创建';
+      els.tempLinkBtn.disabled=!ep;
+      return
+    }
+    if(isTempValid()){updateTempCountdown();state.tempTimer=setInterval(updateTempCountdown,1000);els.tempLinkBtn.textContent=remote&&state.forceTempLink?'使用原链接':'重新创建';return}
     if(state.tempUnavailableReason){els.tempLinkStatus.textContent=state.tempUnavailableReason;els.tempLinkBtn.textContent='重新检测';return}
-    els.tempLinkStatus.textContent=ep?'可创建短时 URL':'未配置临时图片服务';
+    els.tempLinkStatus.textContent=ep?(state.forceTempLink?'正在使用重新托管模式':'可创建短时 URL'):'未配置临时图片服务';
     els.tempLinkBtn.textContent='创建'
   }
-  function updateTempCountdown(){if(!isTempValid()){els.tempLinkStatus.textContent='链接已过期';clearInterval(state.tempTimer);renderEngines();return}const s=Math.max(0,Math.floor((state.tempLink.expiresAt-Date.now())/1000));els.tempLinkStatus.textContent=`剩余 ${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`}
+  function updateTempCountdown(){if(!isTempValid()){els.tempLinkStatus.textContent='链接已过期';clearInterval(state.tempTimer);renderEngines();return}const sec=Math.max(0,Math.floor((state.tempLink.expiresAt-Date.now())/1000));els.tempLinkStatus.textContent=`${state.forceTempLink?'增强直连 · ':''}剩余 ${Math.floor(sec/60)}:${String(sec%60).padStart(2,'0')}`}
   async function createTempLink({silent=false}={}){
     const ep=state.settings.tempEndpoint.trim().replace(/\/$/,'');
     if(!ep){state.tempUnavailableReason='未配置临时图片服务';state.tempUnavailableAt=Date.now();syncTempCard();if(!silent)toast('未配置临时图片服务','直连搜索需要一个可用的临时公网图片服务。','error');return false}
@@ -631,7 +660,7 @@
     els.urlForm.onsubmit=e=>{e.preventDefault();const v=els.urlInput.value.trim();if(v)acceptUrl(v)};
     els.removeBtn.onclick=removeSource;els.cropBtn.onclick=()=>{state.cropMode=!state.cropMode;if(!state.cropMode)state.cropRect=null;syncCropUi()};els.rotateBtn.onclick=()=>transform('rotate');els.flipBtn.onclick=()=>transform('flip');els.applyCrop.onclick=()=>transform('crop');els.cropReset.onclick=()=>{state.cropRect=null;syncCropUi()};els.copyBtn.onclick=copyImage;els.downloadBtn.onclick=downloadImage;$$('[data-process]').forEach(b=>b.onclick=()=>processImage(b.dataset.process));
     let start=null;els.imageStage.addEventListener('pointerdown',e=>{if(!state.cropMode)return;const b=els.imageStage.getBoundingClientRect();start={x:Math.max(0,Math.min(1,(e.clientX-b.left)/b.width)),y:Math.max(0,Math.min(1,(e.clientY-b.top)/b.height))};state.cropRect={x:start.x,y:start.y,w:0,h:0};els.imageStage.setPointerCapture(e.pointerId);syncCropUi()});els.imageStage.addEventListener('pointermove',e=>{if(!state.cropMode||!start)return;const b=els.imageStage.getBoundingClientRect(),p={x:Math.max(0,Math.min(1,(e.clientX-b.left)/b.width)),y:Math.max(0,Math.min(1,(e.clientY-b.top)/b.height))};state.cropRect={x:Math.min(start.x,p.x),y:Math.min(start.y,p.y),w:Math.abs(start.x-p.x),h:Math.abs(start.y-p.y)};syncCropUi()});els.imageStage.addEventListener('pointerup',()=>start=null);
-    els.analyzeBtn.onclick=analyzeImage;els.reanalyzeBtn.onclick=analyzeImage;els.saveProjectBtn.onclick=saveProject;if(els.batchObjectsBtn)els.batchObjectsBtn.onclick=addDetectedObjectsToBatch;els.tempLinkBtn.onclick=()=>{state.tempUnavailableReason='';createTempLink({silent:false})};els.recommendationOutput.onclick=e=>{const b=e.target.closest('[data-accept-recommend]');if(b)choosePreset(b.dataset.acceptRecommend)};
+    els.analyzeBtn.onclick=analyzeImage;els.reanalyzeBtn.onclick=analyzeImage;els.saveProjectBtn.onclick=saveProject;if(els.batchObjectsBtn)els.batchObjectsBtn.onclick=addDetectedObjectsToBatch;if(els.engineHealthBtn)els.engineHealthBtn.onclick=checkEngineHealth;els.tempLinkBtn.onclick=async()=>{state.tempUnavailableReason='';const remote=state.source?.kind==='url'&&!state.useProcessed;if(remote&&!state.forceTempLink){state.forceTempLink=true;const ok=await createTempLink({silent:false});if(!ok){state.forceTempLink=false;syncTempCard();renderEngines()}return}if(remote&&state.forceTempLink&&isTempValid()){state.forceTempLink=false;await deleteTempLink();syncWorkbench();toast('已恢复原图片链接','后续搜索将直接使用原始 URL。','ok');return}createTempLink({silent:false})};els.recommendationOutput.onclick=e=>{const b=e.target.closest('[data-accept-recommend]');if(b)choosePreset(b.dataset.acceptRecommend)};
     els.addQueryBtn.onclick=()=>{state.analysis.queries.push('');renderQueries();setTimeout(()=>$('[data-query-index]').at(-1)?.focus(),0)};els.queryList.addEventListener('input',e=>{if(e.target.matches('[data-query-index]')){state.analysis.queries[Number(e.target.dataset.queryIndex)]=e.target.value;renderMarketplaces()}});
     els.keywordExpansion?.addEventListener('click',e=>{const b=e.target.closest('[data-universal-query]');if(!b)return;const q=state.universal.expanded[Number(b.dataset.universalQuery)];if(!q)return;state.analysis.queries=[q,...state.analysis.queries.filter(x=>x!==q)].slice(0,8);renderQueries();renderMarketplaces();toast('已设为主搜索词',q,'ok')});
     els.universalInsights?.addEventListener('click',e=>{const b=e.target.closest('[data-cluster-key]');if(!b)return;const key=b.dataset.clusterKey;state.universal.clusterFocus=state.universal.clusterFocus===key?null:key;renderUniversalResults(state.universal.rawResults,state.universal.providers||[])});
