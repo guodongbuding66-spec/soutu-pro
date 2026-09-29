@@ -169,9 +169,10 @@
     '自定义':{title:'自定义引擎',desc:'你保存的 URL 搜索模板',icon:'plus'}
   };
   function engineCapability(e){
+    if(!e.direct)return'manual';
     const u=directSourceUrl()||(isTempValid()?state.tempLink.url:null);
-    if(u&&e.direct)return'direct';
-    if(state.source&&e.direct&&state.settings.tempEndpoint&&!state.tempUnavailableReason)return'auto';
+    if(u)return'direct';
+    if(state.source&&state.settings.tempEndpoint)return'auto';
     return'manual'
   }
   function engineBrand(e){
