@@ -485,7 +485,6 @@
     els.runSearch.classList.add('busy');els.runSearch.querySelector('span').textContent='准备搜索…';
     const engines=allEngines().filter(e=>state.selected.includes(e.id));
     openModal('executionModal');els.executionList.innerHTML='';
-    await ensurePublicUrl({silent:true});
     const statuses=engines.map(e=>({id:e.id,name:e.name,direct:typeof e.direct==='function',copied:false,status:'ready'}));
     renderExecution(statuses);
     const manualCount=statuses.filter(x=>!x.direct).length;
@@ -525,7 +524,6 @@
     openModal('executionModal');
     els.executionSummary.textContent='正在准备单引擎搜索…';
     els.executionList.innerHTML='<div class="loading-block"><span class="spinner"></span>正在准备临时图片链接…</div>';
-    await ensurePublicUrl({silent:true});
     const direct=typeof engine.direct==='function';
     const item={id:engine.id,name:engine.name,direct,copied:false,status:'ready'};
     renderExecution([item]);
