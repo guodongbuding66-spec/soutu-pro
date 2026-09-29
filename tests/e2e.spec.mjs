@@ -118,7 +118,7 @@ test('execution targets refresh expired temporary image URLs before reopening',a
   let tokenCount=0;
   await page.route('**/api/temp-token?**',route=>{
     tokenCount++;
-    route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({uploadUrl:`http://127.0.0.1:4173/mock-upload/${tokenCount}`,url:`https://cdn.example.com/image-${tokenCount}.png`,expiresAt:Date.now()+60000})});
+    route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({uploadUrl:`http://127.0.0.1:4173/mock-upload/${tokenCount}`,url:`https://cdn.example.com/image-${tokenCount}.png`,expiresAt:Date.now()+25})});
   });
   await page.route('**/mock-upload/**',route=>route.fulfill({status:200,body:''}));
   await page.goto('http://127.0.0.1:4173/',{waitUntil:'domcontentloaded'});
@@ -129,12 +129,11 @@ test('execution targets refresh expired temporary image URLs before reopening',a
   expect(tokenCount).toBe(1);
 
   await page.evaluate(()=>{window.__opened=[];window.open=(url)=>{const fake={closed:false,location:{replace:v=>window.__opened.push(v)},close(){this.closed=true}};if(url&&url!=='about:blank')window.__opened.push(url);return fake}});
-  await page.evaluate(()=>{const appState=window.__SOUTU_TEST_STATE__;if(appState?.tempLink)appState.tempLink.expiresAt=Date.now()-1000});
-  // force expiry through persisted UI state by changing TTL source: remove any valid temp-link DOM hint and use internal click-time regeneration
+  await page.waitForTimeout(80);
   const googleRow=page.locator('[data-execution-id="google"]');
   await googleRow.locator('[data-execution-open]').click();
   await expect(googleRow.locator('.status-pill')).toContainText('已打开');
-  expect(tokenCount).toBeGreaterThanOrEqual(1);
+  expect(tokenCount).toBe(2);
   const opened=await page.evaluate(()=>window.__opened||[]);
   expect(opened.some(x=>String(x).includes('lens.google.com/uploadbyurl'))).toBeTruthy();
 });
