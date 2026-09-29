@@ -23,6 +23,9 @@ const failures=[];
 const check=(cond,msg)=>{if(!cond)failures.push(msg)};
 try{window.eval(app)}catch(e){failures.push('app.js init: '+e.stack)}
 try{window.eval(v9)}catch(e){failures.push('v9.js init: '+e.stack)}
+if(!window.document.querySelector('.v9-shell')){
+  window.document.dispatchEvent(new window.Event('DOMContentLoaded',{bubbles:true}));
+}
 
 check(!!window.document.querySelector('#uploader'),'uploader exists after init');
 check(!window.document.querySelector('#searchView')?.classList.contains('hidden'),'search view starts visible');
