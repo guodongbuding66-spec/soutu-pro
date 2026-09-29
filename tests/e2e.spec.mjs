@@ -396,8 +396,8 @@ test('V9 universal search: modes, filters, waterfall, favorites and history rest
       filters:{country:url.searchParams.get('country')||'all',language:url.searchParams.get('language')||'all',type:url.searchParams.get('type')||'all',time:url.searchParams.get('time')||'all'},
       providers:[{name:'Openverse',enabled:true,configured:true,count:2}],
       items:[
-        {provider:'Openverse',type:'image',title:'Garden Shed Original',snippet:'CC image source',link:'https://example.com/original',thumbnail:'https://example.com/original.jpg',author:'QA Author',meta:{width:1600,height:1200,license:'cc0'}},
-        {provider:'Openverse',type:'video',title:'Garden Shed Video',snippet:'Video result',link:'https://example.com/video',thumbnail:'https://example.com/video.jpg',author:'QA Video',meta:{duration:42}}
+        {provider:'Openverse',type:'image',title:'Garden Shed Original',snippet:'CC image source',link:'https://example.com/original',thumbnail:'https://example.com/original.jpg',author:'QA Author',publishedAt:'2025-03-01',meta:{width:1600,height:1200,license:'cc0'}},
+        {provider:'Openverse',type:'video',title:'Garden Shed Video',snippet:'Video result',link:'https://example.com/video',thumbnail:'https://example.com/video.jpg',author:'QA Video',publishedAt:'2025-06-01',meta:{duration:42,width:3840,height:2160}}
       ],
       total:2
     };
@@ -427,6 +427,12 @@ test('V9 universal search: modes, filters, waterfall, favorites and history rest
   await expect(page.locator('.universal-result-card')).toHaveCount(1);
   await page.locator('#universalType').selectOption('all');
   await expect(page.locator('.universal-result-card')).toHaveCount(2);
+  await page.locator('#universalSort').selectOption('evidence');
+  await expect(page.locator('.universal-result-card').first()).toContainText('Garden Shed Original');
+  await expect(page.locator('.universal-source-score').first()).not.toBeEmpty();
+  await page.locator('#universalSort').selectOption('largest');
+  await expect(page.locator('.universal-result-card').first()).toContainText('Garden Shed Video');
+  await page.locator('#universalSort').selectOption('auto');
   await page.locator('#universalType').selectOption('image');
   await expect(page.locator('.universal-result-card')).toHaveCount(1);
   await expect(page.locator('#universalMeta')).toContainText('1 条结果');
