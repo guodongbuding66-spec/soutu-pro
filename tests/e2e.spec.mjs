@@ -383,6 +383,7 @@ test('browser extension collector extracts product JSON-LD and image results',as
 
 
 test('V9 universal search: modes, filters, waterfall, favorites and history restore',async({page})=>{
+  let mediaRequests=0;
   await page.addInitScript(()=>{
     localStorage.setItem('soutu-pro-settings-v5',JSON.stringify({tempEndpoint:'',productEndpoint:'',ttl:30,defaultPreset:'product',autoPreset:true}));
     localStorage.removeItem('soutu-pro-history-v5');
@@ -390,6 +391,7 @@ test('V9 universal search: modes, filters, waterfall, favorites and history rest
   });
   await page.route('**/api/image-proxy?**',route=>route.fulfill({status:200,contentType:'image/svg+xml',body:iconSvg}));
   await page.route('**/api/media-search?**',route=>{
+    mediaRequests++;
     const url=new URL(route.request().url());
     const body={
       enabled:true,query:url.searchParams.get('q')||'garden shed',
@@ -493,6 +495,12 @@ test('V9 universal search: modes, filters, waterfall, favorites and history rest
   await expect(page.locator('#universalTime')).toHaveValue('year');
   await expect(page.locator('#universalType')).toHaveValue('image');
   await expect(page.locator('#universalSort')).toHaveValue('auto');
+
+  const requestsBeforeSiteSearch=mediaRequests;
+  await page.locator('#universalPlatform').selectOption('instagram');
+  await page.locator('#universalSearchBtn').click();
+  expect(mediaRequests).toBe(requestsBeforeSiteSearch);
+  await expect(page.locator('#toastStack')).toContainText('官方站内搜索');
 
   await page.setViewportSize({width:390,height:844});
   const overflow=await page.evaluate(()=>document.documentElement.scrollWidth-window.innerWidth);
