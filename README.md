@@ -1,8 +1,8 @@
-# 搜图 Pro · Image Compass V8.1
+# 搜图 Pro · Image Compass V9.1.2
 
 面向高频图片调查、商品找同款、来源溯源和采购研究的浏览器工作台。核心路径是：**放入图片 → 预处理/智能分析 → 自动任务建议 → 多引擎搜索 → 商品/供应商研究 → 保存项目或批量继续**。
 
-## V5–V8 已完成
+## V5–V9 已完成
 
 ### V5 · 搜图基础能力
 - 拖拽 / 点击上传、Ctrl/Cmd + V 粘贴、公开图片 URL
@@ -134,8 +134,12 @@ V9 把搜图 Pro 从多引擎入口升级成可持续调查的结果工作台。
 - Openverse
 - Wikimedia Commons
 - NASA Images
+- Art Institute of Chicago
+- Library of Congress
+- Internet Archive
 - Mastodon（实例是否支持全文状态搜索取决于实例配置）
-- Bluesky（公共端点若对部署出口限流/拒绝，会自动标记不可用而不是伪造结果）
+
+Bluesky 保留官方站内搜索入口。其公共 API 在部分部署出口会返回 403，因此默认 API 聚合不再主动请求，避免失败噪音。
 
 配置免费开发者 Key 后自动启用：
 - `YOUTUBE_API_KEY`
