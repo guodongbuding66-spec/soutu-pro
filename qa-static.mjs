@@ -43,9 +43,12 @@ ok((block.match(/direct:url=>/g)||[]).length===8,'eight built-in engines support
 ok(!block.includes('images/searchbyimage/upload')&&!block.includes('sbisrc=UrlPaste'),'unstable/obsolete Bing deep-link endpoints are absent');
 ok(block.includes('https://trace.moe/?url=')&&block.includes('https://ascii2d.net/search/url/')&&block.includes('https://iqdb.org/?url='),'anime engines use verified direct URL integrations');
 ok(app.includes('engine-brand')&&app.includes('engineBrand(e)'),'engine cards render brand images instead of letter placeholders');
+ok(app.includes("return `<span class=\"engine-mark engine-custom-mark\">${icon('plus')}</span>`"),'custom engines use a generic engine icon instead of letter initials');
 ok(app.includes("cap==='auto'?'可直连'"),'auto temporary-URL capability is surfaced');
 
 ok(!app.includes('window.open('),'main app contains no scripted popup launches');
+ok(app.includes('data-open-engine')&&app.includes('prepareSingleEngine'),'single-engine launch prepares Blob/direct state before exposing native link');
+ok(!app.includes('<a class="engine-open"'),'engine-card quick action never bypasses URL preparation with a raw anchor');
 ok(!v9.includes('window.open('),'V9 contains no scripted popup launches');
 ok(app.includes('batch-links')&&app.includes('逐个点击每张图片下方的搜索引擎链接'),'batch mode prepares native result links');
 ok(app.includes("mode==='supplier'"),'supplier deep-link is handled by main app');
@@ -77,6 +80,7 @@ ok((worker.match(/q.length>240/g)||[]).length>=2,'Cloudflare Worker limits produ
 ok(styles.includes('.engine-brand img'),'brand icon CSS exists');
 ok(app.includes('marketBrand(m)')&&app.includes('market-brand'),'marketplace cards render real brand icons');
 ok(!app.includes('m.name.slice(0,2)'),'marketplace cards no longer use two-letter brand placeholders');
+ok(!app.includes('e.short||e.name.slice(0,2)'),'engine cards no longer fall back to initial-letter tiles');
 ok(styles.includes('.batch-links a'),'batch native-link CSS exists');
 
 console.log('Soutu Pro static QA passed:',checks.length,'checks');
