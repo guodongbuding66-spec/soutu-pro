@@ -166,8 +166,8 @@ test('group controls, presets 1-6, native search links, remove source and URL so
   await expect(page.locator('#sourceKind')).toContainText('图片链接');
   await page.locator('[data-preset="source"]').click();
   await page.locator('#runSearch').click();
-  await expect(page.locator('#executionList a[data-execution-link]')).toHaveCount(4);
-  expect(await page.locator('#executionList a[data-execution-link]').evaluateAll(as=>as.every(a=>a.target==='_blank'&&a.rel.includes('noopener')))).toBeTruthy();
+  await expect(page.locator('#executionList [data-execution-open]')).toHaveCount(4);
+  await expect(page.locator('#executionList [data-execution-open]')).toBeEnabled();
   await page.locator('[data-close="executionModal"]').click();
   await page.locator('#removeBtn').click();
   await expect(page.locator('#uploader')).toBeVisible();
