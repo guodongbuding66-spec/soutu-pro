@@ -376,3 +376,8 @@ html[data-theme="dark"] .engine-card[data-tone] .engine-mark{border-color:var(--
   .system-status-grid{grid-template-columns:1fr 1fr}
 }
 @media(max-width:430px){.system-status-grid{grid-template-columns:1fr}}
+
+.provider-health-detail{grid-column:1/-1;margin-top:10px;padding-top:10px;border-top:1px solid var(--line)}
+.provider-health-title{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px}.provider-health-title b{font-size:10px}.provider-health-title span{font-size:9px;color:var(--muted)}
+.provider-health-pills{display:flex;flex-wrap:wrap;gap:6px}.provider-health-pills>span{display:inline-flex;align-items:center;gap:5px;min-height:28px;padding:0 8px;border:1px solid var(--line);border-radius:8px;background:var(--panel-subtle);font-size:9px}.provider-health-pills i{width:6px;height:6px;border-radius:50%;background:var(--muted)}.provider-health-pills .ok i{background:var(--success)}.provider-health-pills .warn i{background:var(--warning)}.provider-health-pills .bad i{background:var(--danger)}.provider-health-pills small{color:var(--muted)}
+.provider-health-empty{font-size:9px;color:var(--muted);padding:4px 0}
