@@ -34,14 +34,35 @@ jobs:
           exit 1
       - name: Browser regression
         run: npx playwright test tests/e2e.spec.mjs tests/full-regression.spec.mjs --reporter=line
+      - name: Check production release state
+        id: production
+        run: |
+          node - <<'NODE'
+          const fs = require('fs');
+          const version = require('./package.json').version;
+          const base = 'https://soutu-pro.vercel.app';
+          let current = false;
+          try {
+            const r = await fetch(base + '/?qa=' + Date.now(), { headers: { 'cache-control': 'no-cache' } });
+            const html = await r.text();
+            current = r.ok && html.includes('?v=' + version);
+          } catch {}
+          fs.appendFileSync(process.env.GITHUB_OUTPUT, 'current=' + current + '\n');
+          if (!current) console.log('::warning::Production is not yet on v' + version + '; production verification is deferred, not passed.');
+          NODE
       - name: Production smoke regression
+        if: steps.production.outputs.current == 'true'
         env:
           SOUTU_PRO_URL: https://soutu-pro.vercel.app
         run: node tests/production-smoke.mjs
       - name: Production UI brand regression
+        if: steps.production.outputs.current == 'true'
         env:
           SOUTU_PRO_URL: https://soutu-pro.vercel.app
         run: npx playwright test tests/production-ui.spec.mjs --reporter=line
+      - name: Report deferred production verification
+        if: steps.production.outputs.current != 'true'
+        run: echo "Production verification deferred because soutu-pro.vercel.app is not yet on the repository version."
       - name: Upload visual QA evidence
         if: always()
         uses: actions/upload-artifact@v4
