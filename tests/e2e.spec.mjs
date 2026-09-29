@@ -415,6 +415,9 @@ test('V9 universal search: modes, filters, waterfall, favorites and history rest
 
   await page.locator('[data-universal-mode="source"]').click();
   await expect(page.locator('[data-universal-mode="source"]')).toHaveClass(/active/);
+  await expect(page.locator('#universalPlatform option[value="youtube"]')).toHaveCount(1);
+  await expect(page.locator('#universalPlatform option[value="bluesky"]')).toHaveCount(0);
+  await expect(page.locator('[data-platform-id="bluesky-search"]')).toHaveCount(1);
   await page.locator('#expandKeywordsBtn').click();
   await expect(page.locator('#keywordExpansion .keyword-chip').first()).toBeVisible();
 
