@@ -203,20 +203,36 @@
   function findContentBounds(d,w,h){let minX=w,minY=h,maxX=-1,maxY=-1;const step=Math.max(1,Math.floor(Math.max(w,h)/1400));for(let y=0;y<h;y+=step)for(let x=0;x<w;x+=step){const i=(y*w+x)*4,a=d[i+3],brightness=(d[i]+d[i+1]+d[i+2])/3;if(a>15&&brightness<247){minX=Math.min(minX,x);maxX=Math.max(maxX,x);minY=Math.min(minY,y);maxY=Math.max(maxY,y)}}if(maxX<0)return null;const pad=Math.round(Math.max(w,h)*.02);return{x:Math.max(0,minX-pad),y:Math.max(0,minY-pad),w:Math.min(w,maxX+pad)-Math.max(0,minX-pad),h:Math.min(h,maxY+pad)-Math.max(0,minY-pad)}}
 
   async function autoPerspectiveCanvas(sourceCanvas){
-    await loadScript('https://cdn.jsdelivr.net/npm/@techstark/opencv-js@4.10.0-release.1/dist/opencv.js','cv');
-    let cv=window.cv;if(cv&&typeof cv.then==='function')cv=await withTimeout(cv,15000,'OpenCV initialization');if(!cv?.Mat)throw new Error('OpenCV unavailable');
-    const src=cv.imread(sourceCanvas),gray=new cv.Mat(),blur=new cv.Mat(),edges=new cv.Mat(),contours=new cv.MatVector(),hier=new cv.Mat();
-    try{
-      cv.cvtColor(src,gray,cv.COLOR_RGBA2GRAY);cv.GaussianBlur(gray,blur,new cv.Size(5,5),0);cv.Canny(blur,edges,60,160);cv.findContours(edges,contours,hier,cv.RETR_LIST,cv.CHAIN_APPROX_SIMPLE);
-      let best=null,bestArea=0;
-      for(let i=0;i<contours.size();i++){const cnt=contours.get(i),peri=cv.arcLength(cnt,true),approx=new cv.Mat();cv.approxPolyDP(cnt,approx,.02*peri,true);const area=Math.abs(cv.contourArea(cnt));if(approx.rows===4&&area>bestArea&&area>sourceCanvas.width*sourceCanvas.height*.12){best?.delete?.();best=approx;bestArea=area}else approx.delete();cnt.delete()}
-      if(!best)throw new Error('未检测到明显四边形');const pts=[];for(let i=0;i<4;i++)pts.push({x:best.intPtr(i,0)[0],y:best.intPtr(i,0)[1]});best.delete();
-      const ordered=orderQuad(pts),dist=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y),w=Math.max(32,Math.round(Math.max(dist(ordered[0],ordered[1]),dist(ordered[2],ordered[3])))),h=Math.max(32,Math.round(Math.max(dist(ordered[0],ordered[3]),dist(ordered[1],ordered[2]))));
-      const srcPts=cv.matFromArray(4,1,cv.CV_32FC2,ordered.flatMap(p=>[p.x,p.y])),dstPts=cv.matFromArray(4,1,cv.CV_32FC2,[0,0,w,0,w,h,0,h]),M=cv.getPerspectiveTransform(srcPts,dstPts),dst=new cv.Mat();cv.warpPerspective(src,dst,M,new cv.Size(w,h),cv.INTER_LINEAR,cv.BORDER_REPLICATE,new cv.Scalar());
-      const out=document.createElement('canvas');out.width=w;out.height=h;cv.imshow(out,dst);srcPts.delete();dstPts.delete();M.delete();dst.delete();return out;
-    } finally {src.delete();gray.delete();blur.delete();edges.delete();contours.delete();hier.delete()}
+    const ctx=sourceCanvas.getContext('2d',{willReadFrequently:true});
+    if(!ctx)throw new Error('Canvas unavailable');
+    const imageData=ctx.getImageData(0,0,sourceCanvas.width,sourceCanvas.height);
+    return new Promise((resolve,reject)=>{
+      const worker=new Worker('./perspective-worker.js?v=9.1.0');
+      let settled=false;
+      const finish=(ok,value)=>{
+        if(settled)return;
+        settled=true;
+        clearTimeout(timer);
+        worker.terminate();
+        ok?resolve(value):reject(value instanceof Error?value:new Error(String(value||'Perspective correction failed')));
+      };
+      const timer=setTimeout(()=>finish(false,new Error('Perspective correction timed out after 12s')),12000);
+      worker.onerror=()=>finish(false,new Error('Perspective worker failed'));
+      worker.onmessage=e=>{
+        const data=e.data||{};
+        if(!data.ok)return finish(false,new Error(data.error||'Perspective correction failed'));
+        try{
+          const out=document.createElement('canvas');
+          out.width=data.width;out.height=data.height;
+          const outCtx=out.getContext('2d');
+          outCtx.putImageData(new ImageData(new Uint8ClampedArray(data.buffer),data.width,data.height),0,0);
+          finish(true,out);
+        }catch(error){finish(false,error)}
+      };
+      const copy=imageData.data.slice();
+      worker.postMessage({width:imageData.width,height:imageData.height,buffer:copy.buffer},[copy.buffer]);
+    })
   }
-  function orderQuad(pts){const bySum=[...pts].sort((a,b)=>(a.x+a.y)-(b.x+b.y)),tl=bySum[0],br=bySum[3],rest=pts.filter(p=>p!==tl&&p!==br).sort((a,b)=>(a.y-a.x)-(b.y-b.x));return[tl,rest[0],br,rest[1]]}
 
   function syncCropUi(){els.imageStage.classList.toggle('cropping',state.cropMode);els.cropShade.classList.toggle('hidden',!state.cropMode);els.cropActions.classList.toggle('hidden',!state.cropMode);els.cropBtn.classList.toggle('active',state.cropMode);if(!state.cropMode||!state.cropRect){els.cropBox.classList.add('hidden');els.applyCrop.disabled=true;return}const r=state.cropRect;els.cropBox.classList.remove('hidden');Object.assign(els.cropBox.style,{left:`${r.x*100}%`,top:`${r.y*100}%`,width:`${r.w*100}%`,height:`${r.h*100}%`});els.applyCrop.disabled=r.w<.02||r.h<.02}
 
