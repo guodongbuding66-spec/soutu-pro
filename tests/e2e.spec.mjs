@@ -124,7 +124,15 @@ test('V9 investigation workspace: import, dedupe, compare, watch, evidence, case
     localStorage.setItem('soutu-pro-settings-v5',JSON.stringify({tempEndpoint:'',productEndpoint:'',ttl:30,defaultPreset:'product',autoPreset:true}));
     for(const k of Object.keys(localStorage))if(k.startsWith('soutu-pro-v9-'))localStorage.removeItem(k);
   });
-  await page.route('**/api/image-proxy?**',route=>route.fulfill({status:200,contentType:'image/svg+xml',body:iconSvg}));
+  await page.route('**/api/image-proxy?**',route=>{
+    const u=new URL(route.request().url());
+    const target=u.searchParams.get('url')||'';
+    const isSupplier=target.includes('/c.jpg');
+    const body=isSupplier
+      ? '<svg xmlns="http://www.w3.org/2000/svg" width="96" height="96"><rect width="96" height="96" fill="white"/><path d="M10 82L48 10L86 82Z" fill="#111827"/><rect x="38" y="42" width="20" height="40" fill="#60a5fa"/></svg>'
+      : '<svg xmlns="http://www.w3.org/2000/svg" width="96" height="96"><rect width="96" height="96" fill="white"/><circle cx="48" cy="48" r="30" fill="#111827"/><circle cx="48" cy="48" r="12" fill="#60a5fa"/></svg>';
+    return route.fulfill({status:200,contentType:'image/svg+xml',body});
+  });
   await page.route('**/api/url-status?**',route=>route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({alive:true,status:200,title:'BrandX live product',price:'$149',product:{brand:'BrandX',sku:'A-100'}})}));
   await page.route('**/api/supplier-search?**',route=>route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({enabled:false,message:'SERPAPI_KEY is not configured'})}));
   await page.goto('http://127.0.0.1:4173/',{waitUntil:'domcontentloaded'});
