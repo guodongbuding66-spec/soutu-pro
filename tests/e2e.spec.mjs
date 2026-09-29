@@ -237,3 +237,68 @@ test('browser extension collector extracts product JSON-LD and image results',as
   expect(results.results.length).toBeGreaterThan(0);
   expect(results.results[0].url).toContain('shop.example');
 });
+
+
+test('V9 universal search: modes, filters, waterfall, favorites and history restore',async({page})=>{
+  await page.addInitScript(()=>{
+    localStorage.setItem('soutu-pro-settings-v5',JSON.stringify({tempEndpoint:'',productEndpoint:'',ttl:30,defaultPreset:'product',autoPreset:true}));
+    localStorage.removeItem('soutu-pro-history-v5');
+    localStorage.removeItem('soutu-pro-universal-favorites-v1');
+  });
+  await page.route('**/api/image-proxy?**',route=>route.fulfill({status:200,contentType:'image/svg+xml',body:iconSvg}));
+  await page.route('**/api/media-search?**',route=>{
+    const url=new URL(route.request().url());
+    const body={
+      enabled:true,query:url.searchParams.get('q')||'garden shed',
+      filters:{country:url.searchParams.get('country')||'all',language:url.searchParams.get('language')||'all',type:url.searchParams.get('type')||'all',time:url.searchParams.get('time')||'all'},
+      providers:[{name:'Openverse',enabled:true,configured:true,count:2}],
+      items:[
+        {provider:'Openverse',type:'image',title:'Garden Shed Original',snippet:'CC image source',link:'https://example.com/original',thumbnail:'https://example.com/original.jpg',author:'QA Author',meta:{width:1600,height:1200,license:'cc0'}},
+        {provider:'Openverse',type:'video',title:'Garden Shed Video',snippet:'Video result',link:'https://example.com/video',thumbnail:'https://example.com/video.jpg',author:'QA Video',meta:{duration:42}}
+      ],
+      total:2
+    };
+    route.fulfill({status:200,contentType:'application/json',body:JSON.stringify(body)});
+  });
+  await page.goto('http://127.0.0.1:4173/',{waitUntil:'domcontentloaded'});
+  await page.locator('#fileInput').setInputFiles({name:'universal.svg',mimeType:'image/svg+xml',buffer:fixture});
+  await page.evaluate(()=>document.querySelector('#researchPanel')?.classList.remove('hidden'));
+  await page.evaluate(()=>{window.scrollTo(0,document.body.scrollHeight)});
+
+  await page.locator('#addQueryBtn').click();
+  const queryInputs=page.locator('[data-query-index]');
+  await queryInputs.last().fill('garden shed');
+  await expect(page.locator('#universalModes')).toBeVisible();
+
+  await page.locator('[data-universal-mode="source"]').click();
+  await expect(page.locator('[data-universal-mode="source"]')).toHaveClass(/active/);
+  await page.locator('#expandKeywordsBtn').click();
+  await expect(page.locator('#keywordExpansion .keyword-chip').first()).toBeVisible();
+
+  await page.locator('#universalCountry').selectOption('US');
+  await page.locator('#universalLanguage').selectOption('en');
+  await page.locator('#universalType').selectOption('image');
+  await page.locator('#universalTime').selectOption('year');
+
+  await page.locator('#universalSearchBtn').click();
+  await expect(page.locator('.universal-result-card')).toHaveCount(1);
+  await expect(page.locator('#universalMeta')).toContainText('1 条结果');
+  await expect(page.locator('.universal-result-card')).toContainText('Garden Shed Original');
+
+  await page.locator('[data-favorite-result]').click();
+  await expect(page.locator('[data-favorite-result]')).toContainText('已收藏');
+
+  await page.locator('[data-nav="projects"]').first().click();
+  await expect(page.locator('.favorite-result-card')).toHaveCount(1);
+  await expect(page.locator('#projectsContent')).toContainText('Garden Shed Original');
+
+  await page.locator('[data-nav="history"]').first().click();
+  await expect(page.locator('#historyContent .history-card')).toHaveCount(1);
+  await expect(page.locator('#historyContent')).toContainText('全网搜索');
+  await page.locator('[data-rerun-history]').click();
+  await expect(page.locator('[data-universal-mode="source"]')).toHaveClass(/active/);
+
+  await page.setViewportSize({width:390,height:844});
+  const overflow=await page.evaluate(()=>document.documentElement.scrollWidth-window.innerWidth);
+  expect(overflow).toBeLessThanOrEqual(1);
+});
