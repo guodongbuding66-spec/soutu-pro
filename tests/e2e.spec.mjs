@@ -193,6 +193,37 @@ test('remote image can be rehosted for stronger direct search and restored',asyn
   await expect(page.locator('#tempLinkStatus')).toContainText('原图可直连');
 });
 
+test('expired rehost falls back to the original remote URL if Blob refresh fails',async({page})=>{
+  await page.addInitScript(()=>{
+    window.SOUTU_CONFIG={tempUploadEndpoint:'http://127.0.0.1:4173',tempUploadProvider:'vercel',productSearchEndpoint:'',tempUploadTtlMinutes:30};
+    localStorage.setItem('soutu-pro-settings-v5',JSON.stringify({tempEndpoint:'http://127.0.0.1:4173',productEndpoint:'',ttl:30,defaultPreset:'product',autoPreset:true}));
+  });
+  let tokenCount=0;
+  await page.route('https://remote.example.com/fallback.svg',route=>route.fulfill({status:200,contentType:'image/svg+xml',body:fixture}));
+  await page.route('**/api/temp-token**',route=>{
+    tokenCount++;
+    if(tokenCount===1)return route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({uploadUrl:'http://127.0.0.1:4173/fallback-upload',url:'https://blob.example.com/short.png',deleteUrl:'http://127.0.0.1:4173/fallback-delete',expiresAt:Date.now()+6000})});
+    return route.fulfill({status:503,contentType:'application/json',body:JSON.stringify({error:'temporary outage'})});
+  });
+  await page.route('**/fallback-upload',route=>route.fulfill({status:200,body:''}));
+  await page.route('**/fallback-delete',route=>route.fulfill({status:200,body:''}));
+  await page.goto('http://127.0.0.1:4173/',{waitUntil:'domcontentloaded'});
+  await page.locator('#urlInput').fill('https://remote.example.com/fallback.svg');
+  await page.locator('#urlForm button').click();
+  await page.locator('#tempLinkBtn').click();
+  await expect(page.locator('#tempLinkBtn')).toContainText('使用原链接');
+
+  await page.waitForTimeout(1200);
+  await page.locator('[data-preset="product"]').click();
+  await page.locator('#runSearch').click();
+  await page.evaluate(()=>{window.__opened=[];window.open=()=>({closed:false,document:{title:'',body:{innerHTML:''}},location:{replace:v=>window.__opened.push(v)},close(){this.closed=true}})});
+  await page.locator('[data-execution-id="google"] [data-execution-open]').click();
+  await expect(page.locator('[data-execution-id="google"] .status-pill')).toContainText('已打开');
+  expect(tokenCount).toBe(2);
+  const opened=await page.evaluate(()=>window.__opened||[]);
+  expect(opened.some(x=>String(x).includes(encodeURIComponent('https://remote.example.com/fallback.svg')))).toBeTruthy();
+});
+
 test('V9 investigation workspace: import, dedupe, compare, watch, evidence, cases and exports',async({page,context})=>{
   const payload={
     source:'qa-collector',
