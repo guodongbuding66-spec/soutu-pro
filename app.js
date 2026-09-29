@@ -10,11 +10,11 @@
 
   const builtinEngines = [
     { id:'google', name:'Google Lens', iconUrl:'https://www.gstatic.com/images/branding/product/2x/lens_96dp.png', category:'通用', desc:'商品、文字、地点与相似内容', uploadPage:'https://lens.google.com/', direct:url=>`https://lens.google.com/uploadbyurl?url=${encodeURIComponent(url)}` },
-    { id:'bing', name:'Bing Visual Search', iconUrl:'https://www.bing.com/favicon.ico', category:'通用', desc:'相似图片、购物与网页结果', uploadPage:'https://www.bing.com/images' },
+    { id:'bing', name:'Bing Visual Search', iconUrl:'https://www.bing.com/favicon.ico', category:'通用', desc:'相似图片、购物与网页结果', uploadPage:'https://www.bing.com/visualsearch', direct:url=>`https://www.bing.com/images/searchbyimage?cbir=sbi&iss=sbi&mkt=en-US&imgurl=${encodeURIComponent(url)}` },
     { id:'yandex', name:'Yandex Images', iconUrl:'https://yandex.com/favicon.ico', category:'通用', desc:'局部物体与视觉近似匹配', uploadPage:'https://yandex.com/images/', direct:url=>`https://yandex.com/images/search?rpt=imageview&url=${encodeURIComponent(url)}` },
     { id:'tineye', name:'TinEye', iconUrl:'https://tineye.com/favicon.ico', category:'通用', desc:'追踪图片复用、修改版本与来源', uploadPage:'https://tineye.com/', direct:url=>`https://tineye.com/search?url=${encodeURIComponent(url)}` },
     { id:'google-shopping', name:'Lens · 商品', iconUrl:'https://www.gstatic.com/images/branding/product/2x/lens_96dp.png', category:'商品', desc:'同款、替代品与相关商品页', uploadPage:'https://lens.google.com/', direct:url=>`https://lens.google.com/uploadbyurl?url=${encodeURIComponent(url)}` },
-    { id:'bing-shopping', name:'Bing · 商品', iconUrl:'https://www.bing.com/favicon.ico', category:'商品', desc:'视觉搜索后继续筛购物结果', uploadPage:'https://www.bing.com/images' },
+    { id:'bing-shopping', name:'Bing · 商品', iconUrl:'https://www.bing.com/favicon.ico', category:'商品', desc:'视觉搜索后继续筛购物结果', uploadPage:'https://www.bing.com/visualsearch', direct:url=>`https://www.bing.com/images/searchbyimage?cbir=sbi&iss=sbi&mkt=en-US&imgurl=${encodeURIComponent(url)}` },
     { id:'saucenao', name:'SauceNAO', iconUrl:'https://saucenao.com/favicon.ico', category:'动漫/插画', desc:'插画与二次元图片来源', uploadPage:'https://saucenao.com/', direct:url=>`https://saucenao.com/search.php?url=${encodeURIComponent(url)}` },
     { id:'trace', name:'trace.moe', iconUrl:'https://trace.moe/favicon.svg', category:'动漫/插画', desc:'动画截图定位作品、集数与时间点', uploadPage:'https://trace.moe/', direct:url=>`https://trace.moe/?url=${encodeURIComponent(url)}` },
     { id:'ascii2d', name:'Ascii2D', iconUrl:'https://ascii2d.net/favicon.ico', category:'动漫/插画', desc:'颜色与特征两种方式找插画来源', uploadPage:'https://ascii2d.net/', direct:url=>`https://ascii2d.net/search/url/${encodeURIComponent(url)}` },
