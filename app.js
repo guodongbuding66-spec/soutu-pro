@@ -775,7 +775,7 @@ els.federatedSearchBtn.onclick=federatedProductSearch;if(els.supplierSearchBtn)e
       sessionStorage.removeItem('soutu-version-recovery');
       location.replace(location.pathname+`?refresh=${Date.now()}`+location.hash)
     }catch(e){
-      if(els.resetClientCacheBtn){els.resetClientCacheBtn.disabled=false;els.resetClientCacheBtn.innerHTML=`${icon('refresh')}清理缓存并重载`}
+      if(els.resetClientCacheBtn){els.resetClientCacheBtn.disabled=false;els.resetClientCacheBtn.innerHTML=`${icon('rotate')}清理缓存并重载`}
       toast('缓存清理失败',e?.message||'请手动执行强制刷新。','error')
     }
   }
