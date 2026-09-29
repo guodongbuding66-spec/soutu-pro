@@ -2,6 +2,11 @@ import { del, list } from '@vercel/blob';
 
 export default async function handler(req, res) {
   if (!['GET', 'POST'].includes(req.method)) return res.status(405).json({ error: 'Method not allowed' });
+  const secret = process.env.CRON_SECRET;
+  const auth = String(req.headers?.authorization || '');
+  const schedule = String(req.headers?.['x-vercel-cron-schedule'] || '');
+  const authorized = secret ? auth === `Bearer ${secret}` : schedule === '0 3 * * *';
+  if (!authorized) return res.status(401).json({ error: 'Unauthorized' });
   try {
     const now = Date.now();
     let cursor;
