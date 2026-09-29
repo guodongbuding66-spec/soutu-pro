@@ -1,6 +1,6 @@
 {
   "name": "soutu-pro",
-  "version": "9.0.2",
+  "version": "9.0.3",
   "private": true,
   "type": "module",
   "description": "搜图 Pro — reverse image search, AI similarity, product tracing, supplier research and evidence workspace",
