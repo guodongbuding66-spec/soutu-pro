@@ -17,6 +17,7 @@ test('core product flow, local image tools, batch, projects and V9 research',asy
     localStorage.removeItem('soutu-pro-projects-v1');
   });
   await page.route('**/api/image-proxy?**',route=>route.fulfill({status:200,contentType:'image/svg+xml',body:iconSvg}));
+  await page.route('**/api/url-status?**',route=>route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({alive:true,status:200,checkedAt:Date.now()})}));
   await page.route('**cdn.jsdelivr.net/npm/@techstark/opencv-js**',route=>route.abort());
 
   await page.goto('http://127.0.0.1:4173/',{waitUntil:'domcontentloaded'});
@@ -24,6 +25,9 @@ test('core product flow, local image tools, batch, projects and V9 research',asy
   await expect(page.locator('.engine-card')).toHaveCount(10);
   await expect(page.locator('.engine-card .engine-brand img')).toHaveCount(10);
   await expect(page.locator('.engine-card .engine-mark').first()).not.toContainText(/^G$/);
+  await page.locator('#engineHealthBtn').click();
+  await expect(page.locator('#engineHealthSummary')).toContainText('正常 10');
+  await expect(page.locator('.engine-health.ok')).toHaveCount(10);
 
   await page.locator('#fileInput').setInputFiles({name:'fixture.svg',mimeType:'image/svg+xml',buffer:fixture});
   await expect(page.locator('#workbench')).toBeVisible();
@@ -144,6 +148,36 @@ test('execution targets refresh expired temporary image URLs before reopening',a
   expect(tokenCount).toBe(2);
   const opened=await page.evaluate(()=>window.__opened||[]);
   expect(opened.filter(x=>String(x).includes('lens.google.com/uploadbyurl')).length).toBeGreaterThanOrEqual(2);
+});
+
+test('remote image can be rehosted for stronger direct search and restored',async({page})=>{
+  await page.addInitScript(()=>{
+    window.SOUTU_CONFIG={tempUploadEndpoint:'http://127.0.0.1:4173',tempUploadProvider:'vercel',productSearchEndpoint:'',tempUploadTtlMinutes:30};
+    localStorage.setItem('soutu-pro-settings-v5',JSON.stringify({tempEndpoint:'http://127.0.0.1:4173',productEndpoint:'',ttl:30,defaultPreset:'product',autoPreset:true}));
+  });
+  let tokenCount=0,uploadCount=0;
+  await page.route('https://remote.example.com/product.svg',route=>route.fulfill({status:200,contentType:'image/svg+xml',body:fixture}));
+  await page.route('**/api/temp-token**',route=>{
+    tokenCount++;
+    route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({uploadUrl:'http://127.0.0.1:4173/rehost-upload',url:'https://blob.example.com/rehosted.png',deleteUrl:'http://127.0.0.1:4173/rehost-delete',expiresAt:Date.now()+600000})});
+  });
+  await page.route('**/rehost-upload',route=>{uploadCount++;route.fulfill({status:200,body:''})});
+  await page.route('**/rehost-delete',route=>route.fulfill({status:200,body:''}));
+  await page.goto('http://127.0.0.1:4173/',{waitUntil:'domcontentloaded'});
+  await page.locator('#urlInput').fill('https://remote.example.com/product.svg');
+  await page.locator('#urlForm button').click();
+  await expect(page.locator('#sourceKind')).toContainText('图片链接');
+  await expect(page.locator('#tempLinkBtn')).toContainText('增强直连');
+
+  await page.locator('#tempLinkBtn').click();
+  await expect(page.locator('#tempLinkBtn')).toContainText('使用原链接');
+  await expect(page.locator('#tempLinkStatus')).toContainText('增强直连');
+  expect(tokenCount).toBe(1);
+  expect(uploadCount).toBe(1);
+
+  await page.locator('#tempLinkBtn').click();
+  await expect(page.locator('#tempLinkBtn')).toContainText('增强直连');
+  await expect(page.locator('#tempLinkStatus')).toContainText('原图可直连');
 });
 
 test('V9 investigation workspace: import, dedupe, compare, watch, evidence, cases and exports',async({page,context})=>{
