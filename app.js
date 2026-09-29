@@ -7,7 +7,7 @@
   const MAX_BATCH = 50;
   const KEYS = {
     history:'soutu-pro-history-v5', settings:'soutu-pro-settings-v5', custom:'soutu-pro-custom-v5',
-    projects:'soutu-pro-projects-v1', favorites:'soutu-pro-favorites-v1', universalFavorites:'soutu-pro-universal-favorites-v1'
+    projects:'soutu-pro-projects-v1', favorites:'soutu-pro-favorites-v1', universalFavorites:'soutu-pro-universal-favorites-v1', engineHealth:'soutu-pro-engine-health-v1', providerHealth:'soutu-pro-provider-health-v1'
   };
 
   const builtinEngines = [
@@ -66,11 +66,13 @@
     defaultPreset:'product', tempEndpoint:(window.SOUTU_CONFIG?.tempUploadEndpoint||''), productEndpoint:(window.SOUTU_CONFIG?.productSearchEndpoint||''), ttl:Number(window.SOUTU_CONFIG?.tempUploadTtlMinutes||30), autoPreset:true
   };
 
+  const cachedEngineHealth=readJson(KEYS.engineHealth,{});
+  const cachedProviderHealth=readJson(KEYS.providerHealth,{});
   const state = {
     source:null, originalUrl:null, processedUrl:null, useProcessed:false, cropMode:false, cropRect:null,
     selected:[], preset:'product', custom:readJson(KEYS.custom,[]), history:readJson(KEYS.history,[]), privacy:false,
     projects:readJson(KEYS.projects,[]), favorites:readJson(KEYS.favorites,[]), universalFavorites:readJson(KEYS.universalFavorites,[]), settings:{...defaultSettings,...readJson(KEYS.settings,{})},
-    analysis:{ocr:'',labels:[],barcodes:[],objects:[],queries:[],running:false}, tempLink:null, tempTimer:null, tempUnavailableReason:'', tempUnavailableAt:0, forceTempLink:false, engineHealth:{}, engineHealthCheckedAt:0,
+    analysis:{ocr:'',labels:[],barcodes:[],objects:[],queries:[],running:false}, tempLink:null, tempTimer:null, tempUnavailableReason:'', tempUnavailableAt:0, forceTempLink:false, engineHealth:cachedEngineHealth.engines||{}, engineHealthCheckedAt:Number(cachedEngineHealth.checkedAt)||0, providerHealth:cachedProviderHealth.providers||[], providerHealthCheckedAt:Number(cachedProviderHealth.checkedAt)||0,
     batch:[], view:'search', installPrompt:null, presetTouched:false,
     universal:{mode:'all',platform:'all',country:'all',language:'all',time:'all',type:'all',resolution:'all',license:'all',rawResults:[],results:[],providers:[],query:'',expanded:[],selected:new Set(),grouped:false,timeline:false,clusterFocus:null}
   };
@@ -194,6 +196,7 @@
     }));
     Object.values(state.engineHealth).forEach(x=>{if(x.state==='ok')ok++;else if(x.state==='degraded')degraded++;else down++});
     state.engineHealthCheckedAt=Date.now();
+    writeJson(KEYS.engineHealth,{checkedAt:state.engineHealthCheckedAt,engines:state.engineHealth});
     if(els.engineHealthSummary)els.engineHealthSummary.textContent=`正常 ${ok} · 受限 ${degraded} · 异常 ${down}`;
     els.engineHealthBtn.disabled=false;els.engineHealthBtn.innerHTML=`${icon('scan')}重新检测`;
     renderEngines();renderSystemStatus();
@@ -434,7 +437,9 @@
     if(state.universal.mode==='hd')list.sort((a,b)=>px(b)-px(a));
     else if(state.universal.mode==='source')list.sort((a,b)=>date(a)-date(b)||px(b)-px(a));
     else if(state.universal.mode==='author')list.sort((a,b)=>Number(Boolean(b.author))-Number(Boolean(a.author))||date(a)-date(b));
-    state.universal.results=list;state.universal.providers=providers;renderUniversalResearchStats(list);renderUniversalInsights(list);
+    state.universal.results=list;state.universal.providers=providers;
+    if(providers.length){state.providerHealth=providers.map(p=>({name:p.name||'Unknown',enabled:!!p.enabled,configured:p.configured!==false,count:Number(p.count)||0,message:p.message||''}));state.providerHealthCheckedAt=Date.now();writeJson(KEYS.providerHealth,{checkedAt:state.providerHealthCheckedAt,providers:state.providerHealth})}
+    renderUniversalResearchStats(list);renderUniversalInsights(list);
     const providerStrip=providers.length?`<div class="provider-strip">${providers.map(p=>`<span class="${p.enabled?'ok':'off'}"><b>${escapeHtml(p.name)}</b><small>${p.enabled?`${p.count||0} 条`:p.configured?'暂不可用':'未配置 Key'}</small></span>`).join('')}</div>`:'';
     const cards=list.map(x=>`<article class="universal-result-card ${state.universal.selected.has(x.link||x.url||x.title)?'selected':''}" data-result-type="${escapeHtml(x.type||'post')}"><label class="universal-select"><input type="checkbox" data-universal-select="${escapeHtml(x.link||x.url||x.title)}" ${state.universal.selected.has(x.link||x.url||x.title)?'checked':''}><span>${icon('check')}</span></label><a class="universal-media" href="${escapeHtml(x.link||x.url||'#')}" target="_blank" rel="noopener noreferrer">${x.thumbnail?`<img src="${escapeHtml(x.thumbnail)}" alt="" loading="lazy" referrerpolicy="no-referrer">`:`<span class="universal-placeholder">${icon(x.type==='video'?'play':x.type==='product'?'shopping':'image')}</span>`}<em>${escapeHtml(x.provider||x.source||'Web')}</em></a><div class="universal-result-body"><b>${escapeHtml(x.title||'未命名结果')}</b><p>${escapeHtml((x.snippet||'').slice(0,180))}</p><div><span>${escapeHtml(x.author||'')}</span><small>${escapeHtml(mediaMeta(x))}</small></div><div class="universal-evidence-badges">${universalEvidenceBadges(x).map(t=>`<span>${escapeHtml(t)}</span>`).join('')}</div><div class="universal-confidence"><span>候选置信度</span><b>${Math.round((x._confidence||0)*100)}%</b></div><div class="universal-result-actions"><a href="${escapeHtml(x.link||x.url||'#')}" target="_blank" rel="noopener noreferrer">打开来源</a><button data-copy-result="${escapeHtml(x.link||x.url||'')}">复制链接</button><button class="${state.universalFavorites.some(f=>f.link===(x.link||x.url||''))?'active':''}" data-favorite-result="${escapeHtml(x.link||x.url||'')}">${state.universalFavorites.some(f=>f.link===(x.link||x.url||''))?'已收藏':'收藏'}</button></div></div></article>`).join('');
     els.productResults.classList.remove('hidden');els.productResults.innerHTML=providerStrip+(cards?`<div class="universal-waterfall">${cards}</div>`:'<div class="provider-empty">当前筛选条件下没有可展示结果。</div>');if(els.universalMeta)els.universalMeta.textContent=`${list.length} 条结果 · ${providers.filter(p=>p.enabled).length} 个 API 可用`;
@@ -750,22 +755,27 @@ els.federatedSearchBtn.onclick=federatedProductSearch;if(els.supplierSearchBtn)e
     const ep=(state.settings.tempEndpoint||'').trim();
     const direct=directSourceUrl()?'原图公网 URL':isTempValid()?'短时链接就绪':ep?(state.tempUnavailableReason||'服务已配置'):'未配置';
     const health=Object.values(state.engineHealth||{}),ok=health.filter(x=>x.state==='ok').length,degraded=health.filter(x=>x.state==='degraded').length,down=health.filter(x=>x.state==='down').length;
-    const healthText=state.engineHealthCheckedAt?`正常 ${ok} · 受限 ${degraded} · 异常 ${down}`:'尚未检测';
+    const healthAge=state.engineHealthCheckedAt?Date.now()-state.engineHealthCheckedAt:Infinity,healthStale=healthAge>12*60*60*1000;
+    const healthText=state.engineHealthCheckedAt?`${healthStale?'已过期 · ':''}正常 ${ok} · 受限 ${degraded} · 异常 ${down}`:'尚未检测';
+    const providers=state.providerHealth||[],providerOk=providers.filter(x=>x.enabled).length,providerMissing=providers.filter(x=>!x.enabled&&!x.configured).length,providerFail=providers.filter(x=>!x.enabled&&x.configured).length;
+    const providerText=state.providerHealthCheckedAt?`可用 ${providerOk} · 缺 Key ${providerMissing} · 异常 ${providerFail}`:'尚无搜索记录';
     const storage=approxLocalStorageBytes();
     const items=[
       {label:'前端版本',value:`v${APP_VERSION}`,tone:versionOk?'ok':'bad'},
       {label:'页面资源版本',value:docVersion==='未知'?'未知':`v${docVersion}`,tone:versionOk?'ok':'bad'},
       {label:'Service Worker',value:!swSupported?'不支持':swControlled?'已接管':'未接管',tone:swControlled?'ok':swSupported?'warn':'bad'},
       {label:'图片直连',value:direct,tone:directSourceUrl()||isTempValid()?'ok':ep?'warn':'bad'},
-      {label:'搜索引擎',value:healthText,tone:!state.engineHealthCheckedAt?'warn':down?'bad':degraded?'warn':'ok'},
+      {label:'搜索引擎',value:healthText,tone:!state.engineHealthCheckedAt||healthStale?'warn':down?'bad':degraded?'warn':'ok'},
+      {label:'API Providers',value:providerText,tone:!state.providerHealthCheckedAt?'warn':providerFail?'bad':providerMissing?'warn':'ok'},
       {label:'网络状态',value:navigator.onLine?'在线':'离线',tone:navigator.onLine?'ok':'bad'},
       {label:'剪贴板图片',value:navigator.clipboard&&window.ClipboardItem?'支持':'受限',tone:navigator.clipboard&&window.ClipboardItem?'ok':'warn'},
       {label:'安全上下文',value:window.isSecureContext?'HTTPS / 安全':'非安全上下文',tone:window.isSecureContext?'ok':'warn'},
       {label:'本机数据',value:storage?formatBytes(storage):'0 B',tone:storage<4*1024*1024?'ok':'warn'}
     ];
     els.systemStatusGrid.innerHTML=items.map(x=>`<div class="system-status-item ${x.tone}"><span><i></i>${escapeHtml(x.label)}</span><b title="${escapeHtml(x.value)}">${escapeHtml(x.value)}</b></div>`).join('');
-    const checked=state.engineHealthCheckedAt?new Date(state.engineHealthCheckedAt).toLocaleTimeString():'未执行';
-    els.systemStatusNote.textContent=`引擎检测：${checked} · 清理缓存不会删除项目、历史或收藏。`
+    const checked=state.engineHealthCheckedAt?new Date(state.engineHealthCheckedAt).toLocaleString():'未执行';
+    const providerChecked=state.providerHealthCheckedAt?new Date(state.providerHealthCheckedAt).toLocaleString():'暂无';
+    els.systemStatusNote.textContent=`引擎检测：${checked} · API 状态：${providerChecked} · 清理缓存不会删除项目、历史或收藏。`
   }
   async function resetClientCache(){
     if(els.resetClientCacheBtn){els.resetClientCacheBtn.disabled=true;els.resetClientCacheBtn.textContent='正在清理…'}
@@ -806,6 +816,6 @@ els.federatedSearchBtn.onclick=federatedProductSearch;if(els.supplierSearchBtn)e
     choosePreset:id=>choosePreset(id),
     makeThumb:url=>makeThumb(url)
   };
-  function init(){if(guardVersionMismatch())return;applyTheme(localStorage.getItem('soutu-theme')==='dark',true);initSettings();renderPresets();renderEngines();renderAnalysis();renderMarketplaces();renderHistory();renderProjects();renderBatch();syncSearchButton();syncTempCard();bind();initPwa();initFromUrl();}
+  function init(){if(guardVersionMismatch())return;applyTheme(localStorage.getItem('soutu-theme')==='dark',true);initSettings();if(state.engineHealthCheckedAt&&els.engineHealthSummary){const vals=Object.values(state.engineHealth||{}),ok=vals.filter(x=>x.state==='ok').length,degraded=vals.filter(x=>x.state==='degraded').length,down=vals.filter(x=>x.state==='down').length;els.engineHealthSummary.textContent=`${Date.now()-state.engineHealthCheckedAt>12*60*60*1000?'状态已过期 · ':''}正常 ${ok} · 受限 ${degraded} · 异常 ${down}`}renderPresets();renderEngines();renderAnalysis();renderMarketplaces();renderHistory();renderProjects();renderBatch();syncSearchButton();syncTempCard();bind();initPwa();initFromUrl();}
   init();
 })();
