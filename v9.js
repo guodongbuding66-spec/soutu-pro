@@ -252,13 +252,46 @@
     r.width=feat.width;r.height=feat.height;r.quality={megapixels:(feat.width*feat.height)/1e6,sharpness:feat.sharpness};r.features={dhash:feat.dhash,edgehash:feat.edgehash};r.scores={visual:clamp01(visualFinal),structure:clamp01(structure),text:clamp01(text)};r.scores.overall=clamp01(r.scores.visual*state.weights.visual+r.scores.structure*state.weights.structure+r.scores.text*state.weights.text);return r;
   }
 
-  async function loadScript(src,globalName){if(globalName&&window[globalName])return;await new Promise((res,rej)=>{const s=document.createElement('script');s.src=src;s.async=true;s.onload=res;s.onerror=rej;document.head.appendChild(s)})}
-  async function ensureAiModel(){if(state.aiModel)return state.aiModel;await loadScript('https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.22.0/dist/tf.min.js','tf');await loadScript('https://cdn.jsdelivr.net/npm/@tensorflow-models/mobilenet@2.1.1/dist/mobilenet.min.js','mobilenet');state.aiModel=await window.mobilenet.load({version:2,alpha:.75});return state.aiModel;}
-  async function embedding(url){const model=await ensureAiModel();const img=new Image();img.crossOrigin='anonymous';img.referrerPolicy='no-referrer';img.src=url.startsWith('data:')||url.startsWith('blob:')?url:proxyUrl(url);await img.decode();const t=model.infer(img,true);const arr=Array.from(await t.data());t.dispose?.();return arr;}
+  function v9Timeout(promise,ms,label='operation'){return Promise.race([Promise.resolve(promise),new Promise((_,reject)=>setTimeout(()=>reject(new Error(`${label} timed out after ${Math.round(ms/1000)}s`)),ms))])}
+  async function loadScript(src,globalName,timeoutMs=15000){
+    if(globalName&&window[globalName])return;
+    const existing=[...document.scripts].find(s=>s.dataset.v9lib===globalName);
+    if(existing?.dataset.failed==='1')existing.remove();
+    await new Promise((resolve,reject)=>{
+      let done=false;
+      const s=(existing&&!existing.dataset.failed)?existing:document.createElement('script');
+      const finish=(ok,error)=>{if(done)return;done=true;clearTimeout(timer);if(!ok){s.dataset.failed='1';s.remove();reject(error||new Error(`${globalName||'script'} load failed`))}else resolve()};
+      if(!s.src){s.src=src;s.async=true;s.dataset.v9lib=globalName||src;document.head.appendChild(s)}
+      s.addEventListener('load',()=>finish(true),{once:true});
+      s.addEventListener('error',()=>finish(false,new Error(`${globalName||'script'} network load failed`)),{once:true});
+      const timer=setTimeout(()=>finish(false,new Error(`${globalName||'script'} load timed out after ${Math.round(timeoutMs/1000)}s`)),timeoutMs);
+      if(globalName&&window[globalName])finish(true)
+    })
+  }
+  async function ensureAiModel(){if(state.aiModel)return state.aiModel;await loadScript('https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.22.0/dist/tf.min.js','tf');await loadScript('https://cdn.jsdelivr.net/npm/@tensorflow-models/mobilenet@2.1.1/dist/mobilenet.min.js','mobilenet');state.aiModel=await v9Timeout(window.mobilenet.load({version:2,alpha:.75}),20000,'MobileNet model');return state.aiModel;}
+  async function embedding(url){const model=await ensureAiModel();const img=new Image();img.crossOrigin='anonymous';img.referrerPolicy='no-referrer';img.src=url.startsWith('data:')||url.startsWith('blob:')?url:proxyUrl(url);await v9Timeout(img.decode(),12000,'image decode');const t=model.infer(img,true);const arr=Array.from(await v9Timeout(t.data(),12000,'embedding'));t.dispose?.();return arr;}
   async function aiSimilarity(a,b){const [x,y]=await Promise.all([embedding(a),embedding(b)]);return clamp01((cosine(x,y)+1)/2);}
 
-  async function aiRank(){const b=document.querySelector('#v9AiRank');if(!state.results.length)return; b.disabled=true;b.textContent='AI 分析中…';const list=state.results.slice(0,MAX_AI_RESULTS);for(let i=0;i<list.length;i++){await computeFeaturesForResult(list[i],true);b.textContent=`AI ${i+1}/${list.length}`;renderStats()}state.sort='score';document.querySelector('#v9Sort').value='score';persist();render();b.disabled=false;b.innerHTML=`${icon('sparkles')}AI 重排`;bridge()?.toast?.('AI 重排完成',`已分析前 ${list.length} 个结果。`,'ok');}
-  async function smartDedupe(){if(!state.results.length)return;const b=document.querySelector('#v9Dedupe');b.disabled=true;b.textContent='计算指纹…';const list=state.results.slice(0,50);for(let i=0;i<list.length;i++){await computeFeaturesForResult(list[i],false);list[i].duplicateOf='';for(let j=0;j<i;j++){if(list[j].features&&list[i].features&&hamming(list[j].features.dhash,list[i].features.dhash)<=.06&&hamming(list[j].features.edgehash,list[i].features.edgehash)<=.12){list[i].duplicateOf=list[j].id;break}}}state.hideDuplicates=true;persist();render();b.disabled=false;b.innerHTML=`${icon('grid')}显示重复项`;bridge()?.toast?.('智能去重完成','相似指纹结果已合并显示。','ok');}
+  async function aiRank(){
+    const b=document.querySelector('#v9AiRank');if(!state.results.length||!b)return;
+    b.disabled=true;b.textContent='AI 分析中…';
+    try{
+      const list=state.results.slice(0,MAX_AI_RESULTS);
+      for(let i=0;i<list.length;i++){await computeFeaturesForResult(list[i],true);b.textContent=`AI ${i+1}/${list.length}`;renderStats()}
+      state.sort='score';document.querySelector('#v9Sort').value='score';persist();render();
+      bridge()?.toast?.('AI 重排完成',`已分析前 ${list.length} 个结果。`,'ok');
+    }catch(e){bridge()?.toast?.('AI 重排未完成',e.message||'模型或图片加载失败。','error')}
+    finally{b.disabled=false;b.innerHTML=`${icon('sparkles')}AI 重排`}
+  }
+  async function smartDedupe(){
+    if(!state.results.length)return;const b=document.querySelector('#v9Dedupe');if(!b)return;b.disabled=true;b.textContent='计算指纹…';
+    try{
+      const list=state.results.slice(0,50);
+      for(let i=0;i<list.length;i++){await computeFeaturesForResult(list[i],false);list[i].duplicateOf='';for(let j=0;j<i;j++){if(list[j].features&&list[i].features&&hamming(list[j].features.dhash,list[i].features.dhash)<=.06&&hamming(list[j].features.edgehash,list[i].features.edgehash)<=.12){list[i].duplicateOf=list[j].id;break}}}
+      state.hideDuplicates=true;persist();render();bridge()?.toast?.('智能去重完成','相似指纹结果已合并显示。','ok');
+    }catch(e){bridge()?.toast?.('智能去重未完成',e.message||'部分远程图片无法读取。','error')}
+    finally{b.disabled=false;b.innerHTML=state.hideDuplicates?`${icon('grid')}显示重复项`:`${icon('grid')}智能去重`}
+  }
 
   function updateLearning(r,label){r.manualLabel=label;if(!r.scores)return;const target=label==='same'?1:label==='similar'?.55:0;const lr=.08;const features={visual:r.scores.visual||0,structure:r.scores.structure||0,text:r.scores.text||0};Object.keys(state.weights).forEach(k=>{const f=features[k];state.weights[k]=Math.max(.05,state.weights[k]+lr*(target-.45)*(f-.5))});state.weights=normalizeWeights(state.weights);state.results.forEach(x=>{if(x.scores)x.scores.overall=clamp01(x.scores.visual*state.weights.visual+x.scores.structure*state.weights.structure+x.scores.text*state.weights.text)});persist();renderWeights();}
 
