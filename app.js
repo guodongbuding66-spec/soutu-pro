@@ -68,7 +68,7 @@
     source:null, originalUrl:null, processedUrl:null, useProcessed:false, cropMode:false, cropRect:null,
     selected:[], preset:'product', custom:readJson(KEYS.custom,[]), history:readJson(KEYS.history,[]), privacy:false,
     projects:readJson(KEYS.projects,[]), favorites:readJson(KEYS.favorites,[]), universalFavorites:readJson(KEYS.universalFavorites,[]), settings:{...defaultSettings,...readJson(KEYS.settings,{})},
-    analysis:{ocr:'',labels:[],barcodes:[],objects:[],queries:[],running:false}, tempLink:null, tempTimer:null, tempUnavailableReason:'',
+    analysis:{ocr:'',labels:[],barcodes:[],objects:[],queries:[],running:false}, tempLink:null, tempTimer:null, tempUnavailableReason:'', tempUnavailableAt:0,
     batch:[], view:'search', installPrompt:null, presetTouched:false,
     universal:{mode:'all',platform:'all',country:'all',language:'all',time:'all',type:'all',resolution:'all',license:'all',rawResults:[],results:[],providers:[],query:'',expanded:[],selected:new Set(),grouped:false,timeline:false,clusterFocus:null}
   };
@@ -441,7 +441,7 @@
   function updateTempCountdown(){if(!isTempValid()){els.tempLinkStatus.textContent='链接已过期';clearInterval(state.tempTimer);renderEngines();return}const s=Math.max(0,Math.floor((state.tempLink.expiresAt-Date.now())/1000));els.tempLinkStatus.textContent=`剩余 ${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`}
   async function createTempLink({silent=false}={}){
     const ep=state.settings.tempEndpoint.trim().replace(/\/$/,'');
-    if(!ep){state.tempUnavailableReason='未配置临时图片服务 · 已使用手动上传';syncTempCard();if(!silent)toast('未配置临时图片服务','仍可复制图片后在第三方页面上传。');return false}
+    if(!ep){state.tempUnavailableReason='未配置临时图片服务';state.tempUnavailableAt=Date.now();syncTempCard();if(!silent)toast('未配置临时图片服务','直连搜索需要一个可用的临时公网图片服务。','error');return false}
     els.tempLinkBtn.disabled=true;els.tempLinkBtn.innerHTML='<span class="spinner"></span>上传中';
     try{
       const blob=await blobFromActive();let data;
@@ -450,9 +450,9 @@
         data=await tokenRes.json().catch(()=>({}));
         if(!tokenRes.ok||!data.uploadUrl||!data.url){
           if(data.code==='BLOB_NOT_CONFIGURED'){
-            state.tempUnavailableReason='Vercel Blob 未连接 · 已自动降级';
+            state.tempUnavailableReason='Vercel Blob 未连接';state.tempUnavailableAt=Date.now();
             syncTempCard();renderEngines();
-            if(!silent)toast('Vercel Blob 尚未连接','已切换为“复制图片 + 手动上传”，连接 Blob 后可恢复直连。');
+            if(!silent)toast('Vercel Blob 尚未连接','连接 Blob 后即可使用 Google / Bing / Yandex 等一键直连。','error');
             return false
           }
           throw new Error(data.error||'unable to create signed upload')
@@ -463,17 +463,18 @@
         const r=await fetch(`${ep}/api/upload?ttl=${Number(state.settings.ttl)||30}`,{method:'POST',headers:{'content-type':blob.type||'image/png'},body:blob});
         data=await r.json();if(!r.ok||!data.url)throw new Error(data.error||'upload failed')
       }
-      state.tempUnavailableReason='';
+      state.tempUnavailableReason='';state.tempUnavailableAt=0;
       state.tempLink={url:data.url,expiresAt:Number(data.expiresAt)||Date.now()+30*60_000,deleteUrl:data.deleteUrl||''};
       if(!silent)toast('临时链接已创建',`将在约 ${state.settings.ttl} 分钟后失效。`,'ok');
       syncTempCard();renderEngines();return true
     }catch(e){
-      if(!silent)toast('临时链接创建失败',e.message||'请检查临时图片服务配置。','error');
+      state.tempUnavailableReason=e?.message||'临时图片服务不可用';state.tempUnavailableAt=Date.now();
+      if(!silent)toast('临时链接创建失败',state.tempUnavailableReason,'error');
       return false
     }finally{syncTempCard()}
   }
   async function deleteTempLink(){clearInterval(state.tempTimer);const old=state.tempLink;state.tempLink=null;if(old?.deleteUrl)fetch(old.deleteUrl,{method:'DELETE'}).catch(()=>{});syncTempCard()}
-  async function ensurePublicUrl({silent=true}={}){const direct=directSourceUrl();if(direct)return direct;if(isTempValid())return state.tempLink.url;if(state.tempUnavailableReason)return null;if(state.settings.tempEndpoint){await createTempLink({silent});if(isTempValid())return state.tempLink.url}return null}
+  async function ensurePublicUrl({silent=true}={}){const direct=directSourceUrl();if(direct)return direct;if(isTempValid())return state.tempLink.url;if(state.tempUnavailableReason&&silent&&Date.now()-(state.tempUnavailableAt||0)<5000)return null;if(state.settings.tempEndpoint){await createTempLink({silent});if(isTempValid())return state.tempLink.url}return null}
 
   function engineTarget(engine,publicUrl){return publicUrl&&engine.direct?engine.direct(publicUrl):engine.uploadPage}
   async function quietCopy(){try{const b=await blobFromActive();await navigator.clipboard.write([new ClipboardItem({[b.type||'image/png']:b})]);return true}catch{return false}}
