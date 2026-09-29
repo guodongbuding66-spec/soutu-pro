@@ -483,13 +483,13 @@
     const seen=new Set();list=list.filter(x=>{const k=(x.link||x.url||'')+'|'+(x.title||'');if(seen.has(k))return false;seen.add(k);return true});
     if(state.universal.clusterFocus)list=list.filter(x=>x._cluster===state.universal.clusterFocus);
     if(state.universal.visualClusterFocus)list=list.filter(x=>state.universal.visualGroups[universalResultKey(x)]===state.universal.visualClusterFocus);
-    const px=x=>(Number(x?.meta?.width)||0)*(Number(x?.meta?.height)||0),date=x=>{const t=Date.parse(x?.publishedAt||'');return Number.isFinite(t)?t:Number.MAX_SAFE_INTEGER};
+    const px=x=>universalPixels(x),date=x=>universalDate(x),oldest=x=>date(x)||Number.MAX_SAFE_INTEGER;
     if(state.universal.sort==='evidence')list.sort((a,b)=>(b._sourceScore||0)-(a._sourceScore||0)||px(b)-px(a));
     else if(state.universal.sort==='newest')list.sort((a,b)=>date(b)-date(a)||px(b)-px(a));
     else if(state.universal.sort==='largest')list.sort((a,b)=>px(b)-px(a));
     else if(state.universal.mode==='hd')list.sort((a,b)=>px(b)-px(a));
-    else if(state.universal.mode==='source')list.sort((a,b)=>date(a)-date(b)||px(b)-px(a));
-    else if(state.universal.mode==='author')list.sort((a,b)=>Number(Boolean(b.author))-Number(Boolean(a.author))||date(a)-date(b));
+    else if(state.universal.mode==='source')list.sort((a,b)=>oldest(a)-oldest(b)||px(b)-px(a));
+    else if(state.universal.mode==='author')list.sort((a,b)=>Number(Boolean(b.author))-Number(Boolean(a.author))||oldest(a)-oldest(b));
     state.universal.results=list;state.universal.providers=providers;
     if(providers.length){
       const merged=new Map((state.providerHealth||[]).map(p=>[p.name,p]));
