@@ -62,6 +62,8 @@ test('core product flow, local image tools, batch, projects and V9 research',asy
   await expect(page.locator('#executionList .execution-engine-brand')).toHaveCount(4);
   await expect(page.locator('[data-execution-id="bing"] small')).toContainText('点击时重新校验图片链接');
   await expect(page.locator('[data-execution-id="bing"] [data-copy-execution]')).toHaveCount(0);
+  await expect(page.locator('[data-execution-id="google"] [data-copy-execution]')).toHaveCount(0);
+  await expect(page.locator('[data-execution-id="yandex"] [data-copy-execution]')).toHaveCount(0);
   await page.locator('[data-close="executionModal"]').click();
 
   await page.locator('[data-nav="history"]').first().click();
