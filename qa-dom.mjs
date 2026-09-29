@@ -23,7 +23,7 @@ const failures=[];
 const check=(cond,msg)=>{if(!cond)failures.push(msg)};
 try{window.eval(app)}catch(e){failures.push('app.js init: '+e.stack)}
 try{window.eval(v9)}catch(e){failures.push('v9.js init: '+e.stack)}
-if(!window.document.querySelector('.v9-shell')){
+if(!window.document.querySelector('#v9Root .v9-hero')){
   window.document.dispatchEvent(new window.Event('DOMContentLoaded',{bubbles:true}));
 }
 
@@ -32,15 +32,15 @@ check(!window.document.querySelector('#searchView')?.classList.contains('hidden'
 check(window.document.querySelectorAll('.engine-card').length===10,'10 engine cards render');
 check(window.document.querySelectorAll('.engine-brand img').length===10,'10 builtin engine brand images render');
 check(window.document.querySelectorAll('.engine-custom-mark').length===0,'builtin grid has no initial-letter custom marks');
-check(window.document.querySelectorAll('.market-card').length===10,'10 marketplace cards render');
-check(window.document.querySelectorAll('.market-brand img').length===10,'marketplace brand images render');
+check(window.document.querySelectorAll('.market-card').length>=10,'marketplace/social platform cards render');
+check(window.document.querySelectorAll('.market-brand img').length>=10,'platform brand images render');
 
 const researchNav=window.document.querySelector('[data-nav="research"]');
 researchNav?.click();
 check(!window.document.querySelector('#researchHubView')?.classList.contains('hidden'),'research navigation opens V9 view');
-check(!!window.document.querySelector('.v9-shell'),'V9 research shell renders');
+check(!!window.document.querySelector('#v9Root .v9-hero'),'V9 research shell renders');
 
-const searchNav=window.document.querySelector('header [data-nav="search"]');
+const searchNav=window.document.querySelector('[data-nav="search"]');
 searchNav?.click();
 const industrial=window.document.querySelector('[data-preset="industrial"]');
 industrial?.click();
@@ -68,3 +68,4 @@ if(failures.length){
   console.error('DOM QA diagnostic failed:');
   failures.forEach(x=>console.error('✗',x));
 }else console.log('Soutu Pro DOM runtime QA passed');
+if(failures.length)process.exitCode=1;
