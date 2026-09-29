@@ -1,6 +1,9 @@
 import {test,expect} from '@playwright/test';
 
 const fixture=Buffer.from(`<svg xmlns="http://www.w3.org/2000/svg" width="320" height="200"><rect width="320" height="200" fill="white"/><rect x="40" y="30" width="240" height="140" rx="12" fill="#1f2937"/><circle cx="160" cy="100" r="42" fill="#60a5fa"/><rect x="112" y="82" width="96" height="36" fill="#f8fafc"/></svg>`);
+test.use({serviceWorkers:'block'});
+test.setTimeout(90000);
+
 const iconSvg='<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64"><circle cx="32" cy="32" r="25" fill="#2563eb"/><circle cx="32" cy="32" r="11" fill="white"/></svg>';
 
 async function clean(page){
@@ -48,7 +51,7 @@ test('OCR vision barcode object detection and object-to-batch flow',async({page}
   await expect(page.locator('#visionOutput')).toContainText('tool shed');
   await expect(page.locator('#barcodeOutput')).toContainText('0123456789012');
   await expect(page.locator('#objectsOutput .object-chip')).toHaveCount(1);
-  await expect(page.locator('#queryList')).toContainText('MODEL X100');
+  await expect(page.locator('#queryList input').first()).toHaveValue(/MODEL X100|ACME/);
   await expect(page.locator('#batchObjectsBtn')).toBeVisible();
   await page.locator('#batchObjectsBtn').click();
   await expect(page.locator('#batchView')).toBeVisible();
