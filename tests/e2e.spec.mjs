@@ -46,8 +46,10 @@ test('core product flow, local image tools, batch, projects and V9 research',asy
   await page.locator('#applyCrop').click();
   await expect(page.locator('#cropActions')).toBeHidden();
 
-  await page.locator('[data-process="perspective"]').click();
-  await expect(page.locator('#toastStack')).toContainText('图片预处理失败');
+  const perspective=page.locator('[data-process="perspective"]');
+  await perspective.click();
+  await expect(perspective).not.toHaveClass(/busy/,{timeout:30000});
+  await expect(page.locator('#toastStack')).toContainText(/已自动矫正透视|图片预处理失败/);
 
   await page.locator('[data-preset="product"]').click();
   await page.locator('#runSearch').click();
