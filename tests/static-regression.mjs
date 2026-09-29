@@ -40,8 +40,12 @@ for(const domain of ['bing.com','yandex.com','tineye.com','saucenao.com','trace.
 assert(app.includes('function engineBrand'),'brand renderer missing');
 assert(app.includes('execution-engine-brand'),'execution modal must use engine brands');
 assert(!app.includes('images/searchbyimage/upload'),'obsolete Bing upload URL returned');
-assert(!/window\.open\s*\(/.test(app),'script popups must not be used');
-assert(app.includes('data-execution-link'),'native execution links missing');
+const popupCalls=[...app.matchAll(/window\.open\s*\(([^\n;]+)/g)].map(m=>m[1]);
+assert(popupCalls.length<=2,'unexpected script popup calls');
+assert(popupCalls.every(x=>x.includes("'about:blank'")||x.includes("target,'_blank','noopener,noreferrer'")),'execution flow may only pre-open a user-clicked blank tab or use explicit fallback');
+assert(app.includes('function openExecutionEngine'),'dynamic execution opener missing');
+assert(app.includes('data-execution-open'),'click-time execution controls missing');
+assert(!app.includes('data-execution-link'),'stale fixed execution links must not remain');
 assert(app.includes('batch-links'),'batch results must be native links');
 assert(app.includes("id:'industrial'"),'industrial product preset missing');
 assert(html.includes('1–6 快速切换'),'preset shortcut copy is stale');
