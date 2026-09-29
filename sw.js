@@ -7,3 +7,4 @@ self.addEventListener('fetch',event=>{
   if(req.method!=='GET'||new URL(req.url).origin!==location.origin)return;
   event.respondWith(fetch(req).then(res=>{const copy=res.clone();caches.open(CACHE).then(c=>c.put(req,copy));return res;}).catch(()=>caches.match(req).then(r=>r||caches.match('/index.html'))));
 });
+self.addEventListener('message',event=>{if(event.data?.type==='SKIP_WAITING')self.skipWaiting()});
