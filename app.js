@@ -486,8 +486,8 @@
     const needsManual=engines.some(e=>!(publicUrl&&e.direct));
     const copied=needsManual?await quietCopy():true;
     const statuses=engines.map(e=>{
-      const direct=!!(publicUrl&&e.direct),url=engineTarget(e,publicUrl);
-      return{id:e.id,name:e.name,direct,copied,status:'ready',url}
+      const direct=!!(publicUrl&&e.direct);
+      return{id:e.id,name:e.name,direct,copied,status:'ready'}
     });
     renderExecution(statuses);
     const manualCount=statuses.filter(x=>!x.direct).length;
@@ -497,7 +497,30 @@
     els.runSearch.classList.remove('busy');els.runSearch.querySelector('span').textContent='搜索所选引擎'
   }
   function renderExecution(items){
-    els.executionList.innerHTML=items.map(x=>{const e=allEngines().find(v=>v.id===x.id);return `<div class="execution-row" data-execution-id="${escapeHtml(x.id)}"><span class="execution-engine-brand">${e?engineBrand(e):icon('search')}</span><div><b>${escapeHtml(x.name)}</b><small>${x.direct?'直接使用临时图片 URL':x.copied?'图片已复制；打开后可直接粘贴':'请先复制图片，再打开上传/粘贴'}</small></div><span class="status-pill ready">待打开</span><div class="execution-actions">${x.direct?'':`<button class="secondary-btn compact" data-copy-execution>${icon('copy')}复制图片</button>`}<a class="secondary-btn compact execution-link" href="${escapeHtml(x.url)}" target="_blank" rel="noopener noreferrer" data-execution-link>打开</a></div></div>`}).join('')
+    els.executionList.innerHTML=items.map(x=>{const e=allEngines().find(v=>v.id===x.id);return `<div class="execution-row" data-execution-id="${escapeHtml(x.id)}"><span class="execution-engine-brand">${e?engineBrand(e):icon('search')}</span><div><b>${escapeHtml(x.name)}</b><small>${x.direct?'点击时重新校验图片链接，过期会自动刷新':x.copied?'图片已复制；打开后可直接粘贴':'请先复制图片，再打开上传/粘贴'}</small></div><span class="status-pill ready">待打开</span><div class="execution-actions">${x.direct?'':`<button class="secondary-btn compact" data-copy-execution>${icon('copy')}复制图片</button>`}<button class="secondary-btn compact execution-link" type="button" data-execution-open>打开</button></div></div>`}).join('')
+  }
+  async function openExecutionEngine(row){
+    const id=row?.dataset.executionId,engine=allEngines().find(x=>x.id===id);if(!engine)return;
+    const btn=row.querySelector('[data-execution-open]'),pill=row.querySelector('.status-pill');
+    const popup=window.open('about:blank','_blank');
+    if(btn){btn.disabled=true;btn.textContent='正在准备…'}if(pill){pill.className='status-pill ready';pill.textContent='校验中'}
+    try{
+      let target=engine.uploadPage;
+      if(engine.direct){
+        const publicUrl=await ensurePublicUrl({silent:false});
+        if(publicUrl)target=engineTarget(engine,publicUrl);
+        else{
+          const copied=await quietCopy();
+          if(!copied)toast('图片直链不可用','已打开上传页，请手动选择图片。','error');
+        }
+      }else await quietCopy();
+      if(popup&&!popup.closed)popup.location.replace(target);else window.open(target,'_blank','noopener,noreferrer');
+      if(pill){pill.className='status-pill opened';pill.textContent='已打开'}if(btn)btn.textContent='再次打开'
+    }catch(err){
+      if(popup&&!popup.closed)popup.close();
+      if(pill){pill.className='status-pill ready';pill.textContent='打开失败'}if(btn)btn.textContent='重试';
+      toast('搜索页打开失败',err?.message||'请重试。','error')
+    }finally{if(btn)btn.disabled=false}
   }
   async function prepareSingleEngine(id){
     const engine=allEngines().find(x=>x.id===id);
@@ -508,7 +531,7 @@
     const publicUrl=await ensurePublicUrl({silent:true});
     const direct=!!(publicUrl&&engine.direct);
     const copied=direct?true:await quietCopy();
-    const item={id:engine.id,name:engine.name,direct,copied,status:'ready',url:engineTarget(engine,publicUrl)};
+    const item={id:engine.id,name:engine.name,direct,copied,status:'ready'};
     renderExecution([item]);
     els.executionSummary.textContent=`1 个结果已准备 · ${direct?'可直连':'需手动上传'}${!direct&&copied?' · 图片已复制':''}`;
   }
@@ -606,9 +629,8 @@ els.federatedSearchBtn.onclick=federatedProductSearch;if(els.supplierSearchBtn)e
     els.executionList.onclick=async e=>{
       const copy=e.target.closest('[data-copy-execution]');
       if(copy){const done=await quietCopy();copy.innerHTML=done?`${icon('check')}已复制`:`${icon('info')}复制失败`;if(!done)toast('复制失败','浏览器没有授予剪贴板写入权限，可在目标页面手动选择文件。','error');return}
-      const a=e.target.closest('[data-execution-link]');if(!a)return;
-      const row=a.closest('.execution-row'),pill=row?.querySelector('.status-pill'),stateIcon=row?.querySelector('.execution-state');
-      if(pill){pill.className='status-pill opened';pill.textContent='已点击'}if(stateIcon)stateIcon.className='execution-state opened';a.textContent='再次打开'
+      const open=e.target.closest('[data-execution-open]');if(!open)return;
+      await openExecutionEngine(open.closest('.execution-row'))
     };
     els.clearHistory.onclick=()=>{state.history=[];localStorage.removeItem(KEYS.history);renderHistory();toast('历史记录已清空','','ok')};els.historyContent.onclick=e=>{const d=e.target.closest('[data-del-history]');if(d){state.history=state.history.filter(x=>x.id!==d.dataset.delHistory);writeJson(KEYS.history,state.history);renderHistory()}const r=e.target.closest('[data-rerun-history]');if(r)restoreHistory(r.dataset.rerunHistory);const n=e.target.closest('[data-nav]');if(n)setView(n.dataset.nav)};
     els.projectsContent.onclick=e=>{const o=e.target.closest('[data-open-project]');if(o)restoreProject(o.dataset.openProject);const d=e.target.closest('[data-del-project]');if(d){state.projects=state.projects.filter(x=>x.id!==d.dataset.delProject);writeJson(KEYS.projects,state.projects);renderProjects()}const u=e.target.closest('[data-use-fav]');if(u){const q=state.favorites[Number(u.dataset.useFav)];if(q){setView('search');state.analysis.queries=[q];els.researchPanel.classList.remove('hidden');renderAnalysis();toast('收藏搜索词已载入',q,'ok')}}const f=e.target.closest('[data-del-fav]');if(f){state.favorites.splice(Number(f.dataset.delFav),1);writeJson(KEYS.favorites,state.favorites);renderProjects()}const rf=e.target.closest('[data-del-result-fav]');if(rf){state.universalFavorites.splice(Number(rf.dataset.delResultFav),1);writeJson(KEYS.universalFavorites,state.universalFavorites);renderProjects()}};els.clearProjects.onclick=()=>{state.projects=[];writeJson(KEYS.projects,[]);renderProjects()};
