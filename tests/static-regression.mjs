@@ -11,6 +11,7 @@ const config=read('config.js');
 const sw=read('sw.js');
 const build=read('build-static.mjs');
 const manifest=JSON.parse(read('extension/manifest.json'));
+const pkg=JSON.parse(read('package.json'));
 const extBg=read('extension/background.js');
 const extPopup=read('extension/popup.js');
 const collector=read('extension/collector.js');
@@ -57,6 +58,11 @@ assert(css.includes('.engine-brand img'),'engine brand image CSS missing');
 assert(css.includes('.execution-engine-brand'),'execution brand CSS missing');
 assert(v9css.includes('#researchHubView'),'V9 research CSS missing');
 assert(v9.includes('SOUTU_V9')||v9.includes('V9_VERSION'),'V9 runtime marker missing');
+assert(v9.includes(`const V9_VERSION = '${pkg.version}';`),'V9 runtime/package version mismatch');
+assert(html.includes(`?v=${pkg.version}`),'frontend cache-bust version mismatch');
+assert(sw.includes('soutu-pro-v9-1-1-shell'),'service worker cache version stale');
+assert(app.includes("https://s.globalsources.com/favicon.ico"),'Global Sources must use working official favicon host');
+assert(css.includes('.engine-brand img{display:block;width:32px;height:32px'),'official engine logos must be visually primary');
 
 console.log(JSON.stringify({
   passed:true,
