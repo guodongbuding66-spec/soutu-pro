@@ -482,17 +482,11 @@
     els.runSearch.classList.add('busy');els.runSearch.querySelector('span').textContent='准备搜索…';
     const engines=allEngines().filter(e=>state.selected.includes(e.id));
     openModal('executionModal');els.executionList.innerHTML='';
-    const publicUrl=await ensurePublicUrl({silent:true});
-    const needsManual=engines.some(e=>!(publicUrl&&e.direct));
-    const copied=needsManual?await quietCopy():true;
-    const statuses=engines.map(e=>{
-      const direct=!!(publicUrl&&e.direct);
-      return{id:e.id,name:e.name,direct,copied,status:'ready'}
-    });
+    await ensurePublicUrl({silent:true});
+    const statuses=engines.map(e=>({id:e.id,name:e.name,direct:typeof e.direct==='function',copied:false,status:'ready'}));
     renderExecution(statuses);
     const manualCount=statuses.filter(x=>!x.direct).length;
-    els.executionSummary.textContent=`${statuses.length} 个结果已准备 · ${manualCount} 个需手动上传${manualCount?(copied?' · 图片已复制':' · 请点击“复制图片”'):''}`;
-    if(state.tempUnavailableReason&&needsManual)toast('已切换到手动上传模式',copied?'图片已复制；逐个打开后直接粘贴/上传。':'浏览器未允许自动复制；请在手动引擎行点击“复制图片”。');
+    els.executionSummary.textContent=`${statuses.length} 个结果已准备 · ${statuses.length-manualCount} 个可一键直连 · ${manualCount} 个需手动上传`;
     if(!state.privacy)await addHistory();
     els.runSearch.classList.remove('busy');els.runSearch.querySelector('span').textContent='搜索所选引擎'
   }
@@ -508,12 +502,12 @@
       let target=engine.uploadPage;
       if(engine.direct){
         const publicUrl=await ensurePublicUrl({silent:false});
-        if(publicUrl)target=engineTarget(engine,publicUrl);
-        else{
-          const copied=await quietCopy();
-          if(!copied)toast('图片直链不可用','已打开上传页，请手动选择图片。','error');
-        }
-      }else await quietCopy();
+        if(!publicUrl)throw new Error(state.tempUnavailableReason||'临时图片服务不可用，无法生成直连搜索地址。');
+        target=engineTarget(engine,publicUrl);
+      }else{
+        const copied=await quietCopy();
+        if(!copied)throw new Error('浏览器未允许复制图片，请手动选择文件。');
+      }
       if(popup&&!popup.closed)popup.location.replace(target);else window.open(target,'_blank','noopener,noreferrer');
       if(pill){pill.className='status-pill opened';pill.textContent='已打开'}if(btn)btn.textContent='再次打开'
     }catch(err){
@@ -528,12 +522,11 @@
     openModal('executionModal');
     els.executionSummary.textContent='正在准备单引擎搜索…';
     els.executionList.innerHTML='<div class="loading-block"><span class="spinner"></span>正在准备临时图片链接…</div>';
-    const publicUrl=await ensurePublicUrl({silent:true});
-    const direct=!!(publicUrl&&engine.direct);
-    const copied=direct?true:await quietCopy();
-    const item={id:engine.id,name:engine.name,direct,copied,status:'ready'};
+    await ensurePublicUrl({silent:true});
+    const direct=typeof engine.direct==='function';
+    const item={id:engine.id,name:engine.name,direct,copied:false,status:'ready'};
     renderExecution([item]);
-    els.executionSummary.textContent=`1 个结果已准备 · ${direct?'可直连':'需手动上传'}${!direct&&copied?' · 图片已复制':''}`;
+    els.executionSummary.textContent=`1 个结果已准备 · ${direct?'可一键直连':'需手动上传'}`;
   }
   async function addHistory(){let thumb='';try{thumb=await makeThumb(activeUrl())}catch{}const item={id:uid(),thumb,createdAt:Date.now(),label:state.source.name,preset:state.preset,engines:[...state.selected],source:state.source.kind,query:primaryQuery()};state.history=[item,...state.history].slice(0,30);if(!writeJson(KEYS.history,state.history)){state.history=state.history.slice(0,12).map((x,i)=>i<4?x:{...x,thumb:''});writeJson(KEYS.history,state.history)}}
   async function makeThumb(url){const img=await loadImageSafe(url);const c=document.createElement('canvas'),max=180,s=Math.min(1,max/Math.max(img.naturalWidth,img.naturalHeight));c.width=Math.max(1,Math.round(img.naturalWidth*s));c.height=Math.max(1,Math.round(img.naturalHeight*s));c.getContext('2d').drawImage(img,0,0,c.width,c.height);return c.toDataURL('image/jpeg',.72)}
