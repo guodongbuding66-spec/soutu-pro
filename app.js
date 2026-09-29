@@ -195,7 +195,7 @@
         if(kind==='sharpen'){const src=new Uint8ClampedArray(d),w=c.width,h=c.height,k=[0,-1,0,-1,5,-1,0,-1,0];for(let y=1;y<h-1;y++)for(let x=1;x<w-1;x++){for(let ch=0;ch<3;ch++){let sum=0,ki=0;for(let yy=-1;yy<=1;yy++)for(let xx=-1;xx<=1;xx++,ki++)sum+=src[((y+yy)*w+x+xx)*4+ch]*k[ki];d[(y*w+x)*4+ch]=clamp(sum)}}ctx.putImageData(data,0,0)}
         if(kind==='autocrop'){const box=findContentBounds(d,c.width,c.height);if(box){const out=document.createElement('canvas');out.width=box.w;out.height=box.h;out.getContext('2d').drawImage(c,box.x,box.y,box.w,box.h,0,0,box.w,box.h);c=out}}
       }
-      if(kind==='perspective'){c=await autoPerspectiveCanvas(c)}
+      if(kind==='perspective'){c=await withTimeout(autoPerspectiveCanvas(c),12000,'Perspective correction')}
       state.processedUrl=c.toDataURL('image/png');state.useProcessed=true;await deleteTempLink();syncWorkbench();clearAnalysis();const names={autocrop:'已自动裁掉白边',contrast:'已增强对比度',sharpen:'已锐化',edge:'已生成线稿增强',perspective:'已自动矫正透视',upscale:'已放大 2×'};toast(names[kind]||'处理完成','原图仍可随时切换回来。','ok')
     }catch{toast('图片预处理失败','远程图片可能受跨域限制。','error')}finally{button?.classList.remove('busy')}
   }
