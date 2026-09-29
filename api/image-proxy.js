@@ -9,7 +9,18 @@ function privateIp(ip) {
     return p[0]===10||p[0]===127||p[0]===0||(p[0]===169&&p[1]===254)||(p[0]===172&&p[1]>=16&&p[1]<=31)||(p[0]===192&&p[1]===168)||(p[0]===100&&p[1]>=64&&p[1]<=127)||(p[0]>=224);
   }
   if (net.isIP(ip) === 6) {
-    const x=ip.toLowerCase();return x==='::1'||x==='::'||x.startsWith('fc')||x.startsWith('fd')||x.startsWith('fe8')||x.startsWith('fe9')||x.startsWith('fea')||x.startsWith('feb');
+    const x=ip.toLowerCase();
+    if(x.startsWith('::ffff:')){
+      const mapped=x.slice(7);
+      if(net.isIP(mapped)===4)return privateIp(mapped);
+      const hex=mapped.split(':');
+      if(hex.length===2){
+        const hi=parseInt(hex[0],16),lo=parseInt(hex[1],16);
+        if(Number.isFinite(hi)&&Number.isFinite(lo))return privateIp(`${hi>>8}.${hi&255}.${lo>>8}.${lo&255}`);
+      }
+      return true;
+    }
+    return x==='::1'||x==='::'||x.startsWith('fc')||x.startsWith('fd')||x.startsWith('fe8')||x.startsWith('fe9')||x.startsWith('fea')||x.startsWith('feb')||x.startsWith('ff');
   }
   return true;
 }
