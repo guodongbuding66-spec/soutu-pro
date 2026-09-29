@@ -288,6 +288,20 @@ test('V9 universal search: modes, filters, waterfall, favorites and history rest
   await expect(page.locator('.universal-result-card')).toHaveCount(1);
   await expect(page.locator('#universalMeta')).toContainText('1 条结果');
   await expect(page.locator('.universal-result-card')).toContainText('Garden Shed Original');
+  await expect(page.locator('.universal-evidence-badges')).toContainText('1600×1200');
+  await expect(page.locator('.universal-evidence-badges')).toContainText('CC0');
+  await expect(page.locator('.universal-confidence')).toContainText('%');
+
+  await page.locator('#universalType').selectOption('all');
+  await page.locator('#universalResolution').selectOption('1');
+  await expect(page.locator('.universal-result-card')).toHaveCount(1);
+  await page.locator('#universalLicense').selectOption('public-domain');
+  await expect(page.locator('.universal-result-card')).toHaveCount(1);
+  await page.locator('#universalResolution').selectOption('all');
+  await page.locator('#universalLicense').selectOption('all');
+  await expect(page.locator('.universal-result-card')).toHaveCount(2);
+  await page.locator('#universalType').selectOption('image');
+  await expect(page.locator('.universal-result-card')).toHaveCount(1);
 
   await page.locator('[data-favorite-result]').click();
   await expect(page.locator('[data-favorite-result]')).toContainText('已收藏');
