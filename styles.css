@@ -331,3 +331,7 @@ html[data-theme="dark"] .engine-card[data-tone] .engine-mark{border-color:var(--
 
 .universal-evidence-badges{display:flex!important;justify-content:flex-start!important;gap:5px!important;flex-wrap:wrap;margin-top:8px}
 .universal-evidence-badges span{display:inline-flex!important;max-width:100%;padding:4px 6px;border-radius:7px;background:color-mix(in srgb,var(--page) 78%,var(--surface));border:1px solid var(--line);font-size:9px!important;line-height:1;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+.version-badge{padding:5px 8px!important;border:1px solid var(--line)!important;border-radius:8px!important;font-variant-numeric:tabular-nums}
+.update-ready{padding:6px 9px!important;border:1px solid var(--primary)!important;border-radius:8px!important;color:var(--primary)!important;background:var(--primary-soft)!important;font-weight:750!important}
+.update-ready[hidden]{display:none!important}
