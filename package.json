@@ -10,7 +10,7 @@
   "scripts": {
     "dev": "python3 -m http.server 4173",
     "build": "npm run check && node build-static.mjs",
-    "check": "node --check app.js && node --check v9.js && node --check api/temp-token.js && node --check api/product-search.js && node --check api/supplier-search.js && node --check api/cleanup.js && node --check api/image-proxy.js && node --check api/url-status.js && node --check worker/src/index.js && node --check extension/background.js && node --check extension/collector.js && node --check extension/popup.js && node tests/static-regression.mjs"
+    "check": "node --check app.js && node --check v9.js && node --check perspective-worker.js && node --check api/temp-token.js && node --check api/product-search.js && node --check api/supplier-search.js && node --check api/cleanup.js && node --check api/image-proxy.js && node --check api/url-status.js && node --check worker/src/index.js && node --check extension/background.js && node --check extension/collector.js && node --check extension/popup.js && node tests/static-regression.mjs"
   },
   "devDependencies": {
     "jsdom": "26.1.0"
