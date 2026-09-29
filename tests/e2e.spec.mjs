@@ -118,7 +118,15 @@ test('core product flow, local image tools, batch, projects and V9 research',asy
 });
 
 
-test('settings system status exposes version runtime and cache recovery controls',async({page})=>{
+test('settings system status exposes persisted engine and provider health diagnostics',async({page})=>{
+  await page.addInitScript(()=>{
+    localStorage.setItem('soutu-pro-engine-health-v1',JSON.stringify({checkedAt:Date.now(),engines:{google:{state:'ok',status:200},bing:{state:'degraded',status:403}}}));
+    localStorage.setItem('soutu-pro-provider-health-v1',JSON.stringify({checkedAt:Date.now(),providers:[
+      {name:'Openverse',enabled:true,configured:true,count:8},
+      {name:'YouTube',enabled:false,configured:false,count:0,message:'API key not configured'},
+      {name:'Mastodon',enabled:false,configured:true,count:0,message:'Request timed out'}
+    ]}));
+  });
   await page.goto('http://127.0.0.1:4173/',{waitUntil:'domcontentloaded'});
   await page.locator('#settingsBtn').click();
   await expect(page.locator('#settingsModal')).toBeVisible();
@@ -126,7 +134,11 @@ test('settings system status exposes version runtime and cache recovery controls
   await expect(page.locator('#systemStatusGrid')).toContainText('v9.1.3');
   await expect(page.locator('#systemStatusGrid')).toContainText('网络状态');
   await expect(page.locator('#systemStatusGrid')).toContainText('API Providers');
-  await expect(page.locator('#providerHealthDetail')).toContainText('Universal Search');
+  await expect(page.locator('#providerHealthDetail')).toContainText('Openverse');
+  await expect(page.locator('#providerHealthDetail')).toContainText('YouTube');
+  await expect(page.locator('#providerHealthDetail')).toContainText('缺 Key');
+  await expect(page.locator('#providerHealthDetail')).toContainText('Mastodon');
+  await expect(page.locator('#providerHealthDetail')).toContainText('异常');
   await expect(page.locator('#refreshDiagnosticsBtn')).toBeEnabled();
   await expect(page.locator('#resetClientCacheBtn')).toBeEnabled();
   await page.locator('#refreshDiagnosticsBtn').click();
