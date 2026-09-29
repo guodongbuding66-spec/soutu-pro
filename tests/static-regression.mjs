@@ -67,6 +67,9 @@ assert(app.includes(`const APP_VERSION='${pkg.version}';`),'main runtime/package
 assert(html.includes(`id="versionBadge"`)&&html.includes(`v${pkg.version}`),'visible version badge mismatch');
 assert(html.includes(`?v=${pkg.version}`),'frontend cache-bust version mismatch');
 assert(sw.includes(`soutu-pro-v${pkg.version.replaceAll('.','-')}-shell`),'service worker cache version stale');
+assert(sw.includes("url.pathname.startsWith('/api/')"),'service worker must bypass API routes');
+assert(sw.includes("req.mode==='navigate'"),'service worker navigation fallback guard missing');
+assert(!sw.includes("r||caches.match('/index.html')"),'service worker must not HTML-fallback arbitrary GET requests');
 assert(app.includes("https://s.globalsources.com/favicon.ico"),'Global Sources must use working official favicon host');
 assert(css.includes('.engine-brand img{display:block;width:32px;height:32px'),'official engine logos must be visually primary');
 
