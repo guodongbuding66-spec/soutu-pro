@@ -14,7 +14,7 @@ async function jsonFetch(url, options={}, timeout=7000) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeout);
   try {
-    const res = await fetch(url, { ...options, signal: controller.signal, headers: { 'user-agent':'soutu-pro/9.2', ...(options.headers||{}) } });
+    const res = await fetch(url, { ...options, signal: controller.signal, headers: { 'user-agent':'soutu-pro/9', ...(options.headers||{}) } });
     const data = await res.json().catch(() => null);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     return data;
