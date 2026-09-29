@@ -9,11 +9,11 @@
   };
 
   const builtinEngines = [
-    { id:'google', name:'Google Lens', iconUrl:'https://www.google.com/favicon.ico', category:'通用', desc:'商品、文字、地点与相似内容', uploadPage:'https://lens.google.com/', direct:url=>`https://lens.google.com/uploadbyurl?url=${encodeURIComponent(url)}` },
+    { id:'google', name:'Google Lens', iconUrl:'https://www.gstatic.com/images/branding/product/2x/lens_96dp.png', category:'通用', desc:'商品、文字、地点与相似内容', uploadPage:'https://lens.google.com/', direct:url=>`https://lens.google.com/uploadbyurl?url=${encodeURIComponent(url)}` },
     { id:'bing', name:'Bing Visual Search', iconUrl:'https://www.bing.com/favicon.ico', category:'通用', desc:'相似图片、购物与网页结果', uploadPage:'https://www.bing.com/images' },
     { id:'yandex', name:'Yandex Images', iconUrl:'https://yandex.com/favicon.ico', category:'通用', desc:'局部物体与视觉近似匹配', uploadPage:'https://yandex.com/images/', direct:url=>`https://yandex.com/images/search?rpt=imageview&url=${encodeURIComponent(url)}` },
     { id:'tineye', name:'TinEye', iconUrl:'https://tineye.com/favicon.ico', category:'通用', desc:'追踪图片复用、修改版本与来源', uploadPage:'https://tineye.com/', direct:url=>`https://tineye.com/search?url=${encodeURIComponent(url)}` },
-    { id:'google-shopping', name:'Lens · 商品', iconUrl:'https://www.google.com/favicon.ico', category:'商品', desc:'同款、替代品与相关商品页', uploadPage:'https://lens.google.com/', direct:url=>`https://lens.google.com/uploadbyurl?url=${encodeURIComponent(url)}` },
+    { id:'google-shopping', name:'Lens · 商品', iconUrl:'https://www.gstatic.com/images/branding/product/2x/lens_96dp.png', category:'商品', desc:'同款、替代品与相关商品页', uploadPage:'https://lens.google.com/', direct:url=>`https://lens.google.com/uploadbyurl?url=${encodeURIComponent(url)}` },
     { id:'bing-shopping', name:'Bing · 商品', iconUrl:'https://www.bing.com/favicon.ico', category:'商品', desc:'视觉搜索后继续筛购物结果', uploadPage:'https://www.bing.com/images' },
     { id:'saucenao', name:'SauceNAO', iconUrl:'https://saucenao.com/favicon.ico', category:'动漫/插画', desc:'插画与二次元图片来源', uploadPage:'https://saucenao.com/', direct:url=>`https://saucenao.com/search.php?url=${encodeURIComponent(url)}` },
     { id:'trace', name:'trace.moe', iconUrl:'https://trace.moe/favicon.svg', category:'动漫/插画', desc:'动画截图定位作品、集数与时间点', uploadPage:'https://trace.moe/', direct:url=>`https://trace.moe/?url=${encodeURIComponent(url)}` },
@@ -301,7 +301,7 @@
     els.runSearch.classList.remove('busy');els.runSearch.querySelector('span').textContent='搜索所选引擎'
   }
   function renderExecution(items){
-    els.executionList.innerHTML=items.map(x=>`<div class="execution-row" data-execution-id="${escapeHtml(x.id)}"><span class="execution-state ready">${icon('info')}</span><div><b>${escapeHtml(x.name)}</b><small>${x.direct?'直接使用临时图片 URL':x.copied?'图片已复制；打开后可直接粘贴':'请先复制图片，再打开上传/粘贴'}</small></div><span class="status-pill ready">待打开</span><div class="execution-actions">${x.direct?'':`<button class="secondary-btn compact" data-copy-execution>${icon('copy')}复制图片</button>`}<a class="secondary-btn compact execution-link" href="${escapeHtml(x.url)}" target="_blank" rel="noopener noreferrer" data-execution-link>打开</a></div></div>`).join('')
+    els.executionList.innerHTML=items.map(x=>{const e=allEngines().find(v=>v.id===x.id);return `<div class="execution-row" data-execution-id="${escapeHtml(x.id)}"><span class="execution-engine-brand">${e?engineBrand(e):icon('search')}</span><div><b>${escapeHtml(x.name)}</b><small>${x.direct?'直接使用临时图片 URL':x.copied?'图片已复制；打开后可直接粘贴':'请先复制图片，再打开上传/粘贴'}</small></div><span class="status-pill ready">待打开</span><div class="execution-actions">${x.direct?'':`<button class="secondary-btn compact" data-copy-execution>${icon('copy')}复制图片</button>`}<a class="secondary-btn compact execution-link" href="${escapeHtml(x.url)}" target="_blank" rel="noopener noreferrer" data-execution-link>打开</a></div></div>`}).join('')
   }
   async function prepareSingleEngine(id){
     const engine=allEngines().find(x=>x.id===id);
