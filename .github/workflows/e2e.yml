@@ -41,14 +41,16 @@ jobs:
           const fs = require('fs');
           const version = require('./package.json').version;
           const base = 'https://soutu-pro.vercel.app';
-          let current = false;
-          try {
-            const r = await fetch(base + '/?qa=' + Date.now(), { headers: { 'cache-control': 'no-cache' } });
-            const html = await r.text();
-            current = r.ok && html.includes('?v=' + version);
-          } catch {}
-          fs.appendFileSync(process.env.GITHUB_OUTPUT, 'current=' + current + '\n');
-          if (!current) console.log('::warning::Production is not yet on v' + version + '; production verification is deferred, not passed.');
+          (async () => {
+            let current = false;
+            try {
+              const r = await fetch(base + '/?qa=' + Date.now(), { headers: { 'cache-control': 'no-cache' } });
+              const html = await r.text();
+              current = r.ok && html.includes('?v=' + version);
+            } catch {}
+            fs.appendFileSync(process.env.GITHUB_OUTPUT, 'current=' + current + '\n');
+            if (!current) console.log('::warning::Production is not yet on v' + version + '; production verification is deferred, not passed.');
+          })().catch(err => { console.error(err); process.exit(1); });
           NODE
       - name: Production smoke regression
         if: steps.production.outputs.current == 'true'
