@@ -71,6 +71,9 @@ for(const endpoint of ['product-search','supplier-search']){
 r=await get(`${base}/api/temp-token`);
 assert.equal(r.status,405,'temp-token GET must stay disabled');
 
+r=await get(`${base}/api/cleanup`);
+assert.equal(r.status,401,'cleanup must reject unauthenticated requests');
+
 const png=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=','base64');
 r=await get(`${base}/api/temp-token?ttl=5&size=${png.length}&contentType=image/png`,{method:'POST'});
 assert.equal(r.status,200,'Blob token request');
