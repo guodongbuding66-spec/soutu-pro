@@ -10,10 +10,11 @@ export default {
     if(url.pathname==='/api/health')return json({ok:true,storage:'r2'},200,headers);
     if(url.pathname==='/api/upload'&&req.method==='POST'){
       const type=(req.headers.get('content-type')||'').split(';')[0]; if(!type.startsWith('image/'))return json({error:'image_required'},415,headers);
-      const size=Number(req.headers.get('content-length')||0); if(size>20*1024*1024)return json({error:'too_large'},413,headers);
+      const declared=Number(req.headers.get('content-length')||0); if(declared>20*1024*1024)return json({error:'too_large'},413,headers);
+      const body=await req.arrayBuffer(); if(body.byteLength>20*1024*1024)return json({error:'too_large'},413,headers);
       const ttl=Math.max(5,Math.min(120,Number(url.searchParams.get('ttl')||env.DEFAULT_TTL_MINUTES||30)));
       const id=randomId(),key=`temp/${id}.${extFor(type)}`,expiresAt=Date.now()+ttl*60_000;
-      await env.IMAGES.put(key,req.body,{httpMetadata:{contentType:type,cacheControl:'public, max-age=300'},customMetadata:{expiresAt:String(expiresAt)}});
+      await env.IMAGES.put(key,body,{httpMetadata:{contentType:type,cacheControl:'public, max-age=300'},customMetadata:{expiresAt:String(expiresAt)}});
       const publicUrl=`${url.origin}/i/${id}.${extFor(type)}`; const deleteToken=await tokenFor(key,env);
       return json({url:publicUrl,expiresAt,deleteUrl:`${url.origin}/api/image/${encodeURIComponent(key)}?token=${deleteToken}`},201,headers);
     }
@@ -28,7 +29,7 @@ export default {
     }
     // Optional federated product search adapter. Set SERPAPI_KEY as a Worker secret.
     if(url.pathname==='/api/product-search'&&req.method==='GET'){
-      const q=(url.searchParams.get('q')||'').trim(); if(!q)return json({error:'query_required'},400,headers);
+      const q=(url.searchParams.get('q')||'').trim(); if(!q)return json({error:'query_required'},400,headers); if(q.length>240)return json({error:'query_too_long'},400,headers);
       if(!env.SERPAPI_KEY)return json({enabled:false,provider:'serpapi',message:'SERPAPI_KEY is not configured'},501,headers);
       const api=new URL('https://serpapi.com/search.json');api.searchParams.set('engine','google_shopping');api.searchParams.set('q',q);api.searchParams.set('api_key',env.SERPAPI_KEY);api.searchParams.set('hl','en');
       const r=await fetch(api);if(!r.ok)return json({error:'provider_failed',status:r.status},502,headers);const data=await r.json();
