@@ -37,8 +37,8 @@ const expected=['google','bing','yandex','tineye','google-shopping','bing-shoppi
 ok(engineIds.length===expected.length&&expected.every(x=>engineIds.includes(x)),'all 10 built-in engines are present');
 ok(unique(engineIds),'built-in engine ids are unique');
 ok((block.match(/iconUrl:/g)||[]).length===expected.length,'every built-in engine has a brand icon');
-ok((block.match(/direct:url=>/g)||[]).length===expected.length,'every built-in engine supports URL-direct search');
-ok(!block.includes('images/searchbyimage/upload'),'obsolete Bing endpoint is absent');
+ok((block.match(/direct:url=>/g)||[]).length===8,'eight built-in engines support verified URL-direct search; Bing remains manual');
+ok(!block.includes('images/searchbyimage/upload')&&!block.includes('sbisrc=UrlPaste'),'unstable/obsolete Bing deep-link endpoints are absent');
 ok(block.includes('https://trace.moe/?url=')&&block.includes('https://ascii2d.net/search/url/')&&block.includes('https://iqdb.org/?url='),'anime engines use verified direct URL integrations');
 ok(app.includes('engine-brand')&&app.includes('engineBrand(e)'),'engine cards render brand images instead of letter placeholders');
 ok(app.includes("cap==='auto'?'可直连'"),'auto temporary-URL capability is surfaced');
