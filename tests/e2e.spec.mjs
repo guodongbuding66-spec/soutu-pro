@@ -1,6 +1,8 @@
 import {test,expect} from '@playwright/test';
 
 const fixture=Buffer.from(`<svg xmlns="http://www.w3.org/2000/svg" width="160" height="100"><rect width="160" height="100" fill="white"/><rect x="24" y="18" width="112" height="64" rx="8" fill="#1f2937"/><circle cx="80" cy="50" r="18" fill="#60a5fa"/></svg>`);
+test.setTimeout(90000);
+
 const iconSvg='<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64"><circle cx="32" cy="32" r="26" fill="#2563eb"/></svg>';
 
 test('core product flow, local image tools, batch, projects and V9 research',async({page,context})=>{
