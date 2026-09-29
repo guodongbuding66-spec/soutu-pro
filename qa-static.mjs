@@ -83,7 +83,7 @@ ok(styles.includes('.engine-brand img'),'brand icon CSS exists');
 ok(app.includes('marketBrand(m)')&&app.includes('market-brand'),'marketplace cards render real brand icons');
 ok(!app.includes('m.name.slice(0,2)'),'marketplace cards no longer use two-letter brand placeholders');
 ok(!app.includes('e.short||e.name.slice(0,2)'),'engine cards no longer fall back to initial-letter tiles');
-ok(styles.includes('.batch-links a'),'batch native-link CSS exists');
+ok(styles.includes('.batch-links button')||styles.includes('.batch-links [data-open-batch-engine]'),'batch click-time engine button CSS exists');
 
 console.log('Soutu Pro static QA passed:',checks.length,'checks');
 for(const c of checks)console.log('✓',c);
