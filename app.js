@@ -671,6 +671,18 @@ els.federatedSearchBtn.onclick=federatedProductSearch;if(els.supplierSearchBtn)e
   }
 
   async function initFromUrl(){const qs=new URLSearchParams(location.search),image=qs.get('image'),preset=qs.get('preset'),mode=qs.get('mode');if(preset&&presets.some(p=>p.id===preset))choosePreset(preset,false);if(image){els.urlInput.value=image;await acceptUrl(image);if(mode==='supplier'){await analyzeImage();await federatedSupplierSearch()}}}
+  function guardVersionMismatch(){
+    const docVersion=document.querySelector('meta[name="soutu-version"]')?.content||'';
+    if(!docVersion||docVersion===APP_VERSION)return false;
+    const key='soutu-version-recovery';
+    if(sessionStorage.getItem(key)===docVersion)return false;
+    sessionStorage.setItem(key,docVersion);
+    Promise.all([
+      'caches'in window?caches.keys().then(keys=>Promise.all(keys.filter(k=>k.startsWith('soutu-pro-')).map(k=>caches.delete(k)))):Promise.resolve(),
+      'serviceWorker'in navigator?navigator.serviceWorker.getRegistrations().then(rs=>Promise.all(rs.map(r=>r.update().catch(()=>{})))):Promise.resolve()
+    ]).finally(()=>location.replace(location.pathname+`?refresh=${Date.now()}`+location.hash));
+    return true
+  }
   function initPwa(){
     if(els.versionBadge)els.versionBadge.textContent=`v${APP_VERSION}`;
     if(!('serviceWorker'in navigator))return;
@@ -698,6 +710,6 @@ els.federatedSearchBtn.onclick=federatedProductSearch;if(els.supplierSearchBtn)e
     choosePreset:id=>choosePreset(id),
     makeThumb:url=>makeThumb(url)
   };
-  function init(){applyTheme(localStorage.getItem('soutu-theme')==='dark',true);initSettings();renderPresets();renderEngines();renderAnalysis();renderMarketplaces();renderHistory();renderProjects();renderBatch();syncSearchButton();syncTempCard();bind();initPwa();initFromUrl();}
+  function init(){if(guardVersionMismatch())return;applyTheme(localStorage.getItem('soutu-theme')==='dark',true);initSettings();renderPresets();renderEngines();renderAnalysis();renderMarketplaces();renderHistory();renderProjects();renderBatch();syncSearchButton();syncTempCard();bind();initPwa();initFromUrl();}
   init();
 })();
