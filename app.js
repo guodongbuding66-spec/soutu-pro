@@ -74,7 +74,7 @@
     projects:readJson(KEYS.projects,[]), favorites:readJson(KEYS.favorites,[]), universalFavorites:readJson(KEYS.universalFavorites,[]), settings:{...defaultSettings,...readJson(KEYS.settings,{})},
     analysis:{ocr:'',labels:[],barcodes:[],objects:[],queries:[],running:false}, tempLink:null, tempTimer:null, tempUnavailableReason:'', tempUnavailableAt:0, forceTempLink:false, engineHealth:cachedEngineHealth.engines||{}, engineHealthCheckedAt:Number(cachedEngineHealth.checkedAt)||0, providerHealth:cachedProviderHealth.providers||[], providerHealthCheckedAt:Number(cachedProviderHealth.checkedAt)||0,
     batch:[], view:'search', installPrompt:null, presetTouched:false,
-    universal:{mode:'all',platform:'all',country:'all',language:'all',time:'all',type:'all',resolution:'all',license:'all',sort:'auto',rawResults:[],results:[],providers:[],query:'',expanded:[],selected:new Set(),grouped:false,timeline:false,clusterFocus:null}
+    universal:{mode:'all',platform:'all',country:'all',language:'all',time:'all',type:'all',resolution:'all',license:'all',sort:'auto',rawResults:[],results:[],providers:[],query:'',expanded:[],selected:new Set(),grouped:false,visualGrouped:false,timeline:false,clusterFocus:null,visualClusterFocus:null,visualGroups:{}}
   };
 
   const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
@@ -84,7 +84,7 @@
     previewImg:$('#previewImg'),imageStage:$('#imageStage'),cropShade:$('#cropShade'),cropBox:$('#cropBox'),cropActions:$('#cropActions'),applyCrop:$('#applyCrop'),cropReset:$('#cropReset'),
     cropBtn:$('#cropBtn'),rotateBtn:$('#rotateBtn'),flipBtn:$('#flipBtn'),copyBtn:$('#copyBtn'),downloadBtn:$('#downloadBtn'),removeBtn:$('#removeBtn'),
     fileName:$('#fileName'),sourceKind:$('#sourceKind'),dims:$('#dims'),format:$('#format'),size:$('#size'),metaTip:$('#metaTip'),sourceToggle:$('#sourceToggle'),
-    analyzeBtn:$('#analyzeBtn'),researchPanel:$('#researchPanel'),reanalyzeBtn:$('#reanalyzeBtn'),saveProjectBtn:$('#saveProjectBtn'),batchObjectsBtn:$('#batchObjectsBtn'),ocrStatus:$('#ocrStatus'),ocrOutput:$('#ocrOutput'),visionStatus:$('#visionStatus'),visionOutput:$('#visionOutput'),barcodeStatus:$('#barcodeStatus'),barcodeOutput:$('#barcodeOutput'),objectsStatus:$('#objectsStatus'),objectsOutput:$('#objectsOutput'),recommendationOutput:$('#recommendationOutput'),queryList:$('#queryList'),addQueryBtn:$('#addQueryBtn'),marketplaceGrid:$('#marketplaceGrid'),federatedSearchBtn:$('#federatedSearchBtn'),supplierSearchBtn:$('#supplierSearchBtn'),mediaSearchBtn:$('#mediaSearchBtn'),productResults:$('#productResults'),universalModes:$('#universalModes'),universalPlatform:$('#universalPlatform'),universalCountry:$('#universalCountry'),universalLanguage:$('#universalLanguage'),universalTime:$('#universalTime'),universalType:$('#universalType'),universalResolution:$('#universalResolution'),universalLicense:$('#universalLicense'),keywordExpansion:$('#keywordExpansion'),expandKeywordsBtn:$('#expandKeywordsBtn'),batchOpenSourcesBtn:$('#batchOpenSourcesBtn'),universalSearchBtn:$('#universalSearchBtn'),universalMeta:$('#universalMeta'),universalResearchbar:$('#universalResearchbar'),universalResearchStats:$('#universalResearchStats'),universalSort:$('#universalSort'),universalClusterBtn:$('#universalClusterBtn'),universalTimelineBtn:$('#universalTimelineBtn'),universalSelectAllBtn:$('#universalSelectAllBtn'),universalSaveSelectedBtn:$('#universalSaveSelectedBtn'),universalExportBtn:$('#universalExportBtn'),universalExportJsonBtn:$('#universalExportJsonBtn'),universalResearchBtn:$('#universalResearchBtn'),universalInsights:$('#universalInsights'),
+    analyzeBtn:$('#analyzeBtn'),researchPanel:$('#researchPanel'),reanalyzeBtn:$('#reanalyzeBtn'),saveProjectBtn:$('#saveProjectBtn'),batchObjectsBtn:$('#batchObjectsBtn'),ocrStatus:$('#ocrStatus'),ocrOutput:$('#ocrOutput'),visionStatus:$('#visionStatus'),visionOutput:$('#visionOutput'),barcodeStatus:$('#barcodeStatus'),barcodeOutput:$('#barcodeOutput'),objectsStatus:$('#objectsStatus'),objectsOutput:$('#objectsOutput'),recommendationOutput:$('#recommendationOutput'),queryList:$('#queryList'),addQueryBtn:$('#addQueryBtn'),marketplaceGrid:$('#marketplaceGrid'),federatedSearchBtn:$('#federatedSearchBtn'),supplierSearchBtn:$('#supplierSearchBtn'),mediaSearchBtn:$('#mediaSearchBtn'),productResults:$('#productResults'),universalModes:$('#universalModes'),universalPlatform:$('#universalPlatform'),universalCountry:$('#universalCountry'),universalLanguage:$('#universalLanguage'),universalTime:$('#universalTime'),universalType:$('#universalType'),universalResolution:$('#universalResolution'),universalLicense:$('#universalLicense'),keywordExpansion:$('#keywordExpansion'),expandKeywordsBtn:$('#expandKeywordsBtn'),batchOpenSourcesBtn:$('#batchOpenSourcesBtn'),universalSearchBtn:$('#universalSearchBtn'),universalMeta:$('#universalMeta'),universalResearchbar:$('#universalResearchbar'),universalResearchStats:$('#universalResearchStats'),universalSort:$('#universalSort'),universalClusterBtn:$('#universalClusterBtn'),universalVisualClusterBtn:$('#universalVisualClusterBtn'),universalTimelineBtn:$('#universalTimelineBtn'),universalSelectAllBtn:$('#universalSelectAllBtn'),universalSaveSelectedBtn:$('#universalSaveSelectedBtn'),universalExportBtn:$('#universalExportBtn'),universalExportJsonBtn:$('#universalExportJsonBtn'),universalResearchBtn:$('#universalResearchBtn'),universalInsights:$('#universalInsights'),
     tempLinkCard:$('#tempLinkCard'),tempLinkStatus:$('#tempLinkStatus'),tempLinkBtn:$('#tempLinkBtn'),
     presetGrid:$('#presetGrid'),engineGroups:$('#engineGroups'),engineHint:$('#engineHint'),engineSummary:$('#engineSummary'),selectedCount:$('#selectedCount'),runSearch:$('#runSearch'),privacyMode:$('#privacyMode'),customBtn:$('#customBtn'),engineHealthBtn:$('#engineHealthBtn'),engineHealthSummary:$('#engineHealthSummary'),
     historyContent:$('#historyContent'),clearHistory:$('#clearHistory'),projectsContent:$('#projectsContent'),clearProjects:$('#clearProjects'),
@@ -390,9 +390,47 @@
     const domains=new Set(list.map(universalDomain).filter(Boolean)).size,authors=new Set(list.map(x=>x.author).filter(Boolean)).size,hi=list.filter(x=>universalPixels(x)>=1000000).length;
     els.universalResearchStats.innerHTML=`<span><b>${list.length}</b>结果</span><span><b>${domains}</b>域名</span><span><b>${authors}</b>作者</span><span><b>${hi}</b>≥1MP</span><span><b>${state.universal.selected.size}</b>已选</span>`;
   }
+  function universalResultKey(x){return x.link||x.url||x.title||''}
+  function universalBitDistance(a='',b=''){if(!a||!b||a.length!==b.length)return 1;let d=0;for(let i=0;i<a.length;i++)if(a[i]!==b[i])d++;return d/a.length}
+  function universalVisualSimilarity(a,b){
+    if(!a||!b)return 0;
+    const dh=1-universalBitDistance(a.dhash,b.dhash),eh=1-universalBitDistance(a.edgehash,b.edgehash);
+    return dh*.68+eh*.32
+  }
+  async function buildUniversalVisualGroups(){
+    if(typeof window.SOUTU_V9_FINGERPRINT!=='function')throw new Error('V9 图像指纹模块尚未就绪');
+    const candidates=state.universal.results.filter(x=>x.thumbnail).slice(0,24);
+    if(candidates.length<2)throw new Error('至少需要 2 条带缩略图的结果');
+    const btn=els.universalVisualClusterBtn;if(btn){btn.disabled=true;btn.innerHTML=`${icon('image')}计算中…`}
+    try{
+      const feats=[];
+      for(const x of candidates){
+        let feature=null;try{feature=await withTimeout(window.SOUTU_V9_FINGERPRINT(x.thumbnail),10000,'fingerprint')}catch{}
+        if(feature?.dhash)feats.push({key:universalResultKey(x),title:x.title||'未命名',feature})
+      }
+      if(feats.length<2)throw new Error('可读取的结果缩略图不足');
+      const groups=[];
+      for(const item of feats){
+        let best=null,bestScore=0;
+        for(const g of groups){const score=universalVisualSimilarity(item.feature,g[0].feature);if(score>bestScore){best=g;bestScore=score}}
+        if(best&&bestScore>=.84)best.push(item);else groups.push([item])
+      }
+      const map={};groups.forEach((g,i)=>g.forEach(x=>map[x.key]=`visual-${i}`));
+      state.universal.visualGroups=map;state.universal.visualGrouped=true;state.universal.grouped=false;state.universal.timeline=false;state.universal.visualClusterFocus=null;
+      renderUniversalResults(state.universal.rawResults,state.universal.providers||[]);
+      toast('视觉归组完成',`已分析 ${feats.length} 张缩略图 · ${groups.filter(g=>g.length>1).length} 个相似组`,'ok')
+    }finally{if(btn){btn.disabled=false;btn.innerHTML=`${icon('image')}视觉归组`;btn.classList.toggle('active',state.universal.visualGrouped)}}
+  }
   function renderUniversalInsights(list){
     if(!els.universalInsights)return;
     if(!list.length){els.universalInsights.classList.add('hidden');els.universalInsights.innerHTML='';return}
+    if(state.universal.visualGrouped){
+      const map=new Map();list.forEach(x=>{const id=state.universal.visualGroups[universalResultKey(x)];if(!id)return;if(!map.has(id))map.set(id,[]);map.get(id).push(x)});
+      const groups=[...map.values()].filter(g=>g.length>1).sort((a,b)=>b.length-a.length).slice(0,12);
+      els.universalInsights.classList.remove('hidden');
+      els.universalInsights.innerHTML=`<div class="universal-insight-head"><b>视觉相似归组</b><span>基于 dHash + edge hash；仅用于相似候选，不等于同一原图判定</span></div><div class="universal-clusters visual">${groups.length?groups.map((g,i)=>`<button data-visual-cluster-key="${escapeHtml(state.universal.visualGroups[universalResultKey(g[0])])}"><b>视觉组 ${i+1}</b><span>${g.length} 条</span><small>${escapeHtml(g.slice(0,3).map(x=>x.title).join(' / ').slice(0,110))}</small></button>`).join(''):'<p>当前结果未发现达到阈值的视觉相似组。</p>'}</div>`;
+      return;
+    }
     if(state.universal.timeline){
       const dated=list.filter(universalDate).slice().sort((a,b)=>universalDate(a)-universalDate(b));
       els.universalInsights.classList.remove('hidden');
@@ -432,7 +470,7 @@
   }
 
   function renderUniversalResults(items=null,providers=[]){
-    if(Array.isArray(items)&&items!==state.universal.rawResults){state.universal.rawResults=items.slice();state.universal.selected=new Set();state.universal.clusterFocus=null}
+    if(Array.isArray(items)&&items!==state.universal.rawResults){state.universal.rawResults=items.slice();state.universal.selected=new Set();state.universal.clusterFocus=null;state.universal.visualClusterFocus=null;state.universal.visualGroups={};state.universal.visualGrouped=false}
     let list=universalAnnotated(state.universal.rawResults.slice());if(state.universal.platform!=='all')list=list.filter(x=>providerSlug(x.provider||x.source||'')===state.universal.platform||String(x.platformId||'')===state.universal.platform);
     if(state.universal.type!=='all')list=list.filter(x=>(x.type||'').toLowerCase()===state.universal.type);
     if(state.universal.resolution!=='all'){const min=Number(state.universal.resolution)*1000000;list=list.filter(x=>universalPixels(x)>=min)}
@@ -444,6 +482,7 @@
     }
     const seen=new Set();list=list.filter(x=>{const k=(x.link||x.url||'')+'|'+(x.title||'');if(seen.has(k))return false;seen.add(k);return true});
     if(state.universal.clusterFocus)list=list.filter(x=>x._cluster===state.universal.clusterFocus);
+    if(state.universal.visualClusterFocus)list=list.filter(x=>state.universal.visualGroups[universalResultKey(x)]===state.universal.visualClusterFocus);
     const px=x=>(Number(x?.meta?.width)||0)*(Number(x?.meta?.height)||0),date=x=>{const t=Date.parse(x?.publishedAt||'');return Number.isFinite(t)?t:Number.MAX_SAFE_INTEGER};
     if(state.universal.sort==='evidence')list.sort((a,b)=>(b._sourceScore||0)-(a._sourceScore||0)||px(b)-px(a));
     else if(state.universal.sort==='newest')list.sort((a,b)=>date(b)-date(a)||px(b)-px(a));
@@ -721,13 +760,14 @@
     els.analyzeBtn.onclick=analyzeImage;els.reanalyzeBtn.onclick=analyzeImage;els.saveProjectBtn.onclick=saveProject;if(els.batchObjectsBtn)els.batchObjectsBtn.onclick=addDetectedObjectsToBatch;if(els.engineHealthBtn)els.engineHealthBtn.onclick=()=>checkEngineHealth();els.tempLinkBtn.onclick=async()=>{state.tempUnavailableReason='';const remote=state.source?.kind==='url'&&!state.useProcessed;if(remote&&!state.forceTempLink){state.forceTempLink=true;const ok=await createTempLink({silent:false});if(!ok){state.forceTempLink=false;syncTempCard();renderEngines()}return}if(remote&&state.forceTempLink&&isTempValid()){state.forceTempLink=false;await deleteTempLink();syncWorkbench();toast('已恢复原图片链接','后续搜索将直接使用原始 URL。','ok');return}createTempLink({silent:false})};els.recommendationOutput.onclick=e=>{const b=e.target.closest('[data-accept-recommend]');if(b)choosePreset(b.dataset.acceptRecommend)};
     els.addQueryBtn.onclick=()=>{state.analysis.queries.push('');renderQueries();setTimeout(()=>$('[data-query-index]').at(-1)?.focus(),0)};els.queryList.addEventListener('input',e=>{if(e.target.matches('[data-query-index]')){state.analysis.queries[Number(e.target.dataset.queryIndex)]=e.target.value;renderMarketplaces()}});
     els.keywordExpansion?.addEventListener('click',e=>{const b=e.target.closest('[data-universal-query]');if(!b)return;const q=state.universal.expanded[Number(b.dataset.universalQuery)];if(!q)return;state.analysis.queries=[q,...state.analysis.queries.filter(x=>x!==q)].slice(0,8);renderQueries();renderMarketplaces();toast('已设为主搜索词',q,'ok')});
-    els.universalInsights?.addEventListener('click',e=>{const b=e.target.closest('[data-cluster-key]');if(!b)return;const key=b.dataset.clusterKey;state.universal.clusterFocus=state.universal.clusterFocus===key?null:key;renderUniversalResults(state.universal.rawResults,state.universal.providers||[])});
+    els.universalInsights?.addEventListener('click',e=>{const vb=e.target.closest('[data-visual-cluster-key]');if(vb){const key=vb.dataset.visualClusterKey;state.universal.visualClusterFocus=state.universal.visualClusterFocus===key?null:key;renderUniversalResults(state.universal.rawResults,state.universal.providers||[]);return}const b=e.target.closest('[data-cluster-key]');if(!b)return;const key=b.dataset.clusterKey;state.universal.clusterFocus=state.universal.clusterFocus===key?null:key;renderUniversalResults(state.universal.rawResults,state.universal.providers||[])});
     els.productResults?.addEventListener('click',e=>{const sel=e.target.closest('[data-universal-select]');if(sel){toggleUniversalSelect(sel.dataset.universalSelect);return}const b=e.target.closest('[data-copy-result]');if(b){navigator.clipboard?.writeText(b.dataset.copyResult||'').then(()=>toast('链接已复制','','ok')).catch(()=>toast('复制失败','','error'));return}const f=e.target.closest('[data-favorite-result]');if(f){const link=f.dataset.favoriteResult||'',r=state.universal.results.find(x=>(x.link||x.url||'')===link);if(!link||!r)return;const exists=state.universalFavorites.some(x=>x.link===link);state.universalFavorites=exists?state.universalFavorites.filter(x=>x.link!==link):[{link,title:r.title||'',thumbnail:r.thumbnail||'',provider:r.provider||r.source||'',type:r.type||'',savedAt:Date.now()},...state.universalFavorites].slice(0,100);writeJson(KEYS.universalFavorites,state.universalFavorites);renderUniversalResults(state.universal.rawResults,state.universal.providers||[]);toast(exists?'已取消收藏':'已收藏结果',r.title||'','ok')}});els.queryList.addEventListener('click',e=>{const r=e.target.closest('[data-remove-query]');if(r){state.analysis.queries.splice(Number(r.dataset.removeQuery),1);renderAnalysis()}const f=e.target.closest('[data-fav-query]');if(f){const q=state.analysis.queries[Number(f.dataset.favQuery)]?.trim();if(q){state.favorites=state.favorites.includes(q)?state.favorites.filter(x=>x!==q):[q,...state.favorites].slice(0,30);writeJson(KEYS.favorites,state.favorites);renderQueries()}}});
     els.objectsOutput.onclick=e=>{const b=e.target.closest('[data-object-index]');if(!b)return;const o=state.analysis.objects[Number(b.dataset.objectIndex)];if(!o||!state.source)return;const [x,y,w,h]=o.bbox;state.cropMode=true;state.cropRect={x:x/state.source.width,y:y/state.source.height,w:w/state.source.width,h:h/state.source.height};syncCropUi();els.imageStage.scrollIntoView({behavior:reduced()?'auto':'smooth',block:'center'});toast('已选择主体区域',`${o.label} · 可直接应用裁剪。`,'ok')};
 els.federatedSearchBtn.onclick=federatedProductSearch;if(els.supplierSearchBtn)els.supplierSearchBtn.onclick=federatedSupplierSearch;if(els.mediaSearchBtn)els.mediaSearchBtn.onclick=federatedMediaSearch;
     if(els.universalSearchBtn)els.universalSearchBtn.onclick=universalSearch;if(els.expandKeywordsBtn)els.expandKeywordsBtn.onclick=()=>{state.universal.expanded=[];expandUniversalKeywords();renderKeywordExpansion();toast('关键词已扩展','已生成中英文、用途与任务关键词。','ok')};if(els.batchOpenSourcesBtn)els.batchOpenSourcesBtn.onclick=batchOpenUniversalSources;
-    if(els.universalClusterBtn)els.universalClusterBtn.onclick=()=>{state.universal.grouped=!state.universal.grouped;state.universal.timeline=false;if(!state.universal.grouped)state.universal.clusterFocus=null;renderUniversalResults(state.universal.rawResults,state.universal.providers||[]);els.universalClusterBtn.classList.toggle('active',state.universal.grouped)};
-    if(els.universalTimelineBtn)els.universalTimelineBtn.onclick=()=>{state.universal.timeline=!state.universal.timeline;state.universal.grouped=false;renderUniversalInsights(state.universal.results);els.universalTimelineBtn.classList.toggle('active',state.universal.timeline)};
+    if(els.universalClusterBtn)els.universalClusterBtn.onclick=()=>{state.universal.grouped=!state.universal.grouped;state.universal.visualGrouped=false;state.universal.timeline=false;if(!state.universal.grouped)state.universal.clusterFocus=null;state.universal.visualClusterFocus=null;renderUniversalResults(state.universal.rawResults,state.universal.providers||[]);els.universalClusterBtn.classList.toggle('active',state.universal.grouped);els.universalVisualClusterBtn?.classList.remove('active')};
+    if(els.universalVisualClusterBtn)els.universalVisualClusterBtn.onclick=async()=>{if(state.universal.visualGrouped){state.universal.visualGrouped=false;state.universal.visualClusterFocus=null;renderUniversalResults(state.universal.rawResults,state.universal.providers||[]);els.universalVisualClusterBtn.classList.remove('active');return}try{await buildUniversalVisualGroups()}catch(e){toast('视觉归组失败',e?.message||'无法计算图片指纹','error')}};
+    if(els.universalTimelineBtn)els.universalTimelineBtn.onclick=()=>{state.universal.timeline=!state.universal.timeline;state.universal.grouped=false;state.universal.visualGrouped=false;state.universal.visualClusterFocus=null;renderUniversalInsights(state.universal.results);els.universalTimelineBtn.classList.toggle('active',state.universal.timeline);els.universalClusterBtn?.classList.remove('active');els.universalVisualClusterBtn?.classList.remove('active')};
     if(els.universalSelectAllBtn)els.universalSelectAllBtn.onclick=()=>{const all=state.universal.results.map(x=>x.link||x.url||x.title);const every=all.length&&all.every(k=>state.universal.selected.has(k));state.universal.selected=every?new Set():new Set(all);renderUniversalResults(state.universal.rawResults,state.universal.providers||[])};
     if(els.universalSaveSelectedBtn)els.universalSaveSelectedBtn.onclick=()=>saveUniversalItems(selectedUniversalResults().length?selectedUniversalResults():state.universal.results);
     if(els.universalExportBtn)els.universalExportBtn.onclick=exportUniversalCsv;if(els.universalExportJsonBtn)els.universalExportJsonBtn.onclick=exportUniversalJson;
