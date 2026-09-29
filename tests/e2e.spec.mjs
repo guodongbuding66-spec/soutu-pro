@@ -433,6 +433,12 @@ test('V9 universal search: modes, filters, waterfall, favorites and history rest
   await page.locator('#universalSort').selectOption('largest');
   await expect(page.locator('.universal-result-card').first()).toContainText('Garden Shed Video');
   await page.locator('#universalSort').selectOption('auto');
+  await page.locator('#universalVisualClusterBtn').click();
+  await expect(page.locator('#universalInsights')).toBeVisible();
+  await expect(page.locator('#universalInsights')).toContainText('视觉相似归组');
+  await expect(page.locator('[data-visual-cluster-key]').first()).toContainText('2 条');
+  await page.locator('#universalVisualClusterBtn').click();
+  await expect(page.locator('#universalVisualClusterBtn')).not.toHaveClass(/active/);
   await page.locator('#universalType').selectOption('image');
   await expect(page.locator('.universal-result-card')).toHaveCount(1);
   await expect(page.locator('#universalMeta')).toContainText('1 条结果');
