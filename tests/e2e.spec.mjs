@@ -116,7 +116,7 @@ test('core product flow, local image tools, batch, projects and V9 research',asy
 test('execution targets refresh expired temporary image URLs before reopening',async({page,context})=>{
   await context.grantPermissions(['clipboard-read','clipboard-write'],{origin:'http://127.0.0.1:4173'});
   await page.addInitScript(()=>{
-    window.SOUTU_CONFIG={tempUploadEndpoint:'http://127.0.0.1:4173',productSearchEndpoint:'',tempUploadTtlMinutes:30};
+    window.SOUTU_CONFIG={tempUploadEndpoint:'http://127.0.0.1:4173',tempUploadProvider:'vercel',productSearchEndpoint:'',tempUploadTtlMinutes:30};
     localStorage.setItem('soutu-pro-settings-v5',JSON.stringify({tempEndpoint:'http://127.0.0.1:4173',productEndpoint:'',ttl:30,defaultPreset:'product',autoPreset:true}));
   });
   let tokenCount=0;
