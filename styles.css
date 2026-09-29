@@ -256,3 +256,15 @@ html[data-theme="dark"] .engine-card[data-tone] .engine-mark{border-color:var(--
 
 /* Brand marks: real service icons, not initial-letter placeholders. */
 .engine-brand img,.market-brand img{image-rendering:auto}.engine-card .engine-brand,.market-card .market-brand{isolation:isolate}
+
+
+/* V9.2 free API / social federation */
+.provider-strip{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 14px}
+.provider-strip>span{display:inline-flex;align-items:center;gap:7px;padding:8px 10px;border:1px solid var(--line);border-radius:12px;background:var(--surface);font-size:12px}
+.provider-strip>span b{font-size:12px}
+.provider-strip>span small{opacity:.72}
+.provider-strip>span.ok::before,.provider-strip>span.off::before{content:'';width:7px;height:7px;border-radius:50%;background:currentColor;opacity:.75}
+.provider-strip>span.off{opacity:.58}
+.media-result-grid .result-card{min-height:92px}
+.media-result-card .result-thumb{aspect-ratio:16/10}
+@media(max-width:760px){.provider-strip{gap:6px}.provider-strip>span{padding:7px 8px}.query-actions{flex-wrap:wrap}}
