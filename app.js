@@ -126,7 +126,10 @@
     return'manual'
   }
   function engineBrand(e){
-    if(e.iconUrl)return `<span class="engine-mark engine-brand"><img src="${escapeHtml(e.iconUrl)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.parentElement.classList.add('icon-failed');this.remove()"><span class="engine-fallback">${icon('search')}</span></span>`;
+    if(e.iconUrl){
+      const src=`/api/image-proxy?url=${encodeURIComponent(e.iconUrl)}`;
+      return `<span class="engine-mark engine-brand"><img src="${escapeHtml(src)}" alt="" loading="lazy" onerror="this.parentElement.classList.add('icon-failed');this.remove()"><span class="engine-fallback">${icon('search')}</span></span>`
+    }
     return `<span class="engine-mark engine-custom-mark">${escapeHtml(e.short||e.name.slice(0,2))}</span>`
   }
   function renderEngines(){
