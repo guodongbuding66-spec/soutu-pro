@@ -475,6 +475,11 @@ test('V9 universal search: modes, filters, waterfall, favorites and history rest
   await expect(page.locator('#historyContent')).toContainText('全网搜索');
   await page.locator('[data-rerun-history]').click();
   await expect(page.locator('[data-universal-mode="source"]')).toHaveClass(/active/);
+  await expect(page.locator('#universalCountry')).toHaveValue('US');
+  await expect(page.locator('#universalLanguage')).toHaveValue('en');
+  await expect(page.locator('#universalTime')).toHaveValue('year');
+  await expect(page.locator('#universalType')).toHaveValue('image');
+  await expect(page.locator('#universalSort')).toHaveValue('auto');
 
   await page.setViewportSize({width:390,height:844});
   const overflow=await page.evaluate(()=>document.documentElement.scrollWidth-window.innerWidth);
