@@ -141,7 +141,37 @@
         <article class="research-card"><div class="card-head"><span class="card-icon"><svg><use href="#i-scan"/></svg></span><div><h3>主体候选区域</h3><p id="objectsStatus">等待分析</p></div></div><div id="objectsOutput" class="object-list"><span class="ghost-tag">检测到的对象区域</span></div></article><article class="research-card recommendation-card"><div class="card-head"><span class="card-icon"><svg><use href="#i-origin"/></svg></span><div><h3>推荐策略</h3><p>根据当前线索动态建议</p></div></div><div id="recommendationOutput"></div></article>
       </div>
       <div class="query-workbench"><div class="query-head"><div><h3>搜索词工作台</h3><p>自动生成后仍可编辑；商品平台搜索和结果聚合都会使用这里的关键词。</p></div><button class="text-btn" id="addQueryBtn"><svg><use href="#i-plus"/></svg>添加搜索词</button></div><div id="queryList" class="query-list"></div></div>
-      <div class="marketplace-workbench"><div class="query-head"><div><h3>全网平台搜索</h3><p>同时搜索社媒、视频、视觉灵感、零售、B2B 与供应商平台；支持免费 API 聚合和官方站内搜索入口。</p></div><div class="query-actions"><button class="secondary-btn compact" id="mediaSearchBtn"><svg><use href="#i-sparkles"/></svg>免费 API 聚合</button><button class="secondary-btn compact" id="supplierSearchBtn"><svg><use href="#i-origin"/></svg>供应商线索</button><button class="primary-mini" id="federatedSearchBtn"><svg><use href="#i-search"/></svg>聚合商品</button></div></div><div id="marketplaceGrid" class="marketplace-grid"></div><div id="productResults" class="product-results hidden"></div></div>
+      <div class="universal-search-workbench">
+  <div class="universal-head">
+    <div><span class="section-kicker">V9 · SOCIAL & UNIVERSAL SEARCH</span><h3>视觉信息检索工作台</h3><p>社媒、视频、开放图库、商品、供应商与图片溯源统一到一个检索面板。</p></div>
+    <div class="query-actions"><button class="secondary-btn compact" id="expandKeywordsBtn"><svg><use href="#i-sparkles"/></svg>AI 关键词扩展</button><button class="secondary-btn compact" id="batchOpenSourcesBtn"><svg><use href="#i-grid"/></svg>批量打开搜索源</button><button class="primary-mini" id="universalSearchBtn"><svg><use href="#i-search"/></svg>全网搜索</button></div>
+  </div>
+  <div class="universal-modes" id="universalModes">
+    <button class="active" data-universal-mode="all">全网</button>
+    <button data-universal-mode="social">社媒</button>
+    <button data-universal-mode="video">视频</button>
+    <button data-universal-mode="inspiration">Pinterest / 灵感</button>
+    <button data-universal-mode="source">图片来源</button>
+    <button data-universal-mode="hd">原图 / 高清图</button>
+    <button data-universal-mode="author">原作者</button>
+    <button data-universal-mode="product">同款商品</button>
+    <button data-universal-mode="competitor">竞品</button>
+  </div>
+  <div class="universal-filters">
+    <label>平台<select id="universalPlatform"><option value="all">全部平台</option></select></label>
+    <label>国家<select id="universalCountry"><option value="all">全部国家</option><option value="US">美国</option><option value="GB">英国</option><option value="CA">加拿大</option><option value="AU">澳大利亚</option><option value="DE">德国</option><option value="FR">法国</option><option value="ES">西班牙</option><option value="BR">巴西</option><option value="MX">墨西哥</option><option value="CN">中国</option><option value="JP">日本</option><option value="KR">韩国</option></select></label>
+    <label>语言<select id="universalLanguage"><option value="all">全部语言</option><option value="zh">中文</option><option value="en">English</option><option value="es">Español</option><option value="pt">Português</option><option value="de">Deutsch</option><option value="fr">Français</option><option value="ja">日本語</option><option value="ko">한국어</option></select></label>
+    <label>时间<select id="universalTime"><option value="all">不限时间</option><option value="day">24 小时</option><option value="week">7 天</option><option value="month">30 天</option><option value="year">1 年</option></select></label>
+    <label>类型<select id="universalType"><option value="all">全部类型</option><option value="image">图片</option><option value="video">视频</option><option value="post">帖子</option><option value="product">商品</option></select></label>
+  </div>
+  <div class="keyword-lab"><div class="keyword-lab-head"><b>中英文关键词</b><span>自动扩展同义词、用途词、结构词和采购词</span></div><div id="keywordExpansion" class="keyword-expansion"><span class="ghost-tag">运行智能分析或点击“AI 关键词扩展”</span></div></div>
+  <div class="universal-toolbar">
+    <div class="query-actions"><button class="secondary-btn compact" id="mediaSearchBtn"><svg><use href="#i-image"/></svg>免费 API</button><button class="secondary-btn compact" id="supplierSearchBtn"><svg><use href="#i-origin"/></svg>供应商</button><button class="secondary-btn compact" id="federatedSearchBtn"><svg><use href="#i-shopping"/></svg>商品</button></div>
+    <div class="universal-meta" id="universalMeta">等待搜索</div>
+  </div>
+  <div id="marketplaceGrid" class="marketplace-grid"></div>
+  <div id="productResults" class="product-results hidden"></div>
+</div>
     </section>
 
     <section class="wrap preset-block"><div class="section-heading"><div><span class="section-kicker">STEP 01</span><h2>你想做什么？</h2><p>先选任务，系统自动勾选更适合的反向图片搜索引擎。</p></div><span class="kbd-hint">1–6 快速切换</span></div><div class="preset-grid" id="presetGrid"></div></section>
