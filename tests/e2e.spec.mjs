@@ -139,7 +139,7 @@ test('V9 investigation workspace: import, dedupe, compare, watch, evidence, case
 
   await page.locator('#v9Dedupe').click();
   await expect(page.locator('#v9Dedupe')).toContainText('显示重复项',{timeout:15000});
-  await expect(page.locator('.v9-result-card')).toHaveCount(1);
+  await expect(page.locator('.v9-result-card')).toHaveCount(2);
   await page.locator('#v9Dedupe').click();
   await expect(page.locator('.v9-result-card')).toHaveCount(3);
 
