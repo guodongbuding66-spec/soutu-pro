@@ -37,6 +37,8 @@ const expected=['google','bing','yandex','tineye','google-shopping','bing-shoppi
 ok(engineIds.length===expected.length&&expected.every(x=>engineIds.includes(x)),'all 10 built-in engines are present');
 ok(unique(engineIds),'built-in engine ids are unique');
 ok((block.match(/iconUrl:/g)||[]).length===expected.length,'every built-in engine has a brand icon');
+ok(!block.includes('upload.wikimedia.org')&&!block.includes('raw.githubusercontent.com'),'built-in brand icons do not use third-party placeholder mirrors');
+for(const host of ['google.com','bing.com','yandex.com','tineye.com','saucenao.com','trace.moe','ascii2d.net','iqdb.org'])ok(block.includes(host),'official engine icon host '+host+' is referenced');
 ok((block.match(/direct:url=>/g)||[]).length===8,'eight built-in engines support verified URL-direct search; Bing remains manual');
 ok(!block.includes('images/searchbyimage/upload')&&!block.includes('sbisrc=UrlPaste'),'unstable/obsolete Bing deep-link endpoints are absent');
 ok(block.includes('https://trace.moe/?url=')&&block.includes('https://ascii2d.net/search/url/')&&block.includes('https://iqdb.org/?url='),'anime engines use verified direct URL integrations');
@@ -73,6 +75,8 @@ ok(worker.includes('body.byteLength>20*1024*1024'),'Cloudflare Worker validates 
 ok((worker.match(/q.length>240/g)||[]).length>=2,'Cloudflare Worker limits product and supplier query lengths');
 
 ok(styles.includes('.engine-brand img'),'brand icon CSS exists');
+ok(app.includes('marketBrand(m)')&&app.includes('market-brand'),'marketplace cards render real brand icons');
+ok(!app.includes('m.name.slice(0,2)'),'marketplace cards no longer use two-letter brand placeholders');
 ok(styles.includes('.batch-links a'),'batch native-link CSS exists');
 
 console.log('Soutu Pro static QA passed:',checks.length,'checks');
