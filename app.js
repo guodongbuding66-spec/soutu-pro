@@ -40,7 +40,7 @@
     {id:'alibaba',name:'Alibaba',group:'B2B',iconUrl:'https://www.alibaba.com/favicon.ico',url:q=>`https://www.alibaba.com/trade/search?SearchText=${encodeURIComponent(q)}`},
     {id:'aliexpress',name:'AliExpress',group:'跨境',iconUrl:'https://www.aliexpress.com/favicon.ico',url:q=>`https://www.aliexpress.com/w/wholesale-${encodeURIComponent(q.replace(/\s+/g,'-'))}.html`},
     {id:'mic',name:'Made-in-China',group:'B2B',iconUrl:'https://www.made-in-china.com/favicon.ico',url:q=>`https://www.made-in-china.com/products-search/hot-china-products/${encodeURIComponent(q.replace(/\s+/g,'_'))}.html`},
-    {id:'globalsources',name:'Global Sources',group:'B2B',iconUrl:'https://www.globalsources.com/favicon.ico',url:q=>`https://www.globalsources.com/search?query=${encodeURIComponent(q)}`},
+    {id:'globalsources',name:'Global Sources',group:'B2B',iconUrl:'https://s.globalsources.com/favicon.ico',url:q=>`https://www.globalsources.com/search?query=${encodeURIComponent(q)}`},
   ];
 
   const defaultSettings = {
