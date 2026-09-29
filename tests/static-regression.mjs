@@ -24,6 +24,8 @@ assert.equal(new Set(ids).size,ids.length,'duplicate HTML ids');
 const refs=[...app.matchAll(/\$\('#([^']+)'\)/g),...v9.matchAll(/\$\('#([^']+)'\)/g)].map(m=>m[1]);
 const missing=[...new Set(refs.filter(x=>!ids.includes(x)))];
 assert.deepEqual(missing,[],'JS references missing HTML ids');
+const badSingleSelectorArrayUse=/(^|[^$])\$\([^\n)]*\)\.(?:forEach|map|filter|some|every)\b/m.test(app);
+assert(!badSingleSelectorArrayUse,'single-element $() selector must not use array methods; use $() or querySelectorAll');
 
 for(const view of ['searchView','batchView','projectsView','researchHubView','historyView','tipsView']) assert(ids.includes(view),`missing view ${view}`);
 for(const nav of ['search','batch','projects','research','history']) assert(html.includes(`data-nav="${nav}"`),`missing nav ${nav}`);
