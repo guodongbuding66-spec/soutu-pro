@@ -44,13 +44,13 @@ async function wikimedia(q) {
   const d = await jsonFetch(url);
   return Object.values(d?.query?.pages || {}).map(p => {
     const i = p.imageinfo?.[0] || {};
-    return item('Wikimedia Commons', {
+    return {p,i};
+  }).filter(({i}) => String(i.mime || '').startsWith('image/')).map(({p,i}) => item('Wikimedia Commons', {
       type:'image', title:p.title?.replace(/^File:/,'') || 'Wikimedia image',
       link:`https://commons.wikimedia.org/wiki/${encodeURIComponent(p.title || '')}`,
       thumbnail:i.thumburl || i.url, author:i.user, publishedAt:i.timestamp,
       meta:{width:i.width,height:i.height,mime:i.mime}
-    });
-  });
+    }));
 }
 
 async function bluesky(q) {
@@ -91,6 +91,62 @@ async function mastodon(q) {
       publishedAt:s.created_at, meta:{favourites:s.favourites_count,reblogs:s.reblogs_count,replies:s.replies_count}
     });
   });
+}
+
+
+async function openverse(q) {
+  const url = new URL('https://api.openverse.org/v1/images/');
+  url.searchParams.set('q', q);
+  url.searchParams.set('page_size', String(MAX_PER_PROVIDER));
+  url.searchParams.set('mature', 'false');
+  const d = await jsonFetch(url);
+  return (d?.results || []).map(p => item('Openverse', {
+    type:'image', title:p.title || `Image by ${p.creator || 'Openverse creator'}`,
+    snippet:[p.license ? `License: ${p.license}` : '', p.source ? `Source: ${p.source}` : ''].filter(Boolean).join(' · '),
+    link:p.foreign_landing_url || p.detail_url || p.url,
+    thumbnail:p.thumbnail || p.url, author:p.creator,
+    meta:{width:p.width,height:p.height,license:p.license,source:p.source}
+  }));
+}
+
+async function nasaImages(q) {
+  const url = new URL('https://images-api.nasa.gov/search');
+  url.searchParams.set('q', q);
+  url.searchParams.set('media_type', 'image,video');
+  url.searchParams.set('page_size', String(MAX_PER_PROVIDER));
+  const d = await jsonFetch(url);
+  return (d?.collection?.items || []).map(row => {
+    const meta = row.data?.[0] || {}, preview = row.links?.find(x => x.render === 'image')?.href || '';
+    return item('NASA Images', {
+      type:meta.media_type === 'video' ? 'video' : 'image',
+      title:meta.title || meta.nasa_id || 'NASA media',
+      snippet:meta.description || meta.description_508 || '',
+      link:meta.nasa_id ? `https://images.nasa.gov/details/${encodeURIComponent(meta.nasa_id)}` : row.href,
+      thumbnail:preview, author:meta.photographer || meta.secondary_creator || 'NASA',
+      publishedAt:meta.date_created, meta:{nasaId:meta.nasa_id,center:meta.center,keywords:meta.keywords}
+    });
+  });
+}
+
+async function pixabay(q) {
+  const key = process.env.PIXABAY_API_KEY;
+  if (!key) return null;
+  const [images, videos] = await Promise.all([
+    jsonFetch(`https://pixabay.com/api/?key=${encodeURIComponent(key)}&q=${encodeURIComponent(q)}&per_page=8&safesearch=true`),
+    jsonFetch(`https://pixabay.com/api/videos/?key=${encodeURIComponent(key)}&q=${encodeURIComponent(q)}&per_page=4&safesearch=true`)
+  ]);
+  return [
+    ...(images?.hits || []).map(p => item('Pixabay', {
+      type:'image', title:p.tags || `Image by ${p.user || 'Pixabay creator'}`,
+      link:p.pageURL, thumbnail:p.webformatURL || p.previewURL, author:p.user,
+      meta:{width:p.imageWidth,height:p.imageHeight,likes:p.likes,downloads:p.downloads}
+    })),
+    ...(videos?.hits || []).map(v => item('Pixabay', {
+      type:'video', title:v.tags || `Video by ${v.user || 'Pixabay creator'}`,
+      link:v.pageURL, thumbnail:v.videos?.tiny?.thumbnail || v.videos?.small?.thumbnail || '',
+      author:v.user, meta:{likes:v.likes,downloads:v.downloads,duration:v.duration}
+    }))
+  ];
 }
 
 async function youtube(q) {
@@ -150,12 +206,15 @@ async function flickr(q) {
 }
 
 const providers = [
+  ['Openverse', openverse, () => true],
   ['Wikimedia Commons', wikimedia, () => true],
-  ['Bluesky', bluesky, () => true],
+  ['NASA Images', nasaImages, () => true],
   ['Mastodon', mastodon, () => true],
+  ['Bluesky', bluesky, () => true],
   ['YouTube', youtube, () => !!process.env.YOUTUBE_API_KEY],
   ['Pexels', pexels, () => !!process.env.PEXELS_API_KEY],
   ['Unsplash', unsplash, () => !!process.env.UNSPLASH_ACCESS_KEY],
+  ['Pixabay', pixabay, () => !!process.env.PIXABAY_API_KEY],
   ['Flickr', flickr, () => !!process.env.FLICKR_API_KEY]
 ];
 
