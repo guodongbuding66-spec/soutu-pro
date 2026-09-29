@@ -329,7 +329,7 @@
   const apiPlatformOptions=[
     {id:'openverse',name:'Openverse'},{id:'wikimedia-commons',name:'Wikimedia Commons'},{id:'nasa-images',name:'NASA Images'},
     {id:'art-institute-chicago',name:'Art Institute Chicago'},{id:'library-of-congress',name:'Library of Congress'},{id:'internet-archive',name:'Internet Archive'},
-    {id:'mastodon',name:'Mastodon'},{id:'bluesky',name:'Bluesky'},{id:'pexels',name:'Pexels'},{id:'unsplash',name:'Unsplash'},{id:'pixabay',name:'Pixabay'},{id:'flickr',name:'Flickr'}
+    {id:'mastodon',name:'Mastodon'},{id:'youtube',name:'YouTube'},{id:'pexels',name:'Pexels'},{id:'unsplash',name:'Unsplash'},{id:'pixabay',name:'Pixabay'},{id:'flickr',name:'Flickr'}
   ];
   function providerSlug(v=''){return String(v).toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')}
   function renderUniversalPlatforms(){if(!els.universalPlatform)return;const all=[...apiPlatformOptions,...socialPlatforms,...marketplaces].filter((x,i,a)=>a.findIndex(y=>y.id===x.id)===i),current=state.universal.platform;els.universalPlatform.innerHTML='<option value="all">全部平台</option>'+all.map(x=>`<option value="${escapeHtml(x.id)}">${escapeHtml(x.name)}</option>`).join('');els.universalPlatform.value=all.some(x=>x.id===current)?current:'all';state.universal.platform=els.universalPlatform.value}
