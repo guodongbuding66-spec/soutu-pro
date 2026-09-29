@@ -335,3 +335,22 @@ html[data-theme="dark"] .engine-card[data-tone] .engine-mark{border-color:var(--
 .version-badge{padding:5px 8px!important;border:1px solid var(--line)!important;border-radius:8px!important;font-variant-numeric:tabular-nums}
 .update-ready{padding:6px 9px!important;border:1px solid var(--primary)!important;border-radius:8px!important;color:var(--primary)!important;background:var(--primary-soft)!important;font-weight:750!important}
 .update-ready[hidden]{display:none!important}
+
+/* Engine health + direct-link reliability */
+.engine-card-status{display:inline-flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+.engine-health{display:inline-flex;align-items:center;gap:5px;height:22px;padding:0 7px;border:1px solid var(--line);border-radius:999px;font-size:9px;font-weight:750;letter-spacing:.01em;color:var(--muted);background:var(--panel-subtle)}
+.engine-health i{width:6px;height:6px;border-radius:50%;background:var(--muted);box-shadow:0 0 0 2px color-mix(in srgb,var(--muted) 12%,transparent)}
+.engine-health.ok{color:var(--success);border-color:color-mix(in srgb,var(--success) 24%,var(--line));background:color-mix(in srgb,var(--success) 7%,var(--panel))}
+.engine-health.ok i{background:var(--success);box-shadow:0 0 0 2px color-mix(in srgb,var(--success) 14%,transparent)}
+.engine-health.degraded{color:#a16207;border-color:color-mix(in srgb,#d97706 30%,var(--line));background:color-mix(in srgb,#f59e0b 8%,var(--panel))}
+.engine-health.degraded i{background:#d97706}
+.engine-health.down{color:var(--danger);border-color:color-mix(in srgb,var(--danger) 28%,var(--line));background:color-mix(in srgb,var(--danger) 7%,var(--panel))}
+.engine-health.down i{background:var(--danger)}
+.engine-health-summary{font-size:11px;color:var(--muted);font-weight:650;white-space:nowrap}
+#engineHealthBtn:disabled{opacity:.55;cursor:progress}
+@media(max-width:760px){
+  .engine-heading .section-actions{width:100%;justify-content:flex-start;flex-wrap:wrap}
+  .engine-health-summary{order:3;width:100%}
+  .engine-card-status{gap:4px}
+  .engine-health{height:20px;padding-inline:6px}
+}
