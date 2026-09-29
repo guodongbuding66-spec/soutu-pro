@@ -89,7 +89,21 @@
   async function probe(url){return new Promise((resolve,reject)=>{const img=new Image();img.onload=()=>resolve({width:img.naturalWidth,height:img.naturalHeight});img.onerror=reject;img.src=url})}
   async function fileData(file){return new Promise((resolve,reject)=>{const r=new FileReader();r.onload=()=>resolve(String(r.result));r.onerror=reject;r.readAsDataURL(file)})}
   async function loadImage(url,cors=false){return new Promise((resolve,reject)=>{const img=new Image();if(cors)img.crossOrigin='anonymous';img.onload=()=>resolve(img);img.onerror=reject;img.src=url})}
-  async function blobFromActive(){const url=activeUrl();if(!url)throw new Error('no image');const r=await fetch(url);if(!r.ok)throw new Error('fetch failed');return r.blob()}
+  const isHttpUrl=url=>/^https?:/i.test(String(url||''));
+  const assetProxy=url=>`/api/image-proxy?url=${encodeURIComponent(url)}`;
+  async function loadImageSafe(url){
+    try{return await loadImage(url,true)}catch(e){
+      if(isHttpUrl(url))return loadImage(assetProxy(url),false);
+      return loadImage(url,false)
+    }
+  }
+  async function fetchImageBlob(url){
+    try{const r=await fetch(url);if(!r.ok)throw new Error(`fetch ${r.status}`);return r.blob()}catch(e){
+      if(!isHttpUrl(url))throw e;
+      const r=await fetch(assetProxy(url));if(!r.ok)throw new Error(`proxy fetch ${r.status}`);return r.blob()
+    }
+  }
+  async function blobFromActive(){const url=activeUrl();if(!url)throw new Error('no image');return fetchImageBlob(url)}
   function clearAnalysis(){state.analysis={ocr:'',labels:[],barcodes:[],objects:[],queries:[],running:false};els.researchPanel.classList.add('hidden');renderAnalysis()}
 
   async function acceptFile(file,kind='upload'){
@@ -145,10 +159,10 @@
   }
   function syncSearchButton(){els.selectedCount.textContent=state.selected.length;els.runSearch.disabled=!state.source||!state.selected.length}
 
-  async function imageToCanvas(url){const img=await loadImage(url,true).catch(()=>loadImage(url,false));const c=document.createElement('canvas');c.width=img.naturalWidth;c.height=img.naturalHeight;const ctx=c.getContext('2d',{willReadFrequently:true});if(!ctx)throw new Error('canvas');ctx.drawImage(img,0,0);return{img,c,ctx}}
+  async function imageToCanvas(url){const img=await loadImageSafe(url);const c=document.createElement('canvas');c.width=img.naturalWidth;c.height=img.naturalHeight;const ctx=c.getContext('2d',{willReadFrequently:true});if(!ctx)throw new Error('canvas');ctx.drawImage(img,0,0);return{img,c,ctx}}
   async function transform(kind){
     if(!activeUrl())return;
-    try{const img=await loadImage(activeUrl(),true);let c=document.createElement('canvas'),ctx=c.getContext('2d',{willReadFrequently:true});if(!ctx)throw new Error();
+    try{const img=await loadImageSafe(activeUrl());let c=document.createElement('canvas'),ctx=c.getContext('2d',{willReadFrequently:true});if(!ctx)throw new Error();
       if(kind==='rotate'){c.width=img.naturalHeight;c.height=img.naturalWidth;ctx.translate(c.width,0);ctx.rotate(Math.PI/2);ctx.drawImage(img,0,0)}
       if(kind==='flip'){c.width=img.naturalWidth;c.height=img.naturalHeight;ctx.translate(c.width,0);ctx.scale(-1,1);ctx.drawImage(img,0,0)}
       if(kind==='crop'){const r=state.cropRect;if(!r)return;const sx=Math.round(r.x*img.naturalWidth),sy=Math.round(r.y*img.naturalHeight),sw=Math.max(1,Math.round(r.w*img.naturalWidth)),sh=Math.max(1,Math.round(r.h*img.naturalHeight));c.width=sw;c.height=sh;ctx.drawImage(img,sx,sy,sw,sh,0,0,sw,sh)}
@@ -158,7 +172,7 @@
   async function processImage(kind){
     if(!activeUrl())return;
     const button=$(`[data-process="${kind}"]`);button?.classList.add('busy');
-    try{const img=await loadImage(activeUrl(),true);let c=document.createElement('canvas'),ctx=c.getContext('2d',{willReadFrequently:true});if(!ctx)throw new Error('canvas');
+    try{const img=await loadImageSafe(activeUrl());let c=document.createElement('canvas'),ctx=c.getContext('2d',{willReadFrequently:true});if(!ctx)throw new Error('canvas');
       if(kind==='upscale'){c.width=Math.min(8192,img.naturalWidth*2);c.height=Math.min(8192,img.naturalHeight*2);ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';ctx.drawImage(img,0,0,c.width,c.height)}
       else{c.width=img.naturalWidth;c.height=img.naturalHeight;ctx.drawImage(img,0,0);let data=ctx.getImageData(0,0,c.width,c.height),d=data.data;
         if(kind==='contrast'){const factor=1.28;for(let i=0;i<d.length;i+=4){d[i]=clamp((d[i]-128)*factor+128);d[i+1]=clamp((d[i+1]-128)*factor+128);d[i+2]=clamp((d[i+2]-128)*factor+128)}ctx.putImageData(data,0,0)}
@@ -193,11 +207,11 @@
 
   async function analyzeImage(){
     if(!state.source||state.analysis.running)return;state.analysis.running=true;els.researchPanel.classList.remove('hidden');els.ocrStatus.textContent='正在加载 OCR…';els.visionStatus.textContent='正在加载视觉模型…';els.barcodeStatus.textContent='正在检测…';els.objectsStatus.textContent='正在检测主体…';renderAnalysis();els.researchPanel.scrollIntoView({behavior:reduced()?'auto':'smooth',block:'start'});
-    const url=activeUrl();const tasks=[];
-    tasks.push((async()=>{try{await loadScript('https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js','Tesseract');els.ocrStatus.textContent='正在识别文字…';const r=await window.Tesseract.recognize(url,'eng+chi_sim',{logger:m=>{if(m.status==='recognizing text')els.ocrStatus.textContent=`OCR ${Math.round((m.progress||0)*100)}%`}});state.analysis.ocr=(r.data?.text||'').trim();els.ocrStatus.textContent=state.analysis.ocr?'识别完成':'未识别到文字'}catch(e){els.ocrStatus.textContent='OCR 未加载';state.analysis.ocr='';}})());
-    tasks.push((async()=>{try{await loadScript('https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.22.0/dist/tf.min.js','tf');await loadScript('https://cdn.jsdelivr.net/npm/@tensorflow-models/mobilenet@2.1.1/dist/mobilenet.min.js','mobilenet');els.visionStatus.textContent='正在分类…';const model=await window.mobilenet.load({version:2,alpha:1});const img=await loadImage(url);const result=await model.classify(img,5);state.analysis.labels=result.map(x=>({label:x.className,score:x.probability}));els.visionStatus.textContent=state.analysis.labels.length?'分类完成':'没有可靠标签'}catch(e){els.visionStatus.textContent='视觉模型未加载';state.analysis.labels=[]}})());
-    tasks.push((async()=>{try{await loadScript('https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.22.0/dist/tf.min.js','tf');await loadScript('https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd@2.2.3/dist/coco-ssd.min.js','cocoSsd');const model=await window.cocoSsd.load({base:'lite_mobilenet_v2'});const img=await loadImage(url);const list=await model.detect(img,8,.35);state.analysis.objects=list.map(x=>({label:x.class,score:x.score,bbox:x.bbox}));els.objectsStatus.textContent=list.length?`检测到 ${list.length} 个区域`:'未检测到常见对象'}catch(e){state.analysis.objects=[];els.objectsStatus.textContent='对象模型未加载'}})());
-    tasks.push((async()=>{try{if(!('BarcodeDetector'in window)){els.barcodeStatus.textContent='当前浏览器不支持';return}const detector=new BarcodeDetector({formats:['qr_code','ean_13','ean_8','code_128','upc_a','upc_e','data_matrix']});const img=await loadImage(url);const list=await detector.detect(img);state.analysis.barcodes=list.map(x=>x.rawValue).filter(Boolean);els.barcodeStatus.textContent=list.length?'识别完成':'未检测到条码'}catch{els.barcodeStatus.textContent='检测失败'}})());
+    const url=activeUrl(),analysisUrl=isHttpUrl(activeUrl())?assetProxy(activeUrl()):activeUrl();const tasks=[];
+    tasks.push((async()=>{try{await loadScript('https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js','Tesseract');els.ocrStatus.textContent='正在识别文字…';const r=await window.Tesseract.recognize(analysisUrl,'eng+chi_sim',{logger:m=>{if(m.status==='recognizing text')els.ocrStatus.textContent=`OCR ${Math.round((m.progress||0)*100)}%`}});state.analysis.ocr=(r.data?.text||'').trim();els.ocrStatus.textContent=state.analysis.ocr?'识别完成':'未识别到文字'}catch(e){els.ocrStatus.textContent='OCR 未加载';state.analysis.ocr='';}})());
+    tasks.push((async()=>{try{await loadScript('https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.22.0/dist/tf.min.js','tf');await loadScript('https://cdn.jsdelivr.net/npm/@tensorflow-models/mobilenet@2.1.1/dist/mobilenet.min.js','mobilenet');els.visionStatus.textContent='正在分类…';const model=await window.mobilenet.load({version:2,alpha:1});const img=await loadImageSafe(url);const result=await model.classify(img,5);state.analysis.labels=result.map(x=>({label:x.className,score:x.probability}));els.visionStatus.textContent=state.analysis.labels.length?'分类完成':'没有可靠标签'}catch(e){els.visionStatus.textContent='视觉模型未加载';state.analysis.labels=[]}})());
+    tasks.push((async()=>{try{await loadScript('https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.22.0/dist/tf.min.js','tf');await loadScript('https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd@2.2.3/dist/coco-ssd.min.js','cocoSsd');const model=await window.cocoSsd.load({base:'lite_mobilenet_v2'});const img=await loadImageSafe(url);const list=await model.detect(img,8,.35);state.analysis.objects=list.map(x=>({label:x.class,score:x.score,bbox:x.bbox}));els.objectsStatus.textContent=list.length?`检测到 ${list.length} 个区域`:'未检测到常见对象'}catch(e){state.analysis.objects=[];els.objectsStatus.textContent='对象模型未加载'}})());
+    tasks.push((async()=>{try{if(!('BarcodeDetector'in window)){els.barcodeStatus.textContent='当前浏览器不支持';return}const detector=new BarcodeDetector({formats:['qr_code','ean_13','ean_8','code_128','upc_a','upc_e','data_matrix']});const img=await loadImageSafe(url);const list=await detector.detect(img);state.analysis.barcodes=list.map(x=>x.rawValue).filter(Boolean);els.barcodeStatus.textContent=list.length?'识别完成':'未检测到条码'}catch{els.barcodeStatus.textContent='检测失败'}})());
     await Promise.allSettled(tasks);state.analysis.running=false;generateQueries();recommendPreset();renderAnalysis();window.dispatchEvent(new CustomEvent('soutu:analysis-changed'));toast('智能分析完成','OCR、视觉标签、条码与搜索词已更新。','ok')
   }
   function normalizeOcr(text){return text.split(/\n+/).map(x=>x.replace(/\s+/g,' ').trim()).filter(x=>x.length>=2&&x.length<=90).slice(0,18)}
@@ -213,7 +227,7 @@
 
   async function federatedSupplierSearch(){const q=primaryQuery();if(!q)return toast('先准备搜索词','可以运行智能分析或手动添加关键词。','error');const ep=state.settings.productEndpoint.trim().replace(/\/$/,'');if(!ep){els.productResults.classList.remove('hidden');els.productResults.innerHTML=`<div class="provider-empty">${icon('info')}<div><b>供应商聚合尚未启用</b><p>Alibaba、Made-in-China 与 Global Sources 快捷入口仍可直接使用；配置聚合 API 后可在本站集中查看供应商线索。</p></div></div>`;return}els.productResults.classList.remove('hidden');els.productResults.innerHTML='<div class="loading-block"><span class="spinner"></span>正在聚合供应商线索…</div>';try{const r=await fetch(`${ep}/api/supplier-search?q=${encodeURIComponent(q)}`);const data=await r.json();if(!r.ok||!data.enabled)throw new Error(data.message||'provider unavailable');const items=data.items||[];els.productResults.innerHTML=items.length?`<div class="supplier-results">${items.map(x=>`<a class="supplier-result" href="${escapeHtml(x.link||'#')}" target="_blank" rel="noopener"><span class="supplier-source">${escapeHtml(x.source||'Supplier')}</span><div><b>${escapeHtml(x.title||'供应商线索')}</b><p>${escapeHtml(x.snippet||'')}</p></div>${icon('arrow-up-right')}</a>`).join('')}</div>`:'<div class="provider-empty">没有返回供应商线索。</div>'}catch(e){els.productResults.innerHTML=`<div class="provider-empty">${icon('info')}<div><b>供应商聚合服务不可用</b><p>${escapeHtml(e.message||'请检查 API 配置。')}</p></div></div>`}}
 
-  async function addDetectedObjectsToBatch(){if(!state.analysis.objects?.length||!activeUrl())return toast('没有可加入的主体区域','请先运行智能分析。','error');try{const img=await loadImage(activeUrl(),true).catch(()=>loadImage(activeUrl()));let added=0;for(const [i,o] of state.analysis.objects.slice(0,8).entries()){const [x,y,w,h]=o.bbox,c=document.createElement('canvas');c.width=Math.max(1,Math.round(w));c.height=Math.max(1,Math.round(h));c.getContext('2d').drawImage(img,x,y,w,h,0,0,c.width,c.height);const blob=await new Promise(res=>c.toBlob(res,'image/png',.94));if(!blob)continue;const file=new File([blob],`${o.label||'object'}-${i+1}.png`,{type:'image/png'}),url=URL.createObjectURL(blob),thumb=await makeThumb(url);state.batch.push({id:uid(),file,url,thumb,name:file.name,size:file.size,preset:state.analysis.recommended||state.preset||'product',status:'ready',width:c.width,height:c.height});added++;if(state.batch.length>=MAX_BATCH)break}renderBatch();setView('batch');toast(`已加入 ${added} 个主体区域`,'可为每个区域单独选择搜索任务并执行。','ok')}catch(e){toast('主体区域加入失败',e.message||'图片可能受跨域限制。','error')}}
+  async function addDetectedObjectsToBatch(){if(!state.analysis.objects?.length||!activeUrl())return toast('没有可加入的主体区域','请先运行智能分析。','error');try{const img=await loadImageSafe(activeUrl());let added=0;for(const [i,o] of state.analysis.objects.slice(0,8).entries()){const [x,y,w,h]=o.bbox,c=document.createElement('canvas');c.width=Math.max(1,Math.round(w));c.height=Math.max(1,Math.round(h));c.getContext('2d').drawImage(img,x,y,w,h,0,0,c.width,c.height);const blob=await new Promise(res=>c.toBlob(res,'image/png',.94));if(!blob)continue;const file=new File([blob],`${o.label||'object'}-${i+1}.png`,{type:'image/png'}),url=URL.createObjectURL(blob),thumb=await makeThumb(url);state.batch.push({id:uid(),file,url,thumb,name:file.name,size:file.size,preset:state.analysis.recommended||state.preset||'product',status:'ready',width:c.width,height:c.height});added++;if(state.batch.length>=MAX_BATCH)break}renderBatch();setView('batch');toast(`已加入 ${added} 个主体区域`,'可为每个区域单独选择搜索任务并执行。','ok')}catch(e){toast('主体区域加入失败',e.message||'图片可能受跨域限制。','error')}}
 
   function isTempValid(){return !!(state.tempLink?.url&&state.tempLink.expiresAt>Date.now()+5000)}
   function syncTempCard(){
@@ -289,7 +303,7 @@
     els.executionList.innerHTML=items.map(x=>`<div class="execution-row" data-execution-id="${escapeHtml(x.id)}"><span class="execution-state ready">${icon('info')}</span><div><b>${escapeHtml(x.name)}</b><small>${x.direct?'直接使用临时图片 URL':x.copied?'图片已复制；打开后可直接粘贴':'请先复制图片，再打开上传/粘贴'}</small></div><span class="status-pill ready">待打开</span><div class="execution-actions">${x.direct?'':`<button class="secondary-btn compact" data-copy-execution>${icon('copy')}复制图片</button>`}<a class="secondary-btn compact execution-link" href="${escapeHtml(x.url)}" target="_blank" rel="noopener noreferrer" data-execution-link>打开</a></div></div>`).join('')
   }
   async function addHistory(){let thumb='';try{thumb=await makeThumb(activeUrl())}catch{}const item={id:uid(),thumb,createdAt:Date.now(),label:state.source.name,preset:state.preset,engines:[...state.selected],source:state.source.kind,query:primaryQuery()};state.history=[item,...state.history].slice(0,30);writeJson(KEYS.history,state.history)}
-  async function makeThumb(url){const img=await loadImage(url,true).catch(()=>loadImage(url));const c=document.createElement('canvas'),max=180,s=Math.min(1,max/Math.max(img.naturalWidth,img.naturalHeight));c.width=Math.max(1,Math.round(img.naturalWidth*s));c.height=Math.max(1,Math.round(img.naturalHeight*s));c.getContext('2d').drawImage(img,0,0,c.width,c.height);return c.toDataURL('image/jpeg',.72)}
+  async function makeThumb(url){const img=await loadImageSafe(url);const c=document.createElement('canvas'),max=180,s=Math.min(1,max/Math.max(img.naturalWidth,img.naturalHeight));c.width=Math.max(1,Math.round(img.naturalWidth*s));c.height=Math.max(1,Math.round(img.naturalHeight*s));c.getContext('2d').drawImage(img,0,0,c.width,c.height);return c.toDataURL('image/jpeg',.72)}
 
   async function saveProject(){if(!state.source)return;const name=prompt('项目名称',state.source.name.replace(/\.[^.]+$/,''));if(!name)return;let thumb='';try{thumb=await makeThumb(activeUrl())}catch{}const p={id:uid(),name,createdAt:Date.now(),thumb,preset:state.preset,engines:[...state.selected],ocr:state.analysis.ocr,labels:state.analysis.labels,barcodes:state.analysis.barcodes,objects:state.analysis.objects,queries:state.analysis.queries};state.projects=[p,...state.projects].slice(0,50);writeJson(KEYS.projects,state.projects);renderProjects();toast('项目已保存','可从“项目”继续使用 OCR、关键词和搜索策略。','ok')}
   function renderProjects(){
@@ -341,7 +355,7 @@
   function saveSettings(){state.settings={...state.settings,defaultPreset:els.defaultPreset.value,tempEndpoint:els.tempEndpointInput.value.trim(),productEndpoint:els.productEndpointInput.value.trim(),ttl:Number(els.ttlSelect.value)||30,autoPreset:els.autoPresetToggle?els.autoPresetToggle.checked:true};state.tempUnavailableReason='';writeJson(KEYS.settings,state.settings);syncTempCard();renderEngines()}
 
   async function copyImage(){try{const blob=await blobFromActive();await navigator.clipboard.write([new ClipboardItem({[blob.type||'image/png']:blob})]);toast('图片已复制','可在第三方页面直接粘贴。','ok')}catch{toast('浏览器不允许直接复制','可右键图片选择“复制图片”。','error')}}
-  function downloadImage(){const a=document.createElement('a');a.href=activeUrl();a.download='soutu-pro-image.png';a.click()}
+  async function downloadImage(){try{const blob=await blobFromActive(),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`soutu-pro-image.${blob.type.includes('png')?'png':blob.type.includes('webp')?'webp':'jpg'}`;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1200)}catch{toast('下载失败','远程图片可能拒绝访问，请先另存到本地。','error')}}
 
   function bind(){
     $$('[data-nav]').forEach(b=>b.addEventListener('click',()=>setView(b.dataset.nav)));
