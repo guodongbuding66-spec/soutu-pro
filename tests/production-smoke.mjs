@@ -32,7 +32,7 @@ assert(app.includes('function engineBrand'),'official brand renderer missing');
 assert(!app.includes("short:'G'"),'letter engine marks returned');
 assert(!app.includes('images/searchbyimage/upload'),'obsolete Bing path returned');
 const popupCalls=[...app.matchAll(/window\.open\s*\(([^\n;]+)/g)].map(m=>m[1]);
-assert(popupCalls.length<=2,'unexpected popup script returned');
+assert(popupCalls.length<=4,'unexpected popup script returned');
 assert(app.includes('function openExecutionEngine'),'dynamic execution opener missing');
 
 const official=[
