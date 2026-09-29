@@ -57,10 +57,11 @@
 python3 -m http.server 4173
 ```
 
-## Vercel 原生部署（V8.1）
+## Vercel 原生部署（V9.1.3）
 
 - `/api/temp-token` 使用 `@vercel/blob@2.4.0` 生成浏览器直传 URL、短时读取 URL 与删除 URL。
 - 临时读取 URL 到期后即失效；`/api/cleanup` 每日清理已经过期的 Blob 对象。
+- `/api/cleanup` 只接受 Vercel Cron 调用；建议配置 `CRON_SECRET`，生产环境会验证 Bearer Token。
 - `/api/product-search` 与 `/api/supplier-search` 在配置 `SERPAPI_KEY` 后启用结果聚合。
 - 图片最大 20 MB 直接从浏览器上传到 Blob，不经过 Vercel Function 请求体。
 - `config.js` 在 Vercel 上默认将临时图片与聚合 API 指向当前站点，无需手填后端 URL。
