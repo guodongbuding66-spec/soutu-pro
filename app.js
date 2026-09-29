@@ -88,7 +88,7 @@
     historyContent:$('#historyContent'),clearHistory:$('#clearHistory'),projectsContent:$('#projectsContent'),clearProjects:$('#clearProjects'),
     batchDrop:$('#batchDrop'),batchChoose:$('#batchChoose'),batchInput:$('#batchInput'),batchPreset:$('#batchPreset'),applyBatchPreset:$('#applyBatchPreset'),runBatch:$('#runBatch'),batchList:$('#batchList'),batchExport:$('#batchExport'),
     themeBtn:$('#themeBtn'),settingsBtn:$('#settingsBtn'),installBtn:$('#installBtn'),commandBtn:$('#commandBtn'),versionBadge:$('#versionBadge'),updateBtn:$('#updateBtn'),settingsModal:$('#settingsModal'),customModal:$('#customModal'),commandModal:$('#commandModal'),executionModal:$('#executionModal'),shortcutModal:$('#shortcutModal'),shortcutHelp:$('#shortcutHelp'),
-    defaultPreset:$('#defaultPreset'),tempEndpointInput:$('#tempEndpointInput'),productEndpointInput:$('#productEndpointInput'),ttlSelect:$('#ttlSelect'),autoPresetToggle:$('#autoPresetToggle'),customName:$('#customName'),customTemplate:$('#customTemplate'),addCustom:$('#addCustom'),
+    defaultPreset:$('#defaultPreset'),tempEndpointInput:$('#tempEndpointInput'),productEndpointInput:$('#productEndpointInput'),ttlSelect:$('#ttlSelect'),autoPresetToggle:$('#autoPresetToggle'),refreshDiagnosticsBtn:$('#refreshDiagnosticsBtn'),resetClientCacheBtn:$('#resetClientCacheBtn'),systemStatusGrid:$('#systemStatusGrid'),systemStatusNote:$('#systemStatusNote'),customName:$('#customName'),customTemplate:$('#customTemplate'),addCustom:$('#addCustom'),
     commandInput:$('#commandInput'),commandList:$('#commandList'),executionList:$('#executionList'),executionSummary:$('#executionSummary'),toastStack:$('#toastStack')
   };
 
@@ -196,7 +196,7 @@
     state.engineHealthCheckedAt=Date.now();
     if(els.engineHealthSummary)els.engineHealthSummary.textContent=`正常 ${ok} · 受限 ${degraded} · 异常 ${down}`;
     els.engineHealthBtn.disabled=false;els.engineHealthBtn.innerHTML=`${icon('scan')}重新检测`;
-    renderEngines();
+    renderEngines();renderSystemStatus();
     toast('搜索引擎状态检测完成',`正常 ${ok} · 受限 ${degraded} · 异常 ${down}`,down?'error':'ok')
   }
   function engineBrand(e){
@@ -717,12 +717,8 @@ els.federatedSearchBtn.onclick=federatedProductSearch;if(els.supplierSearchBtn)e
     els.clearHistory.onclick=()=>{state.history=[];localStorage.removeItem(KEYS.history);renderHistory();toast('历史记录已清空','','ok')};els.historyContent.onclick=e=>{const d=e.target.closest('[data-del-history]');if(d){state.history=state.history.filter(x=>x.id!==d.dataset.delHistory);writeJson(KEYS.history,state.history);renderHistory()}const r=e.target.closest('[data-rerun-history]');if(r)restoreHistory(r.dataset.rerunHistory);const n=e.target.closest('[data-nav]');if(n)setView(n.dataset.nav)};
     els.projectsContent.onclick=e=>{const o=e.target.closest('[data-open-project]');if(o)restoreProject(o.dataset.openProject);const d=e.target.closest('[data-del-project]');if(d){state.projects=state.projects.filter(x=>x.id!==d.dataset.delProject);writeJson(KEYS.projects,state.projects);renderProjects()}const u=e.target.closest('[data-use-fav]');if(u){const q=state.favorites[Number(u.dataset.useFav)];if(q){setView('search');state.analysis.queries=[q];els.researchPanel.classList.remove('hidden');renderAnalysis();toast('收藏搜索词已载入',q,'ok')}}const f=e.target.closest('[data-del-fav]');if(f){state.favorites.splice(Number(f.dataset.delFav),1);writeJson(KEYS.favorites,state.favorites);renderProjects()}const rf=e.target.closest('[data-del-result-fav]');if(rf){state.universalFavorites.splice(Number(rf.dataset.delResultFav),1);writeJson(KEYS.universalFavorites,state.universalFavorites);renderProjects()}};els.clearProjects.onclick=()=>{state.projects=[];writeJson(KEYS.projects,[]);renderProjects()};
     els.batchChoose.onclick=()=>els.batchInput.click();els.batchInput.onchange=()=>addBatch(els.batchInput.files);['dragenter','dragover'].forEach(ev=>els.batchDrop.addEventListener(ev,e=>{e.preventDefault();els.batchDrop.classList.add('drag')}));['dragleave','drop'].forEach(ev=>els.batchDrop.addEventListener(ev,e=>{e.preventDefault();els.batchDrop.classList.remove('drag')}));els.batchDrop.addEventListener('drop',e=>addBatch(e.dataTransfer.files));els.applyBatchPreset.onclick=()=>{state.batch.forEach(x=>x.preset=els.batchPreset.value);renderBatch()};els.runBatch.onclick=runBatch;els.batchExport.onclick=exportBatchCsv;els.batchList.onclick=e=>{const r=e.target.closest('[data-run-batch]');if(r){const item=state.batch.find(x=>x.id===r.dataset.runBatch);if(item)runBatchItem(item);return}const o=e.target.closest('[data-open-batch-engine]');if(o){const item=state.batch.find(x=>x.id===o.dataset.batchId);if(item)openBatchEngine(item,o.dataset.openBatchEngine,o);return}const d=e.target.closest('[data-del-batch]');if(d){state.batch=state.batch.filter(x=>x.id!==d.dataset.delBatch);renderBatch()}};els.batchList.onchange=e=>{if(e.target.matches('[data-batch-preset]')){const item=state.batch.find(x=>x.id===e.target.dataset.batchPreset);if(item)item.preset=e.target.value}};
-    els.settingsBtn.onclick=()=>openModal('settingsModal');
-    if(els.versionBadge)els.versionBadge.onclick=()=>{
-      const sw=('serviceWorker'in navigator)&&navigator.serviceWorker.controller?'已接管':'未接管';
-      const temp=directSourceUrl()?'原图公网 URL':isTempValid()?'临时链接就绪':state.tempUnavailableReason||'尚未创建临时链接';
-      toast(`搜图 Pro v${APP_VERSION}`,`Service Worker：${sw} · 图片直连：${temp}`,'ok')
-    };els.customBtn.onclick=()=>openModal('customModal');els.commandBtn.onclick=()=>openModal('commandModal');els.shortcutHelp.onclick=()=>openModal('shortcutModal');$$('[data-close]').forEach(b=>b.onclick=()=>closeModal(b.dataset.close));$$('.modal-backdrop').forEach(m=>m.addEventListener('mousedown',e=>{if(e.target===m)closeModal(m.id)}));
+    els.settingsBtn.onclick=()=>{renderSystemStatus();openModal('settingsModal')};if(els.refreshDiagnosticsBtn)els.refreshDiagnosticsBtn.onclick=()=>{renderSystemStatus();toast('诊断信息已刷新','','ok')};if(els.resetClientCacheBtn)els.resetClientCacheBtn.onclick=resetClientCache;
+    if(els.versionBadge)els.versionBadge.onclick=()=>{renderSystemStatus();openModal('settingsModal')};els.customBtn.onclick=()=>openModal('customModal');els.commandBtn.onclick=()=>openModal('commandModal');els.shortcutHelp.onclick=()=>openModal('shortcutModal');$$('[data-close]').forEach(b=>b.onclick=()=>closeModal(b.dataset.close));$$('.modal-backdrop').forEach(m=>m.addEventListener('mousedown',e=>{if(e.target===m)closeModal(m.id)}));
     els.defaultPreset.onchange=()=>{saveSettings();choosePreset(els.defaultPreset.value,false)};els.tempEndpointInput.onchange=saveSettings;els.productEndpointInput.onchange=saveSettings;els.ttlSelect.onchange=saveSettings;if(els.autoPresetToggle)els.autoPresetToggle.onchange=saveSettings;
     els.addCustom.onclick=()=>{const name=els.customName.value.trim(),template=els.customTemplate.value.trim();if(!name||!template.includes('{imageUrl}'))return toast('模板必须包含 {imageUrl}','例如：https://example.com/search?url={imageUrl}','error');let parsed;try{parsed=new URL(template.replace('{imageUrl}',encodeURIComponent('https://example.com/image.jpg')))}catch{return toast('模板 URL 无效','请输入完整的 https:// 搜索地址。','error')}if(!['http:','https:'].includes(parsed.protocol))return toast('不支持该 URL 协议','自定义引擎仅允许 HTTP / HTTPS。','error');state.custom.push({id:`custom-${Date.now()}`,name,short:name.slice(0,2).toUpperCase(),category:'自定义',desc:'你添加的 URL 搜索引擎',uploadPage:template.replace('{imageUrl}',''),template});writeJson(KEYS.custom,state.custom);renderEngines();closeModal('customModal');els.customName.value='';els.customTemplate.value='';toast('自定义引擎已添加','','ok')};
     els.themeBtn.onclick=()=>applyTheme(document.documentElement.dataset.theme!=='dark');els.commandInput.oninput=()=>renderCommands(els.commandInput.value);els.commandList.onclick=e=>{const b=e.target.closest('[data-command-index]');if(!b)return;const c=commands()[Number(b.dataset.commandIndex)];closeModal('commandModal');c?.run()};
@@ -742,6 +738,46 @@ els.federatedSearchBtn.onclick=federatedProductSearch;if(els.supplierSearchBtn)e
       'serviceWorker'in navigator?navigator.serviceWorker.getRegistrations().then(rs=>Promise.all(rs.map(r=>r.update().catch(()=>{})))):Promise.resolve()
     ]).finally(()=>location.replace(location.pathname+`?refresh=${Date.now()}`+location.hash));
     return true
+  }
+  function approxLocalStorageBytes(){
+    try{let n=0;for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i)||'',v=localStorage.getItem(k)||'';n+=(k.length+v.length)*2}return n}catch{return 0}
+  }
+  function renderSystemStatus(){
+    if(!els.systemStatusGrid)return;
+    const docVersion=document.querySelector('meta[name="soutu-version"]')?.content||'未知';
+    const versionOk=docVersion===APP_VERSION;
+    const swSupported='serviceWorker'in navigator,swControlled=!!navigator.serviceWorker?.controller;
+    const ep=(state.settings.tempEndpoint||'').trim();
+    const direct=directSourceUrl()?'原图公网 URL':isTempValid()?'短时链接就绪':ep?(state.tempUnavailableReason||'服务已配置'):'未配置';
+    const health=Object.values(state.engineHealth||{}),ok=health.filter(x=>x.state==='ok').length,degraded=health.filter(x=>x.state==='degraded').length,down=health.filter(x=>x.state==='down').length;
+    const healthText=state.engineHealthCheckedAt?`正常 ${ok} · 受限 ${degraded} · 异常 ${down}`:'尚未检测';
+    const storage=approxLocalStorageBytes();
+    const items=[
+      {label:'前端版本',value:`v${APP_VERSION}`,tone:versionOk?'ok':'bad'},
+      {label:'页面资源版本',value:docVersion==='未知'?'未知':`v${docVersion}`,tone:versionOk?'ok':'bad'},
+      {label:'Service Worker',value:!swSupported?'不支持':swControlled?'已接管':'未接管',tone:swControlled?'ok':swSupported?'warn':'bad'},
+      {label:'图片直连',value:direct,tone:directSourceUrl()||isTempValid()?'ok':ep?'warn':'bad'},
+      {label:'搜索引擎',value:healthText,tone:!state.engineHealthCheckedAt?'warn':down?'bad':degraded?'warn':'ok'},
+      {label:'网络状态',value:navigator.onLine?'在线':'离线',tone:navigator.onLine?'ok':'bad'},
+      {label:'剪贴板图片',value:navigator.clipboard&&window.ClipboardItem?'支持':'受限',tone:navigator.clipboard&&window.ClipboardItem?'ok':'warn'},
+      {label:'安全上下文',value:window.isSecureContext?'HTTPS / 安全':'非安全上下文',tone:window.isSecureContext?'ok':'warn'},
+      {label:'本机数据',value:formatBytes(storage),tone:storage<4*1024*1024?'ok':'warn'}
+    ];
+    els.systemStatusGrid.innerHTML=items.map(x=>`<div class="system-status-item ${x.tone}"><span><i></i>${escapeHtml(x.label)}</span><b title="${escapeHtml(x.value)}">${escapeHtml(x.value)}</b></div>`).join('');
+    const checked=state.engineHealthCheckedAt?new Date(state.engineHealthCheckedAt).toLocaleTimeString():'未执行';
+    els.systemStatusNote.textContent=`引擎检测：${checked} · 清理缓存不会删除项目、历史或收藏。`
+  }
+  async function resetClientCache(){
+    if(els.resetClientCacheBtn){els.resetClientCacheBtn.disabled=true;els.resetClientCacheBtn.textContent='正在清理…'}
+    try{
+      if('caches'in window){const keys=await caches.keys();await Promise.all(keys.filter(k=>k.startsWith('soutu-pro-')).map(k=>caches.delete(k)))}
+      if('serviceWorker'in navigator){const regs=await navigator.serviceWorker.getRegistrations();await Promise.all(regs.map(r=>r.unregister().catch(()=>false)))}
+      sessionStorage.removeItem('soutu-version-recovery');
+      location.replace(location.pathname+`?refresh=${Date.now()}`+location.hash)
+    }catch(e){
+      if(els.resetClientCacheBtn){els.resetClientCacheBtn.disabled=false;els.resetClientCacheBtn.innerHTML=`${icon('refresh')}清理缓存并重载`}
+      toast('缓存清理失败',e?.message||'请手动执行强制刷新。','error')
+    }
   }
   function initPwa(){
     if(els.versionBadge)els.versionBadge.textContent=`v${APP_VERSION}`;
