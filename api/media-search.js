@@ -130,7 +130,7 @@ async function nasaImages(q) {
 
 async function internetArchive(q) {
   const url = new URL('https://archive.org/advancedsearch.php');
-  url.searchParams.set('q', q);
+  url.searchParams.set('q', `(${q}) AND (mediatype:image OR mediatype:movies)`);
   url.searchParams.set('fl[]', 'identifier,title,creator,date,mediatype');
   url.searchParams.set('rows', String(MAX_PER_PROVIDER));
   url.searchParams.set('page', '1');
