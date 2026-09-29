@@ -33,13 +33,17 @@ jobs:
           cat /tmp/soutu-http.log
           exit 1
       - name: Browser regression
-        run: npx playwright test tests/e2e.spec.mjs --reporter=line
-      - name: Upload Playwright report on failure
-        if: failure()
+        run: npx playwright test tests/e2e.spec.mjs tests/full-regression.spec.mjs --reporter=line
+      - name: Production smoke regression
+        env:
+          SOUTU_PRO_URL: https://soutu-pro.vercel.app
+        run: node tests/production-smoke.mjs
+      - name: Upload visual QA evidence
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: playwright-report
+          name: qa-evidence-${{ github.sha }}
           path: |
+            test-results/**/*.png
             playwright-report/
-            test-results/
           if-no-files-found: ignore
