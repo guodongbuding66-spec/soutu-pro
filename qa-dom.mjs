@@ -10,7 +10,7 @@ const dom=new JSDOM(html,{url:'https://soutu-pro.vercel.app/',runScripts:'outsid
 const {window}=dom;
 Object.defineProperty(window,'matchMedia',{value:()=>({matches:false,addListener(){},removeListener(){},addEventListener(){},removeEventListener(){}})});
 Object.defineProperty(window,'scrollTo',{value:()=>{}});
-Object.defineProperty(window.navigator,'serviceWorker',{value:{register:async()=>({})},configurable:true});
+Object.defineProperty(window.navigator,'serviceWorker',{value:{controller:null,addEventListener(){},register:async()=>({waiting:null,installing:null,addEventListener(){},update:async()=>{}})},configurable:true});
 Object.defineProperty(window.navigator,'clipboard',{value:{write:async()=>{},writeText:async()=>{}},configurable:true});
 Object.defineProperty(window.URL,'createObjectURL',{value:()=> 'blob:qa'});
 Object.defineProperty(window.URL,'revokeObjectURL',{value:()=>{}});
