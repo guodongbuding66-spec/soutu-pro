@@ -122,7 +122,7 @@ test('execution targets refresh expired temporary image URLs before reopening',a
   let tokenCount=0;
   await page.route('**/api/temp-token**',route=>{
     tokenCount++;
-    route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({uploadUrl:`http://127.0.0.1:4173/mock-upload/${tokenCount}`,url:`https://cdn.example.com/image-${tokenCount}.png`,expiresAt:Date.now()+25})});
+    route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({uploadUrl:`http://127.0.0.1:4173/mock-upload/${tokenCount}`,url:`https://cdn.example.com/image-${tokenCount}.png`,expiresAt:Date.now()+5100})});
   });
   await page.route('**/mock-upload/**',route=>route.fulfill({status:200,body:''}));
   await page.goto('http://127.0.0.1:4173/',{waitUntil:'domcontentloaded'});
@@ -138,7 +138,7 @@ test('execution targets refresh expired temporary image URLs before reopening',a
   await expect(googleRow.locator('.status-pill')).toContainText('已打开');
   expect(tokenCount).toBe(1);
 
-  await page.waitForTimeout(80);
+  await page.waitForTimeout(180);
   await googleRow.locator('[data-execution-open]').click();
   await expect(googleRow.locator('.status-pill')).toContainText('已打开');
   expect(tokenCount).toBe(2);
