@@ -16,7 +16,7 @@
     { id:'google-shopping', name:'Lens · 商品', iconUrl:'https://www.google.com/favicon.ico', category:'商品', desc:'同款、替代品与相关商品页', uploadPage:'https://lens.google.com/', direct:url=>`https://lens.google.com/uploadbyurl?url=${encodeURIComponent(url)}` },
     { id:'bing-shopping', name:'Bing · 商品', iconUrl:'https://www.bing.com/favicon.ico', category:'商品', desc:'视觉搜索后继续筛购物结果', uploadPage:'https://www.bing.com/images' },
     { id:'saucenao', name:'SauceNAO', iconUrl:'https://saucenao.com/favicon.ico', category:'动漫/插画', desc:'插画与二次元图片来源', uploadPage:'https://saucenao.com/', direct:url=>`https://saucenao.com/search.php?url=${encodeURIComponent(url)}` },
-    { id:'trace', name:'trace.moe', iconUrl:'https://trace.moe/favicon128.png', category:'动漫/插画', desc:'动画截图定位作品、集数与时间点', uploadPage:'https://trace.moe/', direct:url=>`https://trace.moe/?url=${encodeURIComponent(url)}` },
+    { id:'trace', name:'trace.moe', iconUrl:'https://trace.moe/favicon.svg', category:'动漫/插画', desc:'动画截图定位作品、集数与时间点', uploadPage:'https://trace.moe/', direct:url=>`https://trace.moe/?url=${encodeURIComponent(url)}` },
     { id:'ascii2d', name:'Ascii2D', iconUrl:'https://ascii2d.net/favicon.ico', category:'动漫/插画', desc:'颜色与特征两种方式找插画来源', uploadPage:'https://ascii2d.net/', direct:url=>`https://ascii2d.net/search/url/${encodeURIComponent(url)}` },
     { id:'iqdb', name:'IQDB', iconUrl:'https://iqdb.org/favicon.ico', category:'动漫/插画', desc:'聚合多个二次元图库匹配', uploadPage:'https://iqdb.org/', direct:url=>`https://iqdb.org/?url=${encodeURIComponent(url)}` },
   ];
