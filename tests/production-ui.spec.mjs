@@ -51,6 +51,7 @@ test('production renders distinct official search-engine brands on desktop and m
   await page.setViewportSize({width:390,height:844});
   const overflow=await page.evaluate(()=>document.documentElement.scrollWidth-window.innerWidth);
   expect(overflow).toBeLessThanOrEqual(1);
+  await expect.poll(()=>page.locator('.search-bar').evaluate(el=>getComputedStyle(el).position)).toBe('static');
   await page.locator('.engines-section').screenshot({path:'test-results/production-engine-ui-mobile-9.1.1.png'});
 
   const relevant=errors.filter(x=>!x.includes('favicon')&&!x.includes('Failed to load resource'));
