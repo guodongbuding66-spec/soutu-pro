@@ -391,11 +391,12 @@ test('product identity grouping respects GTIN conflicts and exports match eviden
   await page.route('**/api/media-search?**',route=>route.fulfill({
     status:200,contentType:'application/json',
     body:JSON.stringify({
-      enabled:true,query:'garden shed',providers:[{name:'Openverse',enabled:true,configured:true,count:3}],total:3,
+      enabled:true,query:'garden shed',providers:[{name:'Openverse',enabled:true,configured:true,count:4}],total:4,
       items:[
-        {provider:'Openverse',type:'image',title:'US Retail Listing',snippet:'Brand: iSUNOR Model: MS86GY MPN: RY-MS86 EAN: 4006381333931',link:'https://shop-a.example/item',thumbnail:'https://example.com/a.jpg'},
-        {provider:'Openverse',type:'image',title:'EU Retail Listing',snippet:'Brand: iSUNOR Model: MS86GY MPN: RY-MS86 EAN: 4006381333931',link:'https://shop-b.example/item',thumbnail:'https://example.com/b.jpg'},
-        {provider:'Openverse',type:'image',title:'Different Variant',snippet:'Brand: iSUNOR Model: MS86GY MPN: RY-MS86 EAN: 5901234123457',link:'https://shop-c.example/item',thumbnail:'https://example.com/c.jpg'}
+        {provider:'Openverse',type:'image',title:'US Retail Listing',price:'$299.00',snippet:'Brand: iSUNOR Model: MS86GY MPN: RY-MS86 EAN: 4006381333931',link:'https://shop-a.example/item',thumbnail:'https://example.com/a.jpg'},
+        {provider:'Openverse',type:'image',title:'US Marketplace Listing',price:'$349.00',snippet:'Brand: iSUNOR Model: MS86GY MPN: RY-MS86 EAN: 4006381333931',link:'https://shop-b.example/item',thumbnail:'https://example.com/b.jpg'},
+        {provider:'Openverse',type:'image',title:'EU Retail Listing',price:'EUR 329,00',snippet:'Brand: iSUNOR Model: MS86GY MPN: RY-MS86 EAN: 4006381333931',link:'https://shop-d.example/item',thumbnail:'https://example.com/d.jpg'},
+        {provider:'Openverse',type:'image',title:'Different Variant',price:'$279.00',snippet:'Brand: iSUNOR Model: MS86GY MPN: RY-MS86 EAN: 5901234123457',link:'https://shop-c.example/item',thumbnail:'https://example.com/c.jpg'}
       ]
     })
   }));
@@ -405,31 +406,402 @@ test('product identity grouping respects GTIN conflicts and exports match eviden
   await page.locator('#addQueryBtn').click();
   await page.locator('[data-query-index]').last().fill('garden shed');
   await page.locator('#universalSearchBtn').click();
-  await expect(page.locator('.universal-result-card')).toHaveCount(3);
+  await expect(page.locator('.universal-result-card')).toHaveCount(4);
 
   await page.locator('#universalIdentityGroupBtn').click();
   await expect(page.locator('#universalIdentityGroupBtn')).toHaveClass(/active/);
   await expect(page.locator('#universalInsights')).toContainText('同款候选归组');
   await expect(page.locator('[data-identity-group-key]')).toHaveCount(1);
-  await expect(page.locator('[data-identity-group-key]')).toContainText('2 条');
+  await expect(page.locator('[data-identity-group-key]')).toContainText('3 条');
   await expect(page.locator('[data-identity-group-key]')).toContainText('GTIN');
   await expect(page.locator('[data-identity-group-key]')).toContainText('100%');
   await expect(page.locator('[data-identity-group-key]')).toContainText('US Retail Listing');
+  await expect(page.locator('[data-identity-group-key]')).toContainText('US Marketplace Listing');
   await expect(page.locator('[data-identity-group-key]')).toContainText('EU Retail Listing');
+  await expect(page.locator('[data-identity-group-key]')).toContainText('$ 299–349');
+  await expect(page.locator('[data-identity-group-key]')).toContainText('价差 17%');
+  await expect(page.locator('[data-identity-group-key]')).toContainText('EUR 329');
+  await expect(page.locator('[data-identity-group-key]')).not.toContainText('279');
   await expect(page.locator('[data-identity-group-key]')).not.toContainText('Different Variant');
 
   await page.locator('[data-identity-group-key]').click();
-  await expect(page.locator('.universal-result-card')).toHaveCount(2);
+  await expect(page.locator('.universal-result-card')).toHaveCount(3);
   await expect(page.locator('#productResults')).not.toContainText('Different Variant');
   await page.locator('[data-identity-group-key]').click();
-  await expect(page.locator('.universal-result-card')).toHaveCount(3);
+  await expect(page.locator('.universal-result-card')).toHaveCount(4);
 
   const [jsonDownload]=await Promise.all([page.waitForEvent('download'),page.locator('#universalExportJsonBtn').click()]);
   const json=JSON.parse(await readFile(await jsonDownload.path(),'utf8'));
-  const a=json.results.find(x=>x.title==='US Retail Listing'),b=json.results.find(x=>x.title==='EU Retail Listing'),c=json.results.find(x=>x.title==='Different Variant');
+  const a=json.results.find(x=>x.title==='US Retail Listing'),b=json.results.find(x=>x.title==='US Marketplace Listing'),d=json.results.find(x=>x.title==='EU Retail Listing'),c=json.results.find(x=>x.title==='Different Variant');
   expect(a.identityMatch?.basis).toBe('GTIN');
   expect(b.identityMatch?.id).toBe(a.identityMatch?.id);
+  expect(d.identityMatch?.id).toBe(a.identityMatch?.id);
   expect(c.identityMatch).toBeNull();
+  expect(a.product.priceAmount).toBe(299);
+  expect(a.product.priceCurrency).toBe('
+
+  const [csvDownload]=await Promise.all([page.waitForEvent('download'),page.locator('#universalExportBtn').click()]);
+  const csv=await readFile(await csvDownload.path(),'utf8');
+  expect(csv).toContain('"identity_group"');
+  expect(csv).toContain('"identity_basis"');
+  expect(csv).toContain('"identity_match_confidence"');
+  expect(csv).toContain('"price_amount"');
+  expect(csv).toContain('"price_currency"');
+  expect(csv).toContain('"299"');
+  expect(csv).toContain('"EUR"');
+});
+
+test('V9 universal search: modes, filters, waterfall, favorites and history restore',async({page})=>{
+  let mediaRequests=0;
+  await page.addInitScript(()=>{
+    localStorage.setItem('soutu-pro-settings-v5',JSON.stringify({tempEndpoint:'',productEndpoint:'',ttl:30,defaultPreset:'product',autoPreset:true}));
+    localStorage.removeItem('soutu-pro-history-v5');
+    localStorage.removeItem('soutu-pro-universal-favorites-v1');
+  });
+  await page.route('**/api/image-proxy?**',route=>route.fulfill({status:200,contentType:'image/svg+xml',body:iconSvg}));
+  await page.route('**/api/media-search?**',route=>{
+    mediaRequests++;
+    const url=new URL(route.request().url());
+    const body={
+      enabled:true,query:url.searchParams.get('q')||'garden shed',
+      filters:{country:url.searchParams.get('country')||'all',language:url.searchParams.get('language')||'all',type:url.searchParams.get('type')||'all',time:url.searchParams.get('time')||'all'},
+      providers:[{name:'Openverse',enabled:true,configured:true,count:2}],
+      items:[
+        {provider:'Openverse',type:'image',title:'Garden Shed Original',snippet:'CC image source Brand: iSUNOR Model: MS86GY SKU: SHED-86-GY MPN: RY-MS86 ASIN: B0C1234567 EAN: 4006381333931',link:'https://example.com/original',thumbnail:'https://example.com/original.jpg',author:'QA Author',publishedAt:'2025-03-01',meta:{width:1600,height:1200,license:'cc0'}},
+        {provider:'Openverse',type:'video',title:'Garden Shed Video',snippet:'Video result GTIN: 1234567890123',link:'https://example.com/video',thumbnail:'https://example.com/video.jpg',author:'QA Video',meta:{duration:42,width:3840,height:2160}}
+      ],
+      total:2
+    };
+    route.fulfill({status:200,contentType:'application/json',body:JSON.stringify(body)});
+  });
+  await page.goto('http://127.0.0.1:4173/',{waitUntil:'domcontentloaded'});
+  await page.locator('#fileInput').setInputFiles({name:'universal.svg',mimeType:'image/svg+xml',buffer:fixture});
+  await page.evaluate(()=>document.querySelector('#researchPanel')?.classList.remove('hidden'));
+  await page.evaluate(()=>{window.scrollTo(0,document.body.scrollHeight)});
+
+  await page.locator('#addQueryBtn').click();
+  const queryInputs=page.locator('[data-query-index]');
+  await queryInputs.last().fill('garden shed');
+  await expect(page.locator('#universalModes')).toBeVisible();
+
+  await page.locator('[data-universal-mode="source"]').click();
+  await expect(page.locator('[data-universal-mode="source"]')).toHaveClass(/active/);
+  await expect(page.locator('#universalPlatform option[value="youtube"]')).toHaveCount(1);
+  await expect(page.locator('#universalPlatform option[value="bluesky"]')).toHaveCount(0);
+  await expect(page.locator('[data-platform-id="bluesky-search"]')).toHaveCount(1);
+  await page.locator('#expandKeywordsBtn').click();
+  await expect(page.locator('#keywordExpansion .keyword-chip').first()).toBeVisible();
+
+  await page.locator('#universalCountry').selectOption('US');
+  await page.locator('#universalLanguage').selectOption('en');
+  await page.locator('#universalType').selectOption('image');
+  await page.locator('#universalTime').selectOption('year');
+
+  await page.locator('#universalSearchBtn').click();
+  await expect(page.locator('.universal-result-card')).toHaveCount(1);
+  await page.locator('#universalType').selectOption('all');
+  await expect(page.locator('.universal-result-card')).toHaveCount(2);
+  const identityCard=page.locator('.universal-result-card').filter({hasText:'Garden Shed Original'});
+  await expect(identityCard.locator('.product-identity-strip')).toContainText('iSUNOR');
+  await expect(identityCard.locator('.product-identity-strip')).toContainText('MS86GY');
+  await expect(identityCard.locator('.product-identity-strip')).toContainText('B0C1234567');
+  await expect(identityCard.locator('.product-identity-strip')).toContainText('4006381333931');
+  await expect(identityCard.locator('.product-identity-strip')).toContainText('100/100');
+  const invalidGtinCard=page.locator('.universal-result-card').filter({hasText:'Garden Shed Video'});
+  await expect(invalidGtinCard.locator('.product-identity-strip')).toHaveCount(0);
+  await expect(page.locator('#universalResearchStats')).toContainText('有身份线索');
+  await page.locator('#universalSort').selectOption('evidence');
+  await expect(page.locator('.universal-result-card').first()).toContainText('Garden Shed Original');
+  await expect(page.locator('.universal-source-score').first()).not.toBeEmpty();
+  await page.locator('#universalSort').selectOption('largest');
+  await expect(page.locator('.universal-result-card').first()).toContainText('Garden Shed Video');
+  await page.locator('#universalSort').selectOption('newest');
+  await expect(page.locator('.universal-result-card').first()).toContainText('Garden Shed Original');
+  await page.locator('#universalSort').selectOption('auto');
+  await page.locator('#universalVisualClusterBtn').click();
+  await expect(page.locator('#universalInsights')).toBeVisible();
+  await expect(page.locator('#universalInsights')).toContainText('视觉相似归组');
+  await expect(page.locator('[data-visual-cluster-key]').first()).toContainText('2 条');
+  await page.locator('#universalVisualClusterBtn').click();
+  await expect(page.locator('#universalVisualClusterBtn')).not.toHaveClass(/active/);
+  await page.locator('#universalProvenanceBtn').click();
+  await expect(page.locator('#universalInsights')).toContainText('图片来源溯源');
+  await expect(page.locator('.provenance-top')).toContainText('可能原始来源候选');
+  await expect(page.locator('.provenance-top')).toContainText('Garden Shed Original');
+  await expect(page.locator('.provenance-top')).toContainText('家族内最早日期');
+  await expect(page.locator('.provenance-family-card').first()).toContainText('2 条');
+  await expect(page.locator('.provenance-family-card').first()).toContainText('Original candidate');
+  await expect(page.locator('.provenance-family-card').first()).toContainText('Cropped / reframed');
+  await expect(page.locator('.provenance-family-card').first()).toContainText('宽高比明显变化');
+  await expect(page.locator('.provenance-timeline')).toContainText('2025');
+  const [provenanceDownload]=await Promise.all([page.waitForEvent('download'),page.locator('#universalExportJsonBtn').click()]);
+  const provenancePath=await provenanceDownload.path();
+  const provenanceJson=JSON.parse(await readFile(provenancePath,'utf8'));
+  expect(provenanceJson.results.every(x=>x.familyId)).toBeTruthy();
+  expect(provenanceJson.results.some(x=>x.versionRelation?.type==='Original candidate')).toBeTruthy();
+  expect(provenanceJson.results.some(x=>x.versionRelation?.type==='Cropped / reframed')).toBeTruthy();
+  const identityExport=provenanceJson.results.find(x=>x.title==='Garden Shed Original');
+  expect(identityExport.product.brand).toBe('iSUNOR');
+  expect(identityExport.product.model).toBe('MS86GY');
+  expect(identityExport.product.asin).toBe('B0C1234567');
+  expect(identityExport.product.gtin).toBe('4006381333931');
+  const [provenanceCsvDownload]=await Promise.all([page.waitForEvent('download'),page.locator('#universalExportBtn').click()]);
+  const provenanceCsvPath=await provenanceCsvDownload.path();
+  const provenanceCsv=await readFile(provenanceCsvPath,'utf8');
+  expect(provenanceCsv).toContain('family_id');
+  expect(provenanceCsv).toContain('version_relation');
+  expect(provenanceCsv).toContain('Cropped / reframed');
+  expect(provenanceCsv).toContain('"brand"');
+  expect(provenanceCsv).toContain('"asin"');
+  expect(provenanceCsv).toContain('"gtin"');
+  expect(provenanceCsv).toContain('iSUNOR');
+  expect(provenanceCsv).toContain('4006381333931');
+  await page.locator('#universalProvenanceBtn').click();
+  await expect(page.locator('#universalProvenanceBtn')).not.toHaveClass(/active/);
+  await page.locator('#universalType').selectOption('image');
+  await expect(page.locator('.universal-result-card')).toHaveCount(1);
+  await expect(page.locator('#universalMeta')).toContainText('1 条结果');
+  await expect(page.locator('.universal-result-card')).toContainText('Garden Shed Original');
+  await expect(page.locator('.universal-evidence-badges')).toContainText('1600×1200');
+  await expect(page.locator('.universal-evidence-badges')).toContainText('CC0');
+  await expect(page.locator('.universal-confidence')).toContainText('%');
+
+  await page.locator('#universalType').selectOption('all');
+  await page.locator('#universalResolution').selectOption('4');
+  await expect(page.locator('.universal-result-card')).toHaveCount(1);
+  await expect(page.locator('.universal-result-card')).toContainText('Garden Shed Video');
+  await page.locator('#universalResolution').selectOption('all');
+  await page.locator('#universalLicense').selectOption('public-domain');
+  await expect(page.locator('.universal-result-card')).toHaveCount(1);
+  await expect(page.locator('.universal-result-card')).toContainText('Garden Shed Original');
+  await page.locator('#universalLicense').selectOption('all');
+  await expect(page.locator('.universal-result-card')).toHaveCount(2);
+  await page.locator('#universalType').selectOption('image');
+  await expect(page.locator('.universal-result-card')).toHaveCount(1);
+
+  await page.locator('[data-favorite-result]').click();
+  await expect(page.locator('[data-favorite-result]')).toContainText('已收藏');
+
+  await expect(page.locator('#universalResearchbar')).toBeVisible();
+  await page.locator('#universalSelectAllBtn').click();
+  await expect(page.locator('#universalResearchStats')).toContainText('已选');
+  await page.locator('#universalTimelineBtn').click();
+  await expect(page.locator('#universalInsights')).toBeVisible();
+  await page.locator('#universalTimelineBtn').click();
+  await page.locator('#universalResearchBtn').click();
+  await expect(page.locator('#researchHubView')).toBeVisible();
+  await expect(page.locator('#v9Root .v9-result-card')).toHaveCount(1);
+  await page.locator('[data-nav="search"]').first().click();
+
+  await page.locator('[data-nav="projects"]').first().click();
+  await expect(page.locator('.favorite-result-card')).toHaveCount(1);
+  await expect(page.locator('#projectsContent')).toContainText('Garden Shed Original');
+
+  await page.locator('[data-nav="history"]').first().click();
+  await expect(page.locator('#historyContent .history-card')).toHaveCount(1);
+  await expect(page.locator('#historyContent')).toContainText('全网搜索');
+  await page.locator('[data-rerun-history]').click();
+  await expect(page.locator('[data-universal-mode="source"]')).toHaveClass(/active/);
+  await expect(page.locator('#universalCountry')).toHaveValue('US');
+  await expect(page.locator('#universalLanguage')).toHaveValue('en');
+  await expect(page.locator('#universalTime')).toHaveValue('year');
+  await expect(page.locator('#universalType')).toHaveValue('image');
+  await expect(page.locator('#universalSort')).toHaveValue('auto');
+
+  const requestsBeforeSiteSearch=mediaRequests;
+  await page.locator('#universalPlatform').selectOption('instagram');
+  await page.locator('#universalSearchBtn').click();
+  expect(mediaRequests).toBe(requestsBeforeSiteSearch);
+  await expect(page.locator('#toastStack')).toContainText('官方站内搜索');
+
+  await page.setViewportSize({width:390,height:844});
+  const overflow=await page.evaluate(()=>document.documentElement.scrollWidth-window.innerWidth);
+  expect(overflow).toBeLessThanOrEqual(1);
+});
+);
+  expect(d.product.priceAmount).toBe(329);
+  expect(d.product.priceCurrency).toBe('EUR');
+  const dollarBucket=a.identityMatch.priceBuckets.find(x=>x.currency==='
+
+  const [csvDownload]=await Promise.all([page.waitForEvent('download'),page.locator('#universalExportBtn').click()]);
+  const csv=await readFile(await csvDownload.path(),'utf8');
+  expect(csv).toContain('"identity_group"');
+  expect(csv).toContain('"identity_basis"');
+  expect(csv).toContain('"identity_match_confidence"');
+});
+
+test('V9 universal search: modes, filters, waterfall, favorites and history restore',async({page})=>{
+  let mediaRequests=0;
+  await page.addInitScript(()=>{
+    localStorage.setItem('soutu-pro-settings-v5',JSON.stringify({tempEndpoint:'',productEndpoint:'',ttl:30,defaultPreset:'product',autoPreset:true}));
+    localStorage.removeItem('soutu-pro-history-v5');
+    localStorage.removeItem('soutu-pro-universal-favorites-v1');
+  });
+  await page.route('**/api/image-proxy?**',route=>route.fulfill({status:200,contentType:'image/svg+xml',body:iconSvg}));
+  await page.route('**/api/media-search?**',route=>{
+    mediaRequests++;
+    const url=new URL(route.request().url());
+    const body={
+      enabled:true,query:url.searchParams.get('q')||'garden shed',
+      filters:{country:url.searchParams.get('country')||'all',language:url.searchParams.get('language')||'all',type:url.searchParams.get('type')||'all',time:url.searchParams.get('time')||'all'},
+      providers:[{name:'Openverse',enabled:true,configured:true,count:2}],
+      items:[
+        {provider:'Openverse',type:'image',title:'Garden Shed Original',snippet:'CC image source Brand: iSUNOR Model: MS86GY SKU: SHED-86-GY MPN: RY-MS86 ASIN: B0C1234567 EAN: 4006381333931',link:'https://example.com/original',thumbnail:'https://example.com/original.jpg',author:'QA Author',publishedAt:'2025-03-01',meta:{width:1600,height:1200,license:'cc0'}},
+        {provider:'Openverse',type:'video',title:'Garden Shed Video',snippet:'Video result GTIN: 1234567890123',link:'https://example.com/video',thumbnail:'https://example.com/video.jpg',author:'QA Video',meta:{duration:42,width:3840,height:2160}}
+      ],
+      total:2
+    };
+    route.fulfill({status:200,contentType:'application/json',body:JSON.stringify(body)});
+  });
+  await page.goto('http://127.0.0.1:4173/',{waitUntil:'domcontentloaded'});
+  await page.locator('#fileInput').setInputFiles({name:'universal.svg',mimeType:'image/svg+xml',buffer:fixture});
+  await page.evaluate(()=>document.querySelector('#researchPanel')?.classList.remove('hidden'));
+  await page.evaluate(()=>{window.scrollTo(0,document.body.scrollHeight)});
+
+  await page.locator('#addQueryBtn').click();
+  const queryInputs=page.locator('[data-query-index]');
+  await queryInputs.last().fill('garden shed');
+  await expect(page.locator('#universalModes')).toBeVisible();
+
+  await page.locator('[data-universal-mode="source"]').click();
+  await expect(page.locator('[data-universal-mode="source"]')).toHaveClass(/active/);
+  await expect(page.locator('#universalPlatform option[value="youtube"]')).toHaveCount(1);
+  await expect(page.locator('#universalPlatform option[value="bluesky"]')).toHaveCount(0);
+  await expect(page.locator('[data-platform-id="bluesky-search"]')).toHaveCount(1);
+  await page.locator('#expandKeywordsBtn').click();
+  await expect(page.locator('#keywordExpansion .keyword-chip').first()).toBeVisible();
+
+  await page.locator('#universalCountry').selectOption('US');
+  await page.locator('#universalLanguage').selectOption('en');
+  await page.locator('#universalType').selectOption('image');
+  await page.locator('#universalTime').selectOption('year');
+
+  await page.locator('#universalSearchBtn').click();
+  await expect(page.locator('.universal-result-card')).toHaveCount(1);
+  await page.locator('#universalType').selectOption('all');
+  await expect(page.locator('.universal-result-card')).toHaveCount(2);
+  const identityCard=page.locator('.universal-result-card').filter({hasText:'Garden Shed Original'});
+  await expect(identityCard.locator('.product-identity-strip')).toContainText('iSUNOR');
+  await expect(identityCard.locator('.product-identity-strip')).toContainText('MS86GY');
+  await expect(identityCard.locator('.product-identity-strip')).toContainText('B0C1234567');
+  await expect(identityCard.locator('.product-identity-strip')).toContainText('4006381333931');
+  await expect(identityCard.locator('.product-identity-strip')).toContainText('100/100');
+  const invalidGtinCard=page.locator('.universal-result-card').filter({hasText:'Garden Shed Video'});
+  await expect(invalidGtinCard.locator('.product-identity-strip')).toHaveCount(0);
+  await expect(page.locator('#universalResearchStats')).toContainText('有身份线索');
+  await page.locator('#universalSort').selectOption('evidence');
+  await expect(page.locator('.universal-result-card').first()).toContainText('Garden Shed Original');
+  await expect(page.locator('.universal-source-score').first()).not.toBeEmpty();
+  await page.locator('#universalSort').selectOption('largest');
+  await expect(page.locator('.universal-result-card').first()).toContainText('Garden Shed Video');
+  await page.locator('#universalSort').selectOption('newest');
+  await expect(page.locator('.universal-result-card').first()).toContainText('Garden Shed Original');
+  await page.locator('#universalSort').selectOption('auto');
+  await page.locator('#universalVisualClusterBtn').click();
+  await expect(page.locator('#universalInsights')).toBeVisible();
+  await expect(page.locator('#universalInsights')).toContainText('视觉相似归组');
+  await expect(page.locator('[data-visual-cluster-key]').first()).toContainText('2 条');
+  await page.locator('#universalVisualClusterBtn').click();
+  await expect(page.locator('#universalVisualClusterBtn')).not.toHaveClass(/active/);
+  await page.locator('#universalProvenanceBtn').click();
+  await expect(page.locator('#universalInsights')).toContainText('图片来源溯源');
+  await expect(page.locator('.provenance-top')).toContainText('可能原始来源候选');
+  await expect(page.locator('.provenance-top')).toContainText('Garden Shed Original');
+  await expect(page.locator('.provenance-top')).toContainText('家族内最早日期');
+  await expect(page.locator('.provenance-family-card').first()).toContainText('2 条');
+  await expect(page.locator('.provenance-family-card').first()).toContainText('Original candidate');
+  await expect(page.locator('.provenance-family-card').first()).toContainText('Cropped / reframed');
+  await expect(page.locator('.provenance-family-card').first()).toContainText('宽高比明显变化');
+  await expect(page.locator('.provenance-timeline')).toContainText('2025');
+  const [provenanceDownload]=await Promise.all([page.waitForEvent('download'),page.locator('#universalExportJsonBtn').click()]);
+  const provenancePath=await provenanceDownload.path();
+  const provenanceJson=JSON.parse(await readFile(provenancePath,'utf8'));
+  expect(provenanceJson.results.every(x=>x.familyId)).toBeTruthy();
+  expect(provenanceJson.results.some(x=>x.versionRelation?.type==='Original candidate')).toBeTruthy();
+  expect(provenanceJson.results.some(x=>x.versionRelation?.type==='Cropped / reframed')).toBeTruthy();
+  const identityExport=provenanceJson.results.find(x=>x.title==='Garden Shed Original');
+  expect(identityExport.product.brand).toBe('iSUNOR');
+  expect(identityExport.product.model).toBe('MS86GY');
+  expect(identityExport.product.asin).toBe('B0C1234567');
+  expect(identityExport.product.gtin).toBe('4006381333931');
+  const [provenanceCsvDownload]=await Promise.all([page.waitForEvent('download'),page.locator('#universalExportBtn').click()]);
+  const provenanceCsvPath=await provenanceCsvDownload.path();
+  const provenanceCsv=await readFile(provenanceCsvPath,'utf8');
+  expect(provenanceCsv).toContain('family_id');
+  expect(provenanceCsv).toContain('version_relation');
+  expect(provenanceCsv).toContain('Cropped / reframed');
+  expect(provenanceCsv).toContain('"brand"');
+  expect(provenanceCsv).toContain('"asin"');
+  expect(provenanceCsv).toContain('"gtin"');
+  expect(provenanceCsv).toContain('iSUNOR');
+  expect(provenanceCsv).toContain('4006381333931');
+  await page.locator('#universalProvenanceBtn').click();
+  await expect(page.locator('#universalProvenanceBtn')).not.toHaveClass(/active/);
+  await page.locator('#universalType').selectOption('image');
+  await expect(page.locator('.universal-result-card')).toHaveCount(1);
+  await expect(page.locator('#universalMeta')).toContainText('1 条结果');
+  await expect(page.locator('.universal-result-card')).toContainText('Garden Shed Original');
+  await expect(page.locator('.universal-evidence-badges')).toContainText('1600×1200');
+  await expect(page.locator('.universal-evidence-badges')).toContainText('CC0');
+  await expect(page.locator('.universal-confidence')).toContainText('%');
+
+  await page.locator('#universalType').selectOption('all');
+  await page.locator('#universalResolution').selectOption('4');
+  await expect(page.locator('.universal-result-card')).toHaveCount(1);
+  await expect(page.locator('.universal-result-card')).toContainText('Garden Shed Video');
+  await page.locator('#universalResolution').selectOption('all');
+  await page.locator('#universalLicense').selectOption('public-domain');
+  await expect(page.locator('.universal-result-card')).toHaveCount(1);
+  await expect(page.locator('.universal-result-card')).toContainText('Garden Shed Original');
+  await page.locator('#universalLicense').selectOption('all');
+  await expect(page.locator('.universal-result-card')).toHaveCount(2);
+  await page.locator('#universalType').selectOption('image');
+  await expect(page.locator('.universal-result-card')).toHaveCount(1);
+
+  await page.locator('[data-favorite-result]').click();
+  await expect(page.locator('[data-favorite-result]')).toContainText('已收藏');
+
+  await expect(page.locator('#universalResearchbar')).toBeVisible();
+  await page.locator('#universalSelectAllBtn').click();
+  await expect(page.locator('#universalResearchStats')).toContainText('已选');
+  await page.locator('#universalTimelineBtn').click();
+  await expect(page.locator('#universalInsights')).toBeVisible();
+  await page.locator('#universalTimelineBtn').click();
+  await page.locator('#universalResearchBtn').click();
+  await expect(page.locator('#researchHubView')).toBeVisible();
+  await expect(page.locator('#v9Root .v9-result-card')).toHaveCount(1);
+  await page.locator('[data-nav="search"]').first().click();
+
+  await page.locator('[data-nav="projects"]').first().click();
+  await expect(page.locator('.favorite-result-card')).toHaveCount(1);
+  await expect(page.locator('#projectsContent')).toContainText('Garden Shed Original');
+
+  await page.locator('[data-nav="history"]').first().click();
+  await expect(page.locator('#historyContent .history-card')).toHaveCount(1);
+  await expect(page.locator('#historyContent')).toContainText('全网搜索');
+  await page.locator('[data-rerun-history]').click();
+  await expect(page.locator('[data-universal-mode="source"]')).toHaveClass(/active/);
+  await expect(page.locator('#universalCountry')).toHaveValue('US');
+  await expect(page.locator('#universalLanguage')).toHaveValue('en');
+  await expect(page.locator('#universalTime')).toHaveValue('year');
+  await expect(page.locator('#universalType')).toHaveValue('image');
+  await expect(page.locator('#universalSort')).toHaveValue('auto');
+
+  const requestsBeforeSiteSearch=mediaRequests;
+  await page.locator('#universalPlatform').selectOption('instagram');
+  await page.locator('#universalSearchBtn').click();
+  expect(mediaRequests).toBe(requestsBeforeSiteSearch);
+  await expect(page.locator('#toastStack')).toContainText('官方站内搜索');
+
+  await page.setViewportSize({width:390,height:844});
+  const overflow=await page.evaluate(()=>document.documentElement.scrollWidth-window.innerWidth);
+  expect(overflow).toBeLessThanOrEqual(1);
+});
+);
+  const euroBucket=a.identityMatch.priceBuckets.find(x=>x.currency==='EUR');
+  expect(dollarBucket).toMatchObject({count:2,min:299,max:349});
+  expect(Math.round(dollarBucket.spread)).toBe(17);
+  expect(euroBucket).toMatchObject({count:1,min:329,max:329});
 
   const [csvDownload]=await Promise.all([page.waitForEvent('download'),page.locator('#universalExportBtn').click()]);
   const csv=await readFile(await csvDownload.path(),'utf8');
