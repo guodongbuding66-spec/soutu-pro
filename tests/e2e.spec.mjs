@@ -383,6 +383,61 @@ test('browser extension collector extracts product JSON-LD and image results',as
 });
 
 
+test('product identity grouping respects GTIN conflicts and exports match evidence',async({page})=>{
+  await page.addInitScript(()=>{
+    localStorage.setItem('soutu-pro-settings-v5',JSON.stringify({tempEndpoint:'',productEndpoint:'',ttl:30,defaultPreset:'product',autoPreset:true}));
+    localStorage.removeItem('soutu-pro-history-v5');
+  });
+  await page.route('**/api/media-search?**',route=>route.fulfill({
+    status:200,contentType:'application/json',
+    body:JSON.stringify({
+      enabled:true,query:'garden shed',providers:[{name:'Openverse',enabled:true,configured:true,count:3}],total:3,
+      items:[
+        {provider:'Openverse',type:'image',title:'US Retail Listing',snippet:'Brand: iSUNOR Model: MS86GY MPN: RY-MS86 EAN: 4006381333931',link:'https://shop-a.example/item',thumbnail:'https://example.com/a.jpg'},
+        {provider:'Openverse',type:'image',title:'EU Retail Listing',snippet:'Brand: iSUNOR Model: MS86GY MPN: RY-MS86 EAN: 4006381333931',link:'https://shop-b.example/item',thumbnail:'https://example.com/b.jpg'},
+        {provider:'Openverse',type:'image',title:'Different Variant',snippet:'Brand: iSUNOR Model: MS86GY MPN: RY-MS86 EAN: 5901234123457',link:'https://shop-c.example/item',thumbnail:'https://example.com/c.jpg'}
+      ]
+    })
+  }));
+  await page.goto('http://127.0.0.1:4173/',{waitUntil:'domcontentloaded'});
+  await page.locator('#fileInput').setInputFiles({name:'identity.svg',mimeType:'image/svg+xml',buffer:fixture});
+  await page.evaluate(()=>document.querySelector('#researchPanel')?.classList.remove('hidden'));
+  await page.locator('#addQueryBtn').click();
+  await page.locator('[data-query-index]').last().fill('garden shed');
+  await page.locator('#universalSearchBtn').click();
+  await expect(page.locator('.universal-result-card')).toHaveCount(3);
+
+  await page.locator('#universalIdentityGroupBtn').click();
+  await expect(page.locator('#universalIdentityGroupBtn')).toHaveClass(/active/);
+  await expect(page.locator('#universalInsights')).toContainText('同款候选归组');
+  await expect(page.locator('[data-identity-group-key]')).toHaveCount(1);
+  await expect(page.locator('[data-identity-group-key]')).toContainText('2 条');
+  await expect(page.locator('[data-identity-group-key]')).toContainText('GTIN');
+  await expect(page.locator('[data-identity-group-key]')).toContainText('100%');
+  await expect(page.locator('[data-identity-group-key]')).toContainText('US Retail Listing');
+  await expect(page.locator('[data-identity-group-key]')).toContainText('EU Retail Listing');
+  await expect(page.locator('[data-identity-group-key]')).not.toContainText('Different Variant');
+
+  await page.locator('[data-identity-group-key]').click();
+  await expect(page.locator('.universal-result-card')).toHaveCount(2);
+  await expect(page.locator('#productResults')).not.toContainText('Different Variant');
+  await page.locator('[data-identity-group-key]').click();
+  await expect(page.locator('.universal-result-card')).toHaveCount(3);
+
+  const [jsonDownload]=await Promise.all([page.waitForEvent('download'),page.locator('#universalExportJsonBtn').click()]);
+  const json=JSON.parse(await readFile(await jsonDownload.path(),'utf8'));
+  const a=json.results.find(x=>x.title==='US Retail Listing'),b=json.results.find(x=>x.title==='EU Retail Listing'),c=json.results.find(x=>x.title==='Different Variant');
+  expect(a.identityMatch?.basis).toBe('GTIN');
+  expect(b.identityMatch?.id).toBe(a.identityMatch?.id);
+  expect(c.identityMatch).toBeNull();
+
+  const [csvDownload]=await Promise.all([page.waitForEvent('download'),page.locator('#universalExportBtn').click()]);
+  const csv=await readFile(await csvDownload.path(),'utf8');
+  expect(csv).toContain('"identity_group"');
+  expect(csv).toContain('"identity_basis"');
+  expect(csv).toContain('"identity_match_confidence"');
+});
+
 test('V9 universal search: modes, filters, waterfall, favorites and history restore',async({page})=>{
   let mediaRequests=0;
   await page.addInitScript(()=>{
