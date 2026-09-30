@@ -533,7 +533,7 @@
   }
   function exportUniversalCsv(){
     const list=selectedUniversalResults().length?selectedUniversalResults():state.universal.results;if(!list.length)return toast('没有可导出的结果','','error');
-    const rows=[['title','provider','type','author','date','domain','width','height','confidence','url'],...list.map(x=>[x.title||'',x.provider||x.source||'',x.type||'',x.author||'',x.publishedAt||'',universalDomain(x),x.meta?.width||x.width||'',x.meta?.height||x.height||'',Math.round((x._confidence||universalConfidence(x))*100),x.link||x.url||''])];
+    const rows=[['title','provider','type','author','date','domain','width','height','confidence','family_id','version_relation','relation_confidence','url'],...list.map(x=>{const rel=state.universal.provenanceRelations[universalResultKey(x)]||{};return [x.title||'',x.provider||x.source||'',x.type||'',x.author||'',x.publishedAt||'',universalDomain(x),x.meta?.width||x.width||'',x.meta?.height||x.height||'',Math.round((x._confidence||universalConfidence(x))*100),state.universal.provenanceFamilyMap[universalResultKey(x)]||'',rel.type||'',rel.confidence!=null?Math.round(rel.confidence*100):'',x.link||x.url||'']})];
     const csv=rows.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');const blob=new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`soutu-universal-${Date.now()}.csv`;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)
   }
   function exportUniversalJson(){
