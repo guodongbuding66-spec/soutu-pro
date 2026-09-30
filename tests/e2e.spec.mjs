@@ -463,6 +463,12 @@ test('V9 universal search: modes, filters, waterfall, favorites and history rest
   expect(provenanceJson.results.every(x=>x.familyId)).toBeTruthy();
   expect(provenanceJson.results.some(x=>x.versionRelation?.type==='Original candidate')).toBeTruthy();
   expect(provenanceJson.results.some(x=>x.versionRelation?.type==='Cropped / reframed')).toBeTruthy();
+  const [provenanceCsvDownload]=await Promise.all([page.waitForEvent('download'),page.locator('#universalExportBtn').click()]);
+  const provenanceCsvPath=await provenanceCsvDownload.path();
+  const provenanceCsv=await readFile(provenanceCsvPath,'utf8');
+  expect(provenanceCsv).toContain('family_id');
+  expect(provenanceCsv).toContain('version_relation');
+  expect(provenanceCsv).toContain('Cropped / reframed');
   await page.locator('#universalProvenanceBtn').click();
   await expect(page.locator('#universalProvenanceBtn')).not.toHaveClass(/active/);
   await page.locator('#universalType').selectOption('image');
