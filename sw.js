@@ -1,4 +1,4 @@
-const CACHE='soutu-pro-v9-1-4-shell';
+const CACHE='soutu-pro-v9-2-0-shell';
 const ASSETS=['/','/index.html','/styles.css','/v9.css','/app.js','/v9.js','/perspective-worker.js','/config.js','/manifest.webmanifest','/icon.svg'];
 self.addEventListener('install',event=>event.waitUntil(caches.open(CACHE).then(c=>c.addAll(ASSETS)).then(()=>self.skipWaiting())));
 self.addEventListener('activate',event=>event.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim())));
