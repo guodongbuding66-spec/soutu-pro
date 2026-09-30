@@ -30,11 +30,11 @@ test('official engine brands render as real images at desktop and mobile',async(
   await expect(page.locator('.engine-card .engine-brand img')).toHaveCount(10);
   const marks=await page.locator('.engine-card .engine-brand').evaluateAll(nodes=>nodes.map(n=>({text:n.textContent.trim(),w:n.getBoundingClientRect().width,h:n.getBoundingClientRect().height,imgW:n.querySelector('img')?.getBoundingClientRect().width||0})));
   expect(marks.every(x=>!x.text&&x.w>=44&&x.h>=44&&x.imgW>=30)).toBeTruthy();
-  await page.locator('.engines-section').screenshot({path:'test-results/engine-ui-desktop-9.2.0.png'});
+  await page.locator('.engines-section').screenshot({path:'test-results/engine-ui-desktop-9.3.0.png'});
   await page.setViewportSize({width:390,height:844});
   const overflow=await page.evaluate(()=>document.documentElement.scrollWidth-window.innerWidth);
   expect(overflow).toBeLessThanOrEqual(1);
-  await page.locator('.engines-section').screenshot({path:'test-results/engine-ui-mobile-9.2.0.png'});
+  await page.locator('.engines-section').screenshot({path:'test-results/engine-ui-mobile-9.3.0.png'});
 });
 
 test('OCR vision barcode object detection and object-to-batch flow',async({page})=>{

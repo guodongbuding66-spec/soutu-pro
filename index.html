@@ -6,12 +6,12 @@
   <meta name="theme-color" content="#f6f8fb" />
   <meta name="description" content="搜图 Pro：多引擎图片搜索、OCR、商品溯源、批量研究与图片预处理工作台。" />
   <meta name="color-scheme" content="light dark" />
-  <meta name="soutu-version" content="9.2.0" />
+  <meta name="soutu-version" content="9.3.0" />
   <title>搜图 Pro · 图片搜索与商品溯源工作台</title>
   <link rel="manifest" href="./manifest.webmanifest" />
   <link rel="icon" href="./icon.svg" type="image/svg+xml" />
-  <link rel="stylesheet" href="./styles.css?v=9.2.0" />
-  <link rel="stylesheet" href="./v9.css?v=9.2.0" />
+  <link rel="stylesheet" href="./styles.css?v=9.3.0" />
+  <link rel="stylesheet" href="./v9.css?v=9.3.0" />
 </head>
 <body>
   <svg class="svg-sprite" aria-hidden="true">
@@ -207,7 +207,7 @@
 
   <main id="tipsView" class="wrap subpage view-shell hidden"><div class="subpage-head"><div><span class="section-kicker">SEARCH PLAYBOOK</span><h1>使用技巧</h1><p>提高商品溯源、原图检索和低清线稿命中率的操作方式。</p></div><button class="secondary-btn" data-nav="search">返回搜图</button></div><div class="tips-grid"><section><span>01</span><h2>局部优先</h2><p>复杂场景先裁产品主体或特殊零件，再反向搜索。</p></section><section><span>02</span><h2>OCR + 图片双线索</h2><p>包装、铭牌、Logo 同时做 OCR 与视觉搜索，通常比单独搜图更快。</p></section><section><span>03</span><h2>线稿先增强</h2><p>使用“裁白边”和“线稿”预处理，再搜索通风窗、五金等细节。</p></section><section><span>04</span><h2>商品平台组合</h2><p>品牌/型号明确后，优先同时搜索 Amazon、Alibaba、Home Depot 等平台。</p></section><section><span>05</span><h2>临时链接</h2><p>Vercel 部署默认使用 Blob 短时签名 URL；也可切换到兼容的 Cloudflare Worker。</p></section><section><span>06</span><h2>隐私边界</h2><p>第三方搜索引擎的数据处理政策独立于本站；进入第三方后以其政策为准。</p></section></div></main>
 
-  <footer><div class="wrap footer-inner"><span>搜图 Pro · Image Compass</span><div><button class="footer-link" data-nav="tips">使用技巧</button><button class="footer-link" id="shortcutHelp">快捷键</button><button class="footer-link version-badge" id="versionBadge" type="button">v9.2.0</button><button class="footer-link update-ready" id="updateBtn" type="button" hidden>发现新版本 · 立即刷新</button><span>本地优先 · 第三方能力透明</span></div></div></footer>
+  <footer><div class="wrap footer-inner"><span>搜图 Pro · Image Compass</span><div><button class="footer-link" data-nav="tips">使用技巧</button><button class="footer-link" id="shortcutHelp">快捷键</button><button class="footer-link version-badge" id="versionBadge" type="button">v9.3.0</button><button class="footer-link update-ready" id="updateBtn" type="button" hidden>发现新版本 · 立即刷新</button><span>本地优先 · 第三方能力透明</span></div></div></footer>
 
   <div class="modal-backdrop hidden" id="settingsModal"><div class="modal modal-wide" role="dialog" aria-modal="true"><div class="modal-head"><h2>设置</h2><button class="icon-btn" data-close="settingsModal" aria-label="关闭"><svg><use href="#i-x"/></svg></button></div><div class="modal-body settings-grid"><label class="field-label">默认任务<select id="defaultPreset"></select></label><label class="field-label">临时图片服务 URL<input id="tempEndpointInput" placeholder="Vercel 默认使用当前站点"><small>Vercel 默认使用同源 Blob API；也可填写兼容 Worker 地址。</small></label><label class="field-label">商品聚合 API URL<input id="productEndpointInput" placeholder="Vercel 默认使用当前站点"><small>Vercel 默认使用同源 API；配置 SERPAPI_KEY 后开启聚合结果。</small></label><label class="field-label">临时链接有效期<select id="ttlSelect"><option value="10">10 分钟</option><option value="30">30 分钟</option><option value="60">60 分钟</option><option value="120">120 分钟</option></select></label><label class="setting-toggle"><input type="checkbox" id="autoPresetToggle"><span class="switch-track"><i></i></span><span><b>智能分析后自动采用推荐任务</b><small>检测到商品、动漫或来源线索后自动同步搜索引擎。</small></span></label><section class="system-status-panel" aria-labelledby="systemStatusTitle"><div class="system-status-head"><div><span class="section-kicker">SYSTEM STATUS</span><h3 id="systemStatusTitle">运行状态</h3></div><div><button class="secondary-btn compact" id="refreshDiagnosticsBtn"><svg><use href="#i-scan"/></svg>刷新诊断</button><button class="secondary-btn compact danger-outline" id="resetClientCacheBtn"><svg><use href="#i-rotate"/></svg>清理缓存并重载</button></div></div><div class="system-status-grid" id="systemStatusGrid"></div><div class="provider-health-detail" id="providerHealthDetail"></div><p class="system-status-note" id="systemStatusNote">用于排查版本缓存、Service Worker、图片直连和搜索引擎状态。</p></section><div class="settings-note"><svg><use href="#i-info"/></svg><span>地址和偏好只保存在当前浏览器。未配置后端时，所有基础功能仍然可以使用。</span></div></div></div></div>
   <div class="modal-backdrop hidden" id="customModal"><div class="modal" role="dialog" aria-modal="true"><div class="modal-head"><h2>添加自定义引擎</h2><button class="icon-btn" data-close="customModal" aria-label="关闭"><svg><use href="#i-x"/></svg></button></div><div class="modal-body"><label class="field-label">名称<input id="customName" placeholder="例如：我的商品搜索"></label><label class="field-label">URL 模板<input id="customTemplate" placeholder="https://example.com/search?url={imageUrl}"><small>公开图片 URL 模式，模板必须包含 {imageUrl}。</small></label><button class="primary-btn full" id="addCustom"><svg><use href="#i-plus"/></svg>添加引擎</button></div></div></div>
@@ -217,6 +217,6 @@
   <div class="modal-backdrop hidden" id="shortcutModal"><div class="modal"><div class="modal-head"><h2>快捷键</h2><button class="icon-btn" data-close="shortcutModal"><svg><use href="#i-x"/></svg></button></div><div class="shortcut-grid"><span>⌘ / Ctrl + K</span><b>命令菜单</b><span>Ctrl / ⌘ + V</span><b>粘贴图片</b><span>1–6</span><b>切换任务</b><span>C</span><b>裁剪</b><span>R</span><b>旋转</b><span>Enter</span><b>执行搜索</b><span>Esc</span><b>退出当前操作</b></div></div></div>
   <div class="toast-stack" id="toastStack" aria-live="polite" aria-atomic="true"></div>
 
-  <script src="./config.js?v=9.2.0"></script><script src="./app.js?v=9.2.0"></script><script src="./v9.js?v=9.2.0"></script>
+  <script src="./config.js?v=9.3.0"></script><script src="./app.js?v=9.3.0"></script><script src="./v9.js?v=9.3.0"></script>
 </body>
 </html>
