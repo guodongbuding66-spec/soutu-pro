@@ -1,4 +1,5 @@
 import {test,expect} from '@playwright/test';
+import {readFile} from 'node:fs/promises';
 
 const fixture=Buffer.from(`<svg xmlns="http://www.w3.org/2000/svg" width="160" height="100"><rect width="160" height="100" fill="white"/><rect x="24" y="18" width="112" height="64" rx="8" fill="#1f2937"/><circle cx="80" cy="50" r="18" fill="#60a5fa"/></svg>`);
 test.use({serviceWorkers:'block'});
@@ -456,6 +457,12 @@ test('V9 universal search: modes, filters, waterfall, favorites and history rest
   await expect(page.locator('.provenance-family-card').first()).toContainText('Cropped / reframed');
   await expect(page.locator('.provenance-family-card').first()).toContainText('宽高比明显变化');
   await expect(page.locator('.provenance-timeline')).toContainText('2025');
+  const [provenanceDownload]=await Promise.all([page.waitForEvent('download'),page.locator('#universalExportJsonBtn').click()]);
+  const provenancePath=await provenanceDownload.path();
+  const provenanceJson=JSON.parse(await readFile(provenancePath,'utf8'));
+  expect(provenanceJson.results.every(x=>x.familyId)).toBeTruthy();
+  expect(provenanceJson.results.some(x=>x.versionRelation?.type==='Original candidate')).toBeTruthy();
+  expect(provenanceJson.results.some(x=>x.versionRelation?.type==='Cropped / reframed')).toBeTruthy();
   await page.locator('#universalProvenanceBtn').click();
   await expect(page.locator('#universalProvenanceBtn')).not.toHaveClass(/active/);
   await page.locator('#universalType').selectOption('image');
