@@ -132,7 +132,7 @@ test('settings system status exposes persisted engine and provider health diagno
   await page.locator('#settingsBtn').click();
   await expect(page.locator('#settingsModal')).toBeVisible();
   await expect(page.locator('#systemStatusGrid .system-status-item')).toHaveCount(10);
-  await expect(page.locator('#systemStatusGrid')).toContainText('v9.3.0');
+  await expect(page.locator('#systemStatusGrid')).toContainText('v9.3.1');
   await expect(page.locator('#systemStatusGrid')).toContainText('网络状态');
   await expect(page.locator('#systemStatusGrid')).toContainText('API Providers');
   await expect(page.locator('#providerHealthDetail')).toContainText('Openverse');

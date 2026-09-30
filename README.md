@@ -1,4 +1,4 @@
-# 搜图 Pro · Image Compass V9.3.0
+# 搜图 Pro · Image Compass V9.3.1
 
 面向高频图片调查、商品找同款、来源溯源和采购研究的浏览器工作台。核心路径是：**放入图片 → 预处理/智能分析 → 自动任务建议 → 多引擎搜索 → 商品/供应商研究 → 保存项目或批量继续**。
 
@@ -57,7 +57,7 @@
 python3 -m http.server 4173
 ```
 
-## Vercel 原生部署（V9.3.0）
+## Vercel 原生部署（V9.3.1）
 
 - `/api/temp-token` 使用 `@vercel/blob@2.4.0` 生成浏览器直传 URL、短时读取 URL 与删除 URL。
 - 临时读取 URL 到期后即失效；`/api/cleanup` 每日清理已经过期的 Blob 对象。
@@ -158,3 +158,11 @@ TikTok、抖音、小红书、Instagram、Facebook、Pinterest、X、Reddit、Bi
 - GTIN / EAN / UPC 使用校验位验证，降低普通长数字被误识别为商品码的风险。
 - Product ID 证据会进入结果卡、CSV / JSON 导出和 V9 Investigation handoff。
 - Product ID 评分只反映结构化身份线索完整度，不代表商品真伪或品牌归属结论。
+
+
+## V9.3.1 Same-product Candidates
+
+- Universal Search 可按 GTIN / ASIN / Brand+MPN / Brand+Model / MPN 建立“同款候选组”。
+- GTIN 属于强身份标识；若两个结果都有 GTIN 且数值不同，会阻止组间合并，避免仅凭型号一致误判为同款。
+- SKU 不单独作为跨平台同款依据，因为卖家 SKU 可能只在单一平台或店铺内有效。
+- 匹配组、依据和置信度会进入 CSV / JSON 导出与 V9 Investigation handoff。

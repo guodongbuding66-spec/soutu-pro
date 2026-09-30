@@ -1,7 +1,7 @@
 (() => {
   'use strict';
 
-  const APP_VERSION='9.3.0';
+  const APP_VERSION='9.3.1';
 
   const MAX_FILE = 20 * 1024 * 1024;
   const MAX_BATCH = 50;
