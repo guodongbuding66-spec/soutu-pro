@@ -74,7 +74,7 @@
     projects:readJson(KEYS.projects,[]), favorites:readJson(KEYS.favorites,[]), universalFavorites:readJson(KEYS.universalFavorites,[]), settings:{...defaultSettings,...readJson(KEYS.settings,{})},
     analysis:{ocr:'',labels:[],barcodes:[],objects:[],queries:[],running:false}, tempLink:null, tempTimer:null, tempUnavailableReason:'', tempUnavailableAt:0, forceTempLink:false, engineHealth:cachedEngineHealth.engines||{}, engineHealthCheckedAt:Number(cachedEngineHealth.checkedAt)||0, providerHealth:cachedProviderHealth.providers||[], providerHealthCheckedAt:Number(cachedProviderHealth.checkedAt)||0,
     batch:[], view:'search', installPrompt:null, presetTouched:false,
-    universal:{mode:'all',platform:'all',country:'all',language:'all',time:'all',type:'all',resolution:'all',license:'all',sort:'auto',rawResults:[],results:[],providers:[],query:'',expanded:[],selected:new Set(),grouped:false,visualGrouped:false,provenanceActive:false,timeline:false,clusterFocus:null,visualClusterFocus:null,visualGroups:{},provenanceFamilyMap:{},provenanceFamilyFocus:null,provenanceMethod:'none'}
+    universal:{mode:'all',platform:'all',country:'all',language:'all',time:'all',type:'all',resolution:'all',license:'all',sort:'auto',rawResults:[],results:[],providers:[],query:'',expanded:[],selected:new Set(),grouped:false,visualGrouped:false,provenanceActive:false,timeline:false,clusterFocus:null,visualClusterFocus:null,visualGroups:{},visualFeatures:{},provenanceFamilyMap:{},provenanceFamilyFocus:null,provenanceMethod:'none'}
   };
 
   const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
@@ -415,8 +415,8 @@
         for(const g of groups){const score=universalVisualSimilarity(item.feature,g[0].feature);if(score>bestScore){best=g;bestScore=score}}
         if(best&&bestScore>=.84)best.push(item);else groups.push([item])
       }
-      const map={};groups.forEach((g,i)=>g.forEach(x=>map[x.key]=`visual-${i}`));
-      state.universal.visualGroups=map;state.universal.visualClusterFocus=null;
+      const map={},featureMap={};groups.forEach((g,i)=>g.forEach(x=>{map[x.key]=`visual-${i}`;featureMap[x.key]=x.feature}));
+      state.universal.visualGroups=map;state.universal.visualFeatures=featureMap;state.universal.visualClusterFocus=null;
       if(activate){state.universal.visualGrouped=true;state.universal.provenanceActive=false;state.universal.grouped=false;state.universal.timeline=false;renderUniversalResults(state.universal.rawResults,state.universal.providers||[])}
       if(!silent)toast('视觉归组完成',`已分析 ${feats.length} 张缩略图 · ${groups.filter(g=>g.length>1).length} 个相似组`,'ok')
     }finally{if(btn){btn.disabled=false;btn.innerHTML=`${icon('image')}视觉归组`;btn.classList.toggle('active',state.universal.visualGrouped)}}
@@ -436,6 +436,29 @@
     score+=Math.round((x._sourceScore||universalSourceScore(x))*.08);
     return {score:Math.min(100,score),reasons}
   }
+  function universalCosine(a=[],b=[]){if(!a.length||a.length!==b.length)return 0;let dot=0,aa=0,bb=0;for(let i=0;i<a.length;i++){dot+=a[i]*b[i];aa+=a[i]*a[i];bb+=b[i]*b[i]}return aa&&bb?dot/Math.sqrt(aa*bb):0}
+  function provenanceDimensions(x){
+    const f=state.universal.visualFeatures[universalResultKey(x)]||{};
+    return {width:Number(x?.meta?.width)||Number(x.width)||Number(f.width)||0,height:Number(x?.meta?.height)||Number(x.height)||Number(f.height)||0}
+  }
+  function provenanceVersionRelation(base,x){
+    if(universalResultKey(base)===universalResultKey(x))return {type:'Original candidate',tone:'origin',confidence:1,reasons:['当前家族最高来源证据候选']};
+    const bf=state.universal.visualFeatures[universalResultKey(base)],xf=state.universal.visualFeatures[universalResultKey(x)];
+    const bd=provenanceDimensions(base),xd=provenanceDimensions(x),bar=bd.width&&bd.height?bd.width/bd.height:0,xar=xd.width&&xd.height?xd.width/xd.height:0;
+    const aspectDiff=bar&&xar?Math.abs(Math.log(xar/bar)):0,sizeDiff=bd.width&&bd.height&&xd.width&&xd.height?Math.abs(Math.log((xd.width*xd.height)/(bd.width*bd.height))):0;
+    if(!bf||!xf)return {type:'Variant / uncertain',tone:'uncertain',confidence:.35,reasons:['缺少可比较的视觉指纹']};
+    const dh=1-universalBitDistance(bf.dhash,xf.dhash),edge=1-universalBitDistance(bf.edgehash,xf.edgehash),hist=universalCosine(bf.hist,xf.hist);
+    const pct=v=>`${Math.round(v*100)}%`,reasons=[`主体 ${pct(dh)}`,`结构 ${pct(edge)}`,`色彩 ${pct(hist)}`];
+    if(dh>=.96&&edge>=.94&&hist>=.94){
+      if(sizeDiff>.08){reasons.push('宽高比接近但像素尺寸变化');return {type:'Resized / compressed',tone:'resize',confidence:Math.min(.99,(dh+edge+hist)/3),reasons}}
+      return {type:'Near duplicate',tone:'duplicate',confidence:Math.min(.99,(dh+edge+hist)/3),reasons:[...reasons,'尺寸基本一致']}
+    }
+    if(aspectDiff>.075&&dh>=.72){reasons.push('宽高比明显变化');return {type:'Cropped / reframed',tone:'crop',confidence:Math.min(.95,dh*.55+edge*.3+hist*.15),reasons}}
+    if(dh>=.86&&hist>=.86&&edge<.84){reasons.push('主体接近但边缘结构变化较多');return {type:'Likely text / watermark added',tone:'watermark',confidence:Math.min(.9,dh*.5+hist*.3+(1-edge)*.2),reasons}}
+    if(dh>=.76&&edge>=.72&&hist<.84){reasons.push('结构接近但色彩分布变化明显');return {type:'Color / background changed',tone:'background',confidence:Math.min(.9,dh*.45+edge*.4+(1-hist)*.15),reasons}}
+    if(dh>=.8||edge>=.8){reasons.push('保留部分主要视觉结构');return {type:'Modified variant',tone:'modified',confidence:Math.min(.86,dh*.55+edge*.45),reasons}}
+    return {type:'Variant / uncertain',tone:'uncertain',confidence:Math.max(.25,(dh+edge+hist)/3),reasons}
+  }
   function provenanceFamiliesFor(list){
     const map=new Map(),titleCounts=new Map();
     list.forEach(x=>titleCounts.set(x._cluster,(titleCounts.get(x._cluster)||0)+1));
@@ -446,7 +469,8 @@
     });
     return [...map.entries()].map(([id,members])=>{
       const ranked=members.map(x=>({x,...provenanceEvidence(x,members)})).sort((a,b)=>b.score-a.score||universalPixels(b.x)-universalPixels(a.x));
-      return {id,members,candidate:ranked[0],method:id.startsWith('visual-')?'视觉指纹':id.startsWith('title:')?'标题 / 元数据':'单一结果'}
+      const candidate=ranked[0],relations=members.map(x=>({x,...provenanceVersionRelation(candidate.x,x)}));
+      return {id,members,candidate,relations,method:id.startsWith('visual-')?'视觉指纹':id.startsWith('title:')?'标题 / 元数据':'单一结果'}
     }).sort((a,b)=>b.members.length-a.members.length||b.candidate.score-a.candidate.score)
   }
   async function buildUniversalProvenance(){
@@ -471,7 +495,7 @@
     els.universalInsights.classList.remove('hidden');
     els.universalInsights.innerHTML=`<div class="universal-insight-head"><div><b>图片来源溯源</b><span>${escapeHtml(state.universal.provenanceMethod)} · 候选排序，不代表确定原创归属</span></div></div>
       ${top?`<div class="provenance-top"><div class="provenance-top-copy"><span>可能原始来源候选</span><b>${escapeHtml(top.x.title||'未命名')}</b><small>${escapeHtml(universalDomain(top.x)||top.x.provider||'未知来源')}</small><div class="provenance-reasons">${top.reasons.map(r=>`<span>${escapeHtml(r)}</span>`).join('')}</div></div><strong>${top.score}<small>/100</small></strong><a href="${escapeHtml(top.x.link||top.x.url||'#')}" target="_blank" rel="noopener noreferrer">打开来源</a></div>`:''}
-      <div class="provenance-grid">${(multi.length?multi:families.slice(0,6)).slice(0,8).map((f,i)=>{const c=f.candidate;return `<article class="provenance-family-card" data-provenance-family="${escapeHtml(f.id)}"><div class="provenance-family-head"><span>图片家族 ${i+1}</span><b>${f.members.length} 条</b></div><strong>${escapeHtml(c.x.title||'未命名')}</strong><small>${escapeHtml(f.method)} · 候选 ${c.score}/100</small><div class="provenance-reasons">${c.reasons.slice(0,4).map(r=>`<span>${escapeHtml(r)}</span>`).join('')}</div></article>`}).join('')}</div>
+      <div class="provenance-grid">${(multi.length?multi:families.slice(0,6)).slice(0,8).map((f,i)=>{const c=f.candidate;return `<article class="provenance-family-card" data-provenance-family="${escapeHtml(f.id)}"><div class="provenance-family-head"><span>图片家族 ${i+1}</span><b>${f.members.length} 条</b></div><strong>${escapeHtml(c.x.title||'未命名')}</strong><small>${escapeHtml(f.method)} · 候选 ${c.score}/100</small><div class="provenance-reasons">${c.reasons.slice(0,4).map(r=>`<span>${escapeHtml(r)}</span>`).join('')}</div><div class="provenance-relations">${f.relations.slice(0,5).map(r=>`<div class="provenance-relation ${escapeHtml(r.tone)}"><span>${escapeHtml(r.type)}</span><b>${Math.round(r.confidence*100)}%</b><small>${escapeHtml(r.x.title||'未命名')}</small><em>${escapeHtml(r.reasons.slice(0,2).join(' · '))}</em></div>`).join('')}</div></article>`}).join('')}</div>
       <div class="provenance-timeline"><div class="universal-insight-head"><b>传播时间线</b><span>只使用结果自带日期；无日期结果不会被强行排序</span></div>${dated.length?dated.map(x=>`<a href="${escapeHtml(x.link||x.url||'#')}" target="_blank" rel="noopener noreferrer"><time>${new Date(universalDate(x)).toLocaleDateString()}</time><span>${escapeHtml(universalDomain(x)||x.provider||'未知')}</span><b>${escapeHtml(x.title||'未命名')}</b></a>`).join(''):'<p>当前结果缺少可验证的发布时间元数据。</p>'}</div>`
   }
   function renderUniversalInsights(list){
@@ -514,7 +538,7 @@
   }
   function exportUniversalJson(){
     const list=selectedUniversalResults().length?selectedUniversalResults():state.universal.results;if(!list.length)return toast('没有可导出的结果','','error');
-    const payload={version:'V9',kind:'universal-search-export',query:state.universal.expanded[0]||primaryQuery(),mode:state.universal.mode,filters:{platform:state.universal.platform,country:state.universal.country,language:state.universal.language,time:state.universal.time,type:state.universal.type,resolution:state.universal.resolution,license:state.universal.license,sort:state.universal.sort},exportedAt:new Date().toISOString(),results:list.map(x=>({title:x.title||'',url:x.link||x.url||'',thumbnail:x.thumbnail||'',provider:x.provider||x.source||'',type:x.type||'',author:x.author||'',publishedAt:x.publishedAt||'',domain:universalDomain(x),width:x.meta?.width||x.width||0,height:x.meta?.height||x.height||0,confidence:Math.round((x._confidence||universalConfidence(x))*100),sourceScore:Math.round(x._sourceScore||universalSourceScore(x)),product:x.product||{},license:x.meta?.license||'',snippet:x.snippet||''}))};
+    const payload={version:'V9',kind:'universal-search-export',query:state.universal.expanded[0]||primaryQuery(),mode:state.universal.mode,filters:{platform:state.universal.platform,country:state.universal.country,language:state.universal.language,time:state.universal.time,type:state.universal.type,resolution:state.universal.resolution,license:state.universal.license,sort:state.universal.sort},exportedAt:new Date().toISOString(),results:list.map(x=>({title:x.title||'',url:x.link||x.url||'',thumbnail:x.thumbnail||'',provider:x.provider||x.source||'',type:x.type||'',author:x.author||'',publishedAt:x.publishedAt||'',domain:universalDomain(x),width:x.meta?.width||x.width||0,height:x.meta?.height||x.height||0,confidence:Math.round((x._confidence||universalConfidence(x))*100),sourceScore:Math.round(x._sourceScore||universalSourceScore(x)),familyId:state.universal.provenanceFamilyMap[universalResultKey(x)]||'',product:x.product||{},license:x.meta?.license||'',snippet:x.snippet||''}))};
     const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`soutu-universal-${Date.now()}.json`;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)
   }
   function sendUniversalToResearch(){
@@ -524,7 +548,7 @@
   }
 
   function renderUniversalResults(items=null,providers=[]){
-    if(Array.isArray(items)&&items!==state.universal.rawResults){state.universal.rawResults=items.slice();state.universal.selected=new Set();state.universal.clusterFocus=null;state.universal.visualClusterFocus=null;state.universal.visualGroups={};state.universal.visualGrouped=false;state.universal.provenanceActive=false;state.universal.provenanceFamilyMap={};state.universal.provenanceFamilyFocus=null;state.universal.provenanceMethod='none'}
+    if(Array.isArray(items)&&items!==state.universal.rawResults){state.universal.rawResults=items.slice();state.universal.selected=new Set();state.universal.clusterFocus=null;state.universal.visualClusterFocus=null;state.universal.visualGroups={};state.universal.visualFeatures={};state.universal.visualGrouped=false;state.universal.provenanceActive=false;state.universal.provenanceFamilyMap={};state.universal.provenanceFamilyFocus=null;state.universal.provenanceMethod='none'}
     let list=universalAnnotated(state.universal.rawResults.slice());if(state.universal.platform!=='all')list=list.filter(x=>providerSlug(x.provider||x.source||'')===state.universal.platform||String(x.platformId||'')===state.universal.platform);
     if(state.universal.type!=='all')list=list.filter(x=>(x.type||'').toLowerCase()===state.universal.type);
     if(state.universal.resolution!=='all'){const min=Number(state.universal.resolution)*1000000;list=list.filter(x=>universalPixels(x)>=min)}
