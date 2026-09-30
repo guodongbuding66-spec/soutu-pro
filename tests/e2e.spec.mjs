@@ -446,6 +446,15 @@ test('V9 universal search: modes, filters, waterfall, favorites and history rest
   await expect(page.locator('[data-visual-cluster-key]').first()).toContainText('2 条');
   await page.locator('#universalVisualClusterBtn').click();
   await expect(page.locator('#universalVisualClusterBtn')).not.toHaveClass(/active/);
+  await page.locator('#universalProvenanceBtn').click();
+  await expect(page.locator('#universalInsights')).toContainText('图片来源溯源');
+  await expect(page.locator('.provenance-top')).toContainText('可能原始来源候选');
+  await expect(page.locator('.provenance-top')).toContainText('Garden Shed Original');
+  await expect(page.locator('.provenance-top')).toContainText('家族内最早日期');
+  await expect(page.locator('.provenance-family-card').first()).toContainText('2 条');
+  await expect(page.locator('.provenance-timeline')).toContainText('2025');
+  await page.locator('#universalProvenanceBtn').click();
+  await expect(page.locator('#universalProvenanceBtn')).not.toHaveClass(/active/);
   await page.locator('#universalType').selectOption('image');
   await expect(page.locator('.universal-result-card')).toHaveCount(1);
   await expect(page.locator('#universalMeta')).toContainText('1 条结果');
