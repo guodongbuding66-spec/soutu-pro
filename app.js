@@ -345,7 +345,7 @@
   async function federatedProductSearch(){const q=primaryQuery();if(!q)return toast('先准备搜索词','可以运行智能分析或手动添加关键词。','error');const ep=state.settings.productEndpoint.trim().replace(/\/$/,'');if(!ep){els.productResults.classList.remove('hidden');els.productResults.innerHTML=`<div class="provider-empty">${icon('info')}<div><b>商品结果聚合尚未启用</b><p>平台快捷搜索可以直接使用。若要在本站展示价格与商品卡片，请在设置里配置商品聚合 API。</p></div></div>`;return}els.productResults.classList.remove('hidden');els.productResults.innerHTML='<div class="loading-block"><span class="spinner"></span>正在聚合商品结果…</div>';try{const r=await fetch(`${ep}/api/product-search?q=${encodeURIComponent(q)}`);const data=await r.json();if(!r.ok||!data.enabled)throw new Error(data.message||'provider unavailable');const items=data.items||[];els.productResults.innerHTML=items.length?`<div class="result-grid">${items.map(x=>`<a class="result-card" href="${escapeHtml(x.link||'#')}" target="_blank" rel="noopener"><div class="result-thumb">${x.thumbnail?`<img src="${escapeHtml(x.thumbnail)}" alt="">`:icon('image')}</div><div><b>${escapeHtml(x.title||'商品')}</b><span>${escapeHtml(x.price||'价格未知')}</span><small>${escapeHtml(x.source||data.provider||'')}</small></div></a>`).join('')}</div>`:'<div class="provider-empty">没有返回可展示的商品结果。</div>'}catch(e){els.productResults.innerHTML=`<div class="provider-empty">${icon('info')}<div><b>聚合服务不可用</b><p>${escapeHtml(e.message||'请检查 API 配置。')}</p></div></div>`}}
 
   function mediaMeta(x){const m=x.meta||{},bits=[];if(m.width&&m.height)bits.push(`${m.width}×${m.height}`);if(Number.isFinite(m.duration))bits.push(`${m.duration}s`);if(Number.isFinite(m.likes))bits.push(`${m.likes} 赞`);if(Number.isFinite(m.favourites))bits.push(`${m.favourites} 收藏`);if(m.license)bits.push(String(m.license).toUpperCase());return bits.join(' · ')}
-  function universalEvidenceBadges(x){const tags=[],domain=universalDomain(x),m=x.meta||{},p=x.product||{};if(domain)tags.push(domain);if(x.publishedAt){const t=Date.parse(x.publishedAt);if(Number.isFinite(t))tags.push(new Date(t).toLocaleDateString())}if(m.width&&m.height)tags.push(`${m.width}×${m.height}`);if(m.license)tags.push(String(m.license).toUpperCase());if(m.publicDomain===true)tags.push('PUBLIC DOMAIN');if(p.price)tags.push(p.price);if(p.model)tags.push(`Model ${p.model}`);if(p.sku)tags.push(`SKU ${p.sku}`);if(p.mpn)tags.push(`MPN ${p.mpn}`);return tags.slice(0,6)}
+  function universalEvidenceBadges(x){const tags=[],domain=universalDomain(x),m=x.meta||{},p=x.product||{};if(domain)tags.push(domain);if(x.publishedAt){const t=Date.parse(x.publishedAt);if(Number.isFinite(t))tags.push(new Date(t).toLocaleDateString())}if(m.width&&m.height)tags.push(`${m.width}×${m.height}`);if(m.license)tags.push(String(m.license).toUpperCase());if(m.publicDomain===true)tags.push('PUBLIC DOMAIN');if(p.price)tags.push(p.price);if(p.brand)tags.push(`Brand ${p.brand}`);if(p.model)tags.push(`Model ${p.model}`);if(p.sku)tags.push(`SKU ${p.sku}`);if(p.mpn)tags.push(`MPN ${p.mpn}`);if(p.asin)tags.push(`ASIN ${p.asin}`);if(p.gtin)tags.push(`GTIN ${p.gtin}`);return tags.slice(0,8)}
   function universalDomain(x){try{return new URL(x.link||x.url||'').hostname.replace(/^www\./,'')}catch{return''}}
   function universalDate(x){const t=Date.parse(x.publishedAt||x.date||'');return Number.isFinite(t)?t:0}
   function universalPixels(x){return (Number(x?.meta?.width)||Number(x.width)||0)*(Number(x?.meta?.height)||Number(x.height)||0)}
@@ -364,21 +364,39 @@
     if(x.meta?.publicDomain===true)score+=12;else if(x.meta?.license)score+=9;
     if(universalDomain(x))score+=8;
     if(/library of congress|art institute|nasa|wikimedia|internet archive|openverse/i.test(String(x.provider||x.source||'')))score+=18;
-    if(x.product?.model||x.product?.sku||x.product?.mpn)score+=8;
+    if(x.product?.brand||x.product?.model||x.product?.sku||x.product?.mpn||x.product?.asin||x.product?.gtin)score+=8;
     return Math.min(100,score);
   }
   function universalClusterKey(x){
     const txt=(x.title||'').toLowerCase().replace(/[^a-z0-9\u4e00-\u9fff]+/g,' ').trim().split(/\s+/).filter(w=>w.length>2);
     return txt.slice(0,4).sort().join('|')||providerSlug(x.provider||x.source||'unknown');
   }
+  function universalGtinValid(value=''){
+    const d=String(value).replace(/\D/g,'');if(![8,12,13,14].includes(d.length))return false;
+    const body=d.slice(0,-1).split('').reverse(),sum=body.reduce((n,ch,i)=>n+Number(ch)*(i%2===0?3:1),0);
+    return (10-(sum%10))%10===Number(d.at(-1))
+  }
+  function universalLabeledValue(text,labelRx,max=64){
+    const m=text.match(new RegExp(`(?:${labelRx})\\s*[:#\\-]?\\s*([^|;,•\\n]{1,${max}})`,'i'));if(!m)return'';
+    return m[1].split(/\b(?:brand|manufacturer|maker|model|sku|mpn|asin|gtin|ean|upc)\b|(?:品牌|制造商|型号|货号)/i)[0].trim()
+  }
   function universalStructuredFields(x){
-    const text=[x.title,x.snippet,x.meta?.model,x.meta?.sku,x.meta?.mpn].filter(Boolean).join(' ');
-    const price=String(x.price||'')||((text.match(/(?:US\$|USD\s*|\$|€|£|¥|CNY\s*)\s?\d[\d,.]*(?:\.\d{1,2})?/i)||[])[0]||'');
-    const pick=rx=>((text.match(rx)||[])[1]||'').trim();
-    const sku=String(x.product?.sku||x.meta?.sku||pick(/(?:SKU|货号)\s*[:#\-]?\s*([A-Z0-9][A-Z0-9._\-]{2,})/i));
-    const mpn=String(x.product?.mpn||x.meta?.mpn||pick(/MPN\s*[:#\-]?\s*([A-Z0-9][A-Z0-9._\-]{2,})/i));
-    const model=String(x.product?.model||x.meta?.model||pick(/(?:MODEL|型号)\s*[:#\-]?\s*([A-Z0-9][A-Z0-9._\-]{2,})/i));
-    return {price,sku,mpn,model};
+    const src=x.product||{},meta=x.meta||{},text=[x.title,x.snippet,meta.brand,meta.model,meta.sku,meta.mpn,meta.asin,meta.gtin,meta.ean,meta.upc].filter(Boolean).join(' ');
+    const price=String(x.price||src.price||'')||((text.match(/(?:US\$|USD\s*|\$|€|£|¥|CNY\s*)\s?\d[\d,.]*(?:\.\d{1,2})?/i)||[])[0]||'');
+    const pick=rx=>((text.match(rx)||[])[1]||'').trim(),clean=v=>String(v||'').trim().replace(/[.,;:]+$/,'');
+    const brand=clean(src.brand?.name||src.brand||meta.brand||universalLabeledValue(text,'BRAND|品牌|MANUFACTURER|MAKER|制造商',48));
+    const sku=clean(src.sku||meta.sku||pick(/(?:SKU|货号)\s*[:#\-]?\s*([A-Z0-9][A-Z0-9._\-]{2,})/i));
+    const mpn=clean(src.mpn||meta.mpn||pick(/MPN\s*[:#\-]?\s*([A-Z0-9][A-Z0-9._\-]{2,})/i));
+    const model=clean(src.model||meta.model||pick(/(?:MODEL|型号)\s*[:#\-]?\s*([A-Z0-9][A-Z0-9._\-]{2,})/i));
+    const asin=clean(src.asin||meta.asin||pick(/ASIN\s*[:#\-]?\s*([A-Z0-9]{10})/i)||((text.match(/\b(B0[A-Z0-9]{8})\b/i)||[])[1]||'')).toUpperCase();
+    const labelledGtin=clean(src.gtin||meta.gtin||pick(/GTIN\s*[:#\-]?\s*(\d{8}|\d{12,14})/i));
+    const labelledEan=clean(src.ean||meta.ean||pick(/EAN(?:-13)?\s*[:#\-]?\s*(\d{13})/i));
+    const labelledUpc=clean(src.upc||meta.upc||pick(/UPC(?:-A)?\s*[:#\-]?\s*(\d{12})/i));
+    const numericCandidates=[labelledGtin,labelledEan,labelledUpc,...(text.match(/\b\d{8}\b|\b\d{12,14}\b/g)||[])].filter(universalGtinValid);
+    const gtin=numericCandidates[0]||'',ean=labelledEan&&universalGtinValid(labelledEan)?labelledEan:(gtin.length===13?gtin:''),upc=labelledUpc&&universalGtinValid(labelledUpc)?labelledUpc:(gtin.length===12?gtin:'');
+    const identity={brand,model,sku,mpn,asin,gtin,ean,upc},identityCount=['brand','model','sku','mpn','asin','gtin'].filter(k=>identity[k]).length;
+    const identityScore=Math.min(100,(brand?24:0)+(model?22:0)+(sku?16:0)+(mpn?14:0)+(asin?14:0)+(gtin?18:0));
+    return {price,...identity,identityCount,identityScore};
   }
   function universalAnnotated(items){
     const groups={};
@@ -387,8 +405,8 @@
   function renderUniversalResearchStats(list){
     if(!els.universalResearchbar||!els.universalResearchStats)return;
     els.universalResearchbar.classList.toggle('hidden',!list.length);
-    const domains=new Set(list.map(universalDomain).filter(Boolean)).size,authors=new Set(list.map(x=>x.author).filter(Boolean)).size,hi=list.filter(x=>universalPixels(x)>=1000000).length;
-    els.universalResearchStats.innerHTML=`<span><b>${list.length}</b>结果</span><span><b>${domains}</b>域名</span><span><b>${authors}</b>作者</span><span><b>${hi}</b>≥1MP</span><span><b>${state.universal.selected.size}</b>已选</span>`;
+    const domains=new Set(list.map(universalDomain).filter(Boolean)).size,authors=new Set(list.map(x=>x.author).filter(Boolean)).size,hi=list.filter(x=>universalPixels(x)>=1000000).length,identified=list.filter(x=>(x.product?.identityCount||0)>0).length;
+    els.universalResearchStats.innerHTML=`<span><b>${list.length}</b>结果</span><span><b>${domains}</b>域名</span><span><b>${authors}</b>作者</span><span><b>${hi}</b>≥1MP</span><span><b>${identified}</b>有身份线索</span><span><b>${state.universal.selected.size}</b>已选</span>`;
   }
   function universalResultKey(x){return x.link||x.url||x.title||''}
   function universalBitDistance(a='',b=''){if(!a||!b||a.length!==b.length)return 1;let d=0;for(let i=0;i<a.length;i++)if(a[i]!==b[i])d++;return d/a.length}
@@ -533,7 +551,7 @@
   }
   function exportUniversalCsv(){
     const list=selectedUniversalResults().length?selectedUniversalResults():state.universal.results;if(!list.length)return toast('没有可导出的结果','','error');
-    const rows=[['title','provider','type','author','date','domain','width','height','confidence','family_id','version_relation','relation_confidence','url'],...list.map(x=>{const rel=state.universal.provenanceRelations[universalResultKey(x)]||{};return [x.title||'',x.provider||x.source||'',x.type||'',x.author||'',x.publishedAt||'',universalDomain(x),x.meta?.width||x.width||'',x.meta?.height||x.height||'',Math.round((x._confidence||universalConfidence(x))*100),state.universal.provenanceFamilyMap[universalResultKey(x)]||'',rel.type||'',rel.confidence!=null?Math.round(rel.confidence*100):'',x.link||x.url||'']})];
+    const rows=[['title','provider','type','author','date','domain','width','height','confidence','brand','model','sku','mpn','asin','gtin','identity_score','family_id','version_relation','relation_confidence','url'],...list.map(x=>{const rel=state.universal.provenanceRelations[universalResultKey(x)]||{};return [x.title||'',x.provider||x.source||'',x.type||'',x.author||'',x.publishedAt||'',universalDomain(x),x.meta?.width||x.width||'',x.meta?.height||x.height||'',Math.round((x._confidence||universalConfidence(x))*100),x.product?.brand||'',x.product?.model||'',x.product?.sku||'',x.product?.mpn||'',x.product?.asin||'',x.product?.gtin||'',x.product?.identityScore||0,state.universal.provenanceFamilyMap[universalResultKey(x)]||'',rel.type||'',rel.confidence!=null?Math.round(rel.confidence*100):'',x.link||x.url||'']})];
     const csv=rows.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');const blob=new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`soutu-universal-${Date.now()}.csv`;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)
   }
   function exportUniversalJson(){
@@ -578,7 +596,7 @@
     }
     renderUniversalResearchStats(list);renderUniversalInsights(list);
     const providerStrip=providers.length?`<div class="provider-strip">${providers.map(p=>`<span class="${p.enabled?'ok':'off'}"><b>${escapeHtml(p.name)}</b><small>${p.enabled?`${p.count||0} 条`:p.configured?'暂不可用':'未配置 Key'}</small></span>`).join('')}</div>`:'';
-    const cards=list.map(x=>`<article class="universal-result-card ${state.universal.selected.has(x.link||x.url||x.title)?'selected':''}" data-result-type="${escapeHtml(x.type||'post')}"><label class="universal-select"><input type="checkbox" data-universal-select="${escapeHtml(x.link||x.url||x.title)}" ${state.universal.selected.has(x.link||x.url||x.title)?'checked':''}><span>${icon('check')}</span></label><a class="universal-media" href="${escapeHtml(x.link||x.url||'#')}" target="_blank" rel="noopener noreferrer">${x.thumbnail?`<img src="${escapeHtml(x.thumbnail)}" alt="" loading="lazy" referrerpolicy="no-referrer">`:`<span class="universal-placeholder">${icon(x.type==='video'?'play':x.type==='product'?'shopping':'image')}</span>`}<em>${escapeHtml(x.provider||x.source||'Web')}</em></a><div class="universal-result-body"><b>${escapeHtml(x.title||'未命名结果')}</b><p>${escapeHtml((x.snippet||'').slice(0,180))}</p><div><span>${escapeHtml(x.author||'')}</span><small>${escapeHtml(mediaMeta(x))}</small></div><div class="universal-evidence-badges">${universalEvidenceBadges(x).map(t=>`<span>${escapeHtml(t)}</span>`).join('')}</div><div class="universal-score-row"><div class="universal-confidence"><span>候选置信度</span><b>${Math.round((x._confidence||0)*100)}%</b></div><div class="universal-source-score" title="由作者、日期、像素、许可、来源机构和结构化字段组成"><span>来源证据</span><b>${Math.round(x._sourceScore||0)}</b></div></div><div class="universal-result-actions"><a href="${escapeHtml(x.link||x.url||'#')}" target="_blank" rel="noopener noreferrer">打开来源</a><button data-copy-result="${escapeHtml(x.link||x.url||'')}">复制链接</button><button class="${state.universalFavorites.some(f=>f.link===(x.link||x.url||''))?'active':''}" data-favorite-result="${escapeHtml(x.link||x.url||'')}">${state.universalFavorites.some(f=>f.link===(x.link||x.url||''))?'已收藏':'收藏'}</button></div></div></article>`).join('');
+    const cards=list.map(x=>`<article class="universal-result-card ${state.universal.selected.has(x.link||x.url||x.title)?'selected':''}" data-result-type="${escapeHtml(x.type||'post')}"><label class="universal-select"><input type="checkbox" data-universal-select="${escapeHtml(x.link||x.url||x.title)}" ${state.universal.selected.has(x.link||x.url||x.title)?'checked':''}><span>${icon('check')}</span></label><a class="universal-media" href="${escapeHtml(x.link||x.url||'#')}" target="_blank" rel="noopener noreferrer">${x.thumbnail?`<img src="${escapeHtml(x.thumbnail)}" alt="" loading="lazy" referrerpolicy="no-referrer">`:`<span class="universal-placeholder">${icon(x.type==='video'?'play':x.type==='product'?'shopping':'image')}</span>`}<em>${escapeHtml(x.provider||x.source||'Web')}</em></a><div class="universal-result-body"><b>${escapeHtml(x.title||'未命名结果')}</b><p>${escapeHtml((x.snippet||'').slice(0,180))}</p><div><span>${escapeHtml(x.author||'')}</span><small>${escapeHtml(mediaMeta(x))}</small></div><div class="universal-evidence-badges">${universalEvidenceBadges(x).map(t=>`<span>${escapeHtml(t)}</span>`).join('')}</div>${x.product?.identityCount?`<div class="product-identity-strip"><span>Product ID</span><b>${x.product.identityScore}/100</b>${[['Brand',x.product.brand],['Model',x.product.model],['SKU',x.product.sku],['MPN',x.product.mpn],['ASIN',x.product.asin],[x.product.ean?'EAN':x.product.upc?'UPC':'GTIN',x.product.ean||x.product.upc||x.product.gtin]].filter(([,v])=>v).map(([k,v])=>`<em><small>${escapeHtml(k)}</small>${escapeHtml(v)}</em>`).join('')}</div>`:''}<div class="universal-score-row"><div class="universal-confidence"><span>候选置信度</span><b>${Math.round((x._confidence||0)*100)}%</b></div><div class="universal-source-score" title="由作者、日期、像素、许可、来源机构和结构化字段组成"><span>来源证据</span><b>${Math.round(x._sourceScore||0)}</b></div></div><div class="universal-result-actions"><a href="${escapeHtml(x.link||x.url||'#')}" target="_blank" rel="noopener noreferrer">打开来源</a><button data-copy-result="${escapeHtml(x.link||x.url||'')}">复制链接</button><button class="${state.universalFavorites.some(f=>f.link===(x.link||x.url||''))?'active':''}" data-favorite-result="${escapeHtml(x.link||x.url||'')}">${state.universalFavorites.some(f=>f.link===(x.link||x.url||''))?'已收藏':'收藏'}</button></div></div></article>`).join('');
     els.productResults.classList.remove('hidden');els.productResults.innerHTML=providerStrip+(cards?`<div class="universal-waterfall">${cards}</div>`:'<div class="provider-empty">当前筛选条件下没有可展示结果。</div>');if(els.universalMeta)els.universalMeta.textContent=`${list.length} 条结果 · ${providers.filter(p=>p.enabled).length} 个 API 可用`;
   }
   async function fetchMediaResults(){const ep=state.settings.productEndpoint.trim().replace(/\/$/,'')||location.origin;const r=await fetch(`${ep}/api/media-search?${universalParams().toString()}`);const data=await r.json();if(!r.ok||!data.enabled)throw new Error(data.error||'media providers unavailable');return data}
