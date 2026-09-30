@@ -399,8 +399,8 @@ test('V9 universal search: modes, filters, waterfall, favorites and history rest
       filters:{country:url.searchParams.get('country')||'all',language:url.searchParams.get('language')||'all',type:url.searchParams.get('type')||'all',time:url.searchParams.get('time')||'all'},
       providers:[{name:'Openverse',enabled:true,configured:true,count:2}],
       items:[
-        {provider:'Openverse',type:'image',title:'Garden Shed Original',snippet:'CC image source',link:'https://example.com/original',thumbnail:'https://example.com/original.jpg',author:'QA Author',publishedAt:'2025-03-01',meta:{width:1600,height:1200,license:'cc0'}},
-        {provider:'Openverse',type:'video',title:'Garden Shed Video',snippet:'Video result',link:'https://example.com/video',thumbnail:'https://example.com/video.jpg',author:'QA Video',meta:{duration:42,width:3840,height:2160}}
+        {provider:'Openverse',type:'image',title:'Garden Shed Original',snippet:'CC image source Brand: iSUNOR Model: MS86GY SKU: SHED-86-GY MPN: RY-MS86 ASIN: B0C1234567 EAN: 4006381333931',link:'https://example.com/original',thumbnail:'https://example.com/original.jpg',author:'QA Author',publishedAt:'2025-03-01',meta:{width:1600,height:1200,license:'cc0'}},
+        {provider:'Openverse',type:'video',title:'Garden Shed Video',snippet:'Video result GTIN: 1234567890123',link:'https://example.com/video',thumbnail:'https://example.com/video.jpg',author:'QA Video',meta:{duration:42,width:3840,height:2160}}
       ],
       total:2
     };
@@ -433,6 +433,15 @@ test('V9 universal search: modes, filters, waterfall, favorites and history rest
   await expect(page.locator('.universal-result-card')).toHaveCount(1);
   await page.locator('#universalType').selectOption('all');
   await expect(page.locator('.universal-result-card')).toHaveCount(2);
+  const identityCard=page.locator('.universal-result-card').filter({hasText:'Garden Shed Original'});
+  await expect(identityCard.locator('.product-identity-strip')).toContainText('iSUNOR');
+  await expect(identityCard.locator('.product-identity-strip')).toContainText('MS86GY');
+  await expect(identityCard.locator('.product-identity-strip')).toContainText('B0C1234567');
+  await expect(identityCard.locator('.product-identity-strip')).toContainText('4006381333931');
+  await expect(identityCard.locator('.product-identity-strip')).toContainText('100/100');
+  const invalidGtinCard=page.locator('.universal-result-card').filter({hasText:'Garden Shed Video'});
+  await expect(invalidGtinCard.locator('.product-identity-strip')).toHaveCount(0);
+  await expect(page.locator('#universalResearchStats')).toContainText('有身份线索');
   await page.locator('#universalSort').selectOption('evidence');
   await expect(page.locator('.universal-result-card').first()).toContainText('Garden Shed Original');
   await expect(page.locator('.universal-source-score').first()).not.toBeEmpty();
@@ -463,12 +472,22 @@ test('V9 universal search: modes, filters, waterfall, favorites and history rest
   expect(provenanceJson.results.every(x=>x.familyId)).toBeTruthy();
   expect(provenanceJson.results.some(x=>x.versionRelation?.type==='Original candidate')).toBeTruthy();
   expect(provenanceJson.results.some(x=>x.versionRelation?.type==='Cropped / reframed')).toBeTruthy();
+  const identityExport=provenanceJson.results.find(x=>x.title==='Garden Shed Original');
+  expect(identityExport.product.brand).toBe('iSUNOR');
+  expect(identityExport.product.model).toBe('MS86GY');
+  expect(identityExport.product.asin).toBe('B0C1234567');
+  expect(identityExport.product.gtin).toBe('4006381333931');
   const [provenanceCsvDownload]=await Promise.all([page.waitForEvent('download'),page.locator('#universalExportBtn').click()]);
   const provenanceCsvPath=await provenanceCsvDownload.path();
   const provenanceCsv=await readFile(provenanceCsvPath,'utf8');
   expect(provenanceCsv).toContain('family_id');
   expect(provenanceCsv).toContain('version_relation');
   expect(provenanceCsv).toContain('Cropped / reframed');
+  expect(provenanceCsv).toContain('"brand"');
+  expect(provenanceCsv).toContain('"asin"');
+  expect(provenanceCsv).toContain('"gtin"');
+  expect(provenanceCsv).toContain('iSUNOR');
+  expect(provenanceCsv).toContain('4006381333931');
   await page.locator('#universalProvenanceBtn').click();
   await expect(page.locator('#universalProvenanceBtn')).not.toHaveClass(/active/);
   await page.locator('#universalType').selectOption('image');
