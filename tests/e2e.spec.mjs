@@ -452,6 +452,9 @@ test('V9 universal search: modes, filters, waterfall, favorites and history rest
   await expect(page.locator('.provenance-top')).toContainText('Garden Shed Original');
   await expect(page.locator('.provenance-top')).toContainText('家族内最早日期');
   await expect(page.locator('.provenance-family-card').first()).toContainText('2 条');
+  await expect(page.locator('.provenance-family-card').first()).toContainText('Original candidate');
+  await expect(page.locator('.provenance-family-card').first()).toContainText('Cropped / reframed');
+  await expect(page.locator('.provenance-family-card').first()).toContainText('宽高比明显变化');
   await expect(page.locator('.provenance-timeline')).toContainText('2025');
   await page.locator('#universalProvenanceBtn').click();
   await expect(page.locator('#universalProvenanceBtn')).not.toHaveClass(/active/);
