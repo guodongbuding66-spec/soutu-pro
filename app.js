@@ -449,11 +449,11 @@
     if(!bf||!xf)return {type:'Variant / uncertain',tone:'uncertain',confidence:.35,reasons:['缺少可比较的视觉指纹']};
     const dh=1-universalBitDistance(bf.dhash,xf.dhash),edge=1-universalBitDistance(bf.edgehash,xf.edgehash),hist=universalCosine(bf.hist,xf.hist);
     const pct=v=>`${Math.round(v*100)}%`,reasons=[`主体 ${pct(dh)}`,`结构 ${pct(edge)}`,`色彩 ${pct(hist)}`];
+    if(aspectDiff>.075&&dh>=.72){reasons.push('宽高比明显变化');return {type:'Cropped / reframed',tone:'crop',confidence:Math.min(.95,dh*.55+edge*.3+hist*.15),reasons}}
     if(dh>=.96&&edge>=.94&&hist>=.94){
       if(sizeDiff>.08){reasons.push('宽高比接近但像素尺寸变化');return {type:'Resized / compressed',tone:'resize',confidence:Math.min(.99,(dh+edge+hist)/3),reasons}}
       return {type:'Near duplicate',tone:'duplicate',confidence:Math.min(.99,(dh+edge+hist)/3),reasons:[...reasons,'尺寸基本一致']}
     }
-    if(aspectDiff>.075&&dh>=.72){reasons.push('宽高比明显变化');return {type:'Cropped / reframed',tone:'crop',confidence:Math.min(.95,dh*.55+edge*.3+hist*.15),reasons}}
     if(dh>=.86&&hist>=.86&&edge<.84){reasons.push('主体接近但边缘结构变化较多');return {type:'Likely text / watermark added',tone:'watermark',confidence:Math.min(.9,dh*.5+hist*.3+(1-edge)*.2),reasons}}
     if(dh>=.76&&edge>=.72&&hist<.84){reasons.push('结构接近但色彩分布变化明显');return {type:'Color / background changed',tone:'background',confidence:Math.min(.9,dh*.45+edge*.4+(1-hist)*.15),reasons}}
     if(dh>=.8||edge>=.8){reasons.push('保留部分主要视觉结构');return {type:'Modified variant',tone:'modified',confidence:Math.min(.86,dh*.55+edge*.45),reasons}}
