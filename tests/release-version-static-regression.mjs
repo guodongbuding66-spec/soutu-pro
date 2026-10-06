@@ -17,13 +17,16 @@ assert(sw.includes(`soutu-pro-v${cacheVersion}-shell`),'service worker cache nam
 assert(build.includes("JSON.parse(read('package.json')).version"),'static build must derive release version from package.json');
 assert(build.includes('normalizeReleaseIndex'),'static build must normalize index release metadata');
 assert(build.includes('normalizeRuntimeVersion'),'static build must normalize runtime versions');
+assert(build.includes('VERCEL_GIT_COMMIT_SHA')&&build.includes("release.json"),'static build must emit commit-addressable release metadata');
 assert.equal(vercel.outputDirectory,'public','Vercel must deploy the generated public directory');
 assert(!Object.hasOwn(vercel,'ignoreCommand'),'production builds must not be skipped by an Ignore Build Step');
+assert(vercel.headers?.some(rule=>rule.source==='/release.json'&&rule.headers?.some(h=>h.key==='Cache-Control'&&/no-store/.test(h.value||''))),'release metadata must bypass CDN/browser caching');
 
-execFileSync(process.execPath,['build-static.mjs'],{stdio:'pipe'});
+execFileSync(process.execPath,['build-static.mjs'],{stdio:'pipe',env:{...process.env,GITHUB_SHA:'qa-release-sha'}});
 const publicHtml=read('public/index.html');
 const publicApp=read('public/app.js');
 const publicV9=read('public/v9.js');
+const release=JSON.parse(read('public/release.json'));
 const standalone=read('public/standalone.html');
 
 assert(publicHtml.includes(`content="${version}"`),'public index meta version mismatch');
@@ -33,5 +36,7 @@ assert(publicApp.includes(`const APP_VERSION='${version}';`),'public app runtime
 assert(publicV9.includes(`const V9_VERSION = '${version}';`),'public V9 runtime version mismatch');
 assert(standalone.includes(`const APP_VERSION='${version}';`),'standalone app runtime version mismatch');
 assert(standalone.includes(`const V9_VERSION = '${version}';`),'standalone V9 runtime version mismatch');
+assert.deepEqual({version:release.version,commit:release.commit},{version,commit:'qa-release-sha'},'release metadata mismatch');
+assert(!Number.isNaN(Date.parse(release.builtAt)),'release metadata builtAt must be ISO date');
 
 console.log(`Release/deployment regression passed for ${version}`);
