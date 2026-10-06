@@ -20,6 +20,7 @@ const files = [
 
 const read=file=>fs.readFileSync(path.resolve(file),'utf8');
 const releaseVersion=JSON.parse(read('package.json')).version;
+const releaseCommit=String(process.env.VERCEL_GIT_COMMIT_SHA||process.env.GITHUB_SHA||'local').trim()||'local';
 const sourceIndex=read('index.html');
 const sourceVersion=(sourceIndex.match(/<meta name="soutu-version" content="([^"]+)"/i)||[])[1]||releaseVersion;
 const normalizeReleaseIndex=html=>html.split(sourceVersion).join(releaseVersion);
@@ -42,6 +43,9 @@ for (const file of files) {
 const releaseIndex=normalizeReleaseIndex(sourceIndex);
 const releaseApp=normalizeRuntimeVersion('app.js',read('app.js'));
 const releaseV9=normalizeRuntimeVersion('v9.js',read('v9.js'));
+const releaseMeta={version:releaseVersion,commit:releaseCommit,builtAt:new Date().toISOString()};
+fs.writeFileSync(path.join(outDir,'release.json'),`${JSON.stringify(releaseMeta,null,2)}\n`);
+
 let standalone=releaseIndex;
 standalone=standalone
   .replace(/<link rel="stylesheet" href="\.\/styles\.css\?v=[^"]+" \/>/, `<style>\n${read('styles.css')}\n</style>`)
@@ -52,4 +56,4 @@ standalone=standalone
   .replace('</body>', `<script>\n${read('price-intelligence.js')}\n</script>\n<script>\n${read('price-history.js')}\n</script>\n</body>`);
 fs.writeFileSync(path.join(outDir,'standalone.html'),standalone);
 
-console.log(`Static frontend copied to ${outDir}; release ${releaseVersion}; standalone generated from current assets including price intelligence + history`);
+console.log(`Static frontend copied to ${outDir}; release ${releaseVersion} @ ${releaseCommit}; standalone generated from current assets including price intelligence + history`);
