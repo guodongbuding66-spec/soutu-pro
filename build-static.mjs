@@ -8,6 +8,7 @@ const files = [
   'v9.css',
   'app.js',
   'v9.js',
+  'price-intelligence.js',
   'perspective-worker.js',
   'config.js',
   'manifest.webmanifest',
