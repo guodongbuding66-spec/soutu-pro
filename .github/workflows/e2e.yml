@@ -44,12 +44,17 @@ jobs:
           (async () => {
             let current = false;
             try {
-              const r = await fetch(base + '/?qa=' + Date.now(), { headers: { 'cache-control': 'no-cache' } });
-              const html = await r.text();
-              current = r.ok && html.includes('?v=' + version);
+              const stamp = Date.now();
+              const [page,module] = await Promise.all([
+                fetch(base + '/?qa=' + stamp, { headers: { 'cache-control': 'no-cache' } }),
+                fetch(base + '/price-intelligence.js?qa=' + stamp, { headers: { 'cache-control': 'no-cache' } })
+              ]);
+              const html = await page.text();
+              const moduleText = await module.text();
+              current = page.ok && html.includes('?v=' + version) && module.ok && moduleText.includes('SOUTU_PRICE_INTELLIGENCE');
             } catch {}
             fs.appendFileSync(process.env.GITHUB_OUTPUT, 'current=' + current + '\n');
-            if (!current) console.log('::warning::Production is not yet on v' + version + '; production verification is deferred, not passed.');
+            if (!current) console.log('::warning::Production does not yet contain the repository frontend + price-intelligence module; production verification is deferred, not passed.');
           })().catch(err => { console.error(err); process.exit(1); });
           NODE
       - name: Production smoke regression
@@ -64,7 +69,7 @@ jobs:
         run: npx playwright test tests/production-ui.spec.mjs --reporter=line
       - name: Report deferred production verification
         if: steps.production.outputs.current != 'true'
-        run: echo "Production verification deferred because soutu-pro.vercel.app is not yet on the repository version."
+        run: echo "Production verification deferred because soutu-pro.vercel.app is missing the current frontend or modular price intelligence asset."
       - name: Upload visual QA evidence
         if: always()
         uses: actions/upload-artifact@v4
