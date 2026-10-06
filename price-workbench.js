@@ -99,6 +99,7 @@ function groupHtml(meta,index){
 function render(){
   const host=$('#universalInsights'),h=ph(),a=pi(),r=pr();if(!host||!h||!a||!r)return;
   const metas=groups();if(!metas.length){host.querySelector('[data-price-workbench-v95]')?.remove();state.signature='';return}
+  host.classList.remove('hidden');
   const currencies=[...new Set(metas.flatMap(m=>offerRows(m.group).filter(x=>x.eligible).map(x=>x.currency)).filter(c=>ISO.test(c)))];h.ensureFx?.(currencies)?.then?.(()=>schedule());
   const all=metas.flatMap(m=>offerRows(m.group)),ok=all.filter(x=>x.eligible),excluded=all.length-ok.length,merchants=new Set(ok.map(x=>x.merchant)).size,history=Object.values(h.state.history||{}).reduce((n,x)=>n+(x?.points?.length||0),0);
   const sig=[a.state?.updatedAt||0,h.state.base,JSON.stringify(h.state.alerts||{}),history,state.sort,state.inStockOnly,state.showExcluded,JSON.stringify(state.groupCurrency),r.state?.lastRefreshAt||0].join('|');
