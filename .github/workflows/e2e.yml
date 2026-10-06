@@ -33,12 +33,14 @@ jobs:
           cat /tmp/soutu-http.log
           exit 1
       - name: Browser regression
-        run: npx playwright test tests/e2e.spec.mjs tests/full-regression.spec.mjs tests/price-intelligence.spec.mjs tests/price-reliability.spec.mjs tests/price-history.spec.mjs --reporter=line
+        run: npx playwright test tests/e2e.spec.mjs tests/full-regression.spec.mjs tests/price-intelligence.spec.mjs tests/price-reliability.spec.mjs tests/price-history.spec.mjs tests/price-workbench.spec.mjs --reporter=line
       - name: Production smoke regression
         env:
           SOUTU_PRO_URL: https://soutu-pro.vercel.app
           SOUTU_EXPECTED_COMMIT: ${{ github.sha }}
-        run: node tests/production-smoke.mjs
+        run: |
+          node tests/production-smoke.mjs
+          node tests/price-workbench-production-smoke.mjs
       - name: Production UI brand regression
         env:
           SOUTU_PRO_URL: https://soutu-pro.vercel.app
