@@ -19,7 +19,7 @@ function loadSoutuFeature(src,id){
   document.head.appendChild(script);
 }
 const loadSoutuFeatures=()=>{
-  const version=document.querySelector('meta[name="soutu-version"]')?.content||'9.3.1';
+  const version=document.querySelector('meta[name="soutu-version"]')?.content||'9.4.0';
   loadSoutuFeature(`./price-intelligence.js?v=${encodeURIComponent(version)}`,'soutu-price-intelligence');
   loadSoutuFeature(`./price-history.js?v=${encodeURIComponent(version)}`,'soutu-price-history');
 };
