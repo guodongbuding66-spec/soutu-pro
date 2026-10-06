@@ -18,8 +18,10 @@ test('competitor intelligence mounts and separates same product competitor and s
     ];
     window.SOUTU_PRICE_INTELLIGENCE.state.items=items;
     window.SOUTU_PRICE_INTELLIGENCE.state.sources={media:items,product:items};
+    document.querySelector('#researchPanel')?.classList.remove('hidden');
     document.querySelector('#universalResearchbar')?.classList.remove('hidden');
   });
+  await expect(page.locator('#researchPanel')).toBeVisible();
   await expect(page.locator('#competitorIntelligenceBtn')).toBeVisible();
 
   await page.locator('#competitorIntelligenceBtn').click();
