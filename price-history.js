@@ -10,6 +10,7 @@
   const MAX_POINTS=60;
   const SAME_SAMPLE_WINDOW=12*60*60*1000;
   const ISO=/^[A-Z]{3}$/;
+  const TRACKING_PARAM=/^(?:utm_.+|fbclid|gclid|msclkid|mc_cid|mc_eid)$/i;
   const BASE_CHOICES=['USD','EUR','CNY','GBP','JPY','CAD','AUD','CHF'];
 
   const state={
@@ -31,7 +32,7 @@
   function writeJson(key,value){
     try{localStorage.setItem(key,JSON.stringify(value));return true}catch{return false}
   }
-  function esc(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+  function esc(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#39;'}[c]))}
   function norm(v){return String(v||'').normalize('NFKC').toUpperCase().replace(/[^A-Z0-9]+/g,'')}
   function domain(url){try{return new URL(url).hostname.replace(/^www\./,'')}catch{return''}}
   function fmt(n){return new Intl.NumberFormat('en-US',{maximumFractionDigits:2}).format(n)}
@@ -40,6 +41,14 @@
   function priceApi(){return window.SOUTU_PRICE_INTELLIGENCE||null}
   function itemUrl(item){return String(item?.link||item?.url||'').trim()}
   function itemTitle(item){return String(item?.title||'').trim()}
+  function canonicalProductUrl(raw){
+    const value=String(raw||'').trim();if(!value)return'';
+    try{
+      const u=new URL(value,location.href);u.hash='';
+      for(const key of [...u.searchParams.keys()])if(TRACKING_PARAM.test(key))u.searchParams.delete(key);
+      u.searchParams.sort();return u.toString();
+    }catch{return value}
+  }
 
   function productKey(item){
     const api=priceApi();
@@ -48,7 +57,7 @@
     if(id.asin)return`asin:${norm(id.asin)}`;
     if(id.brand&&id.mpn)return`brand-mpn:${norm(id.brand)}:${norm(id.mpn)}`;
     if(id.brand&&id.model)return`brand-model:${norm(id.brand)}:${norm(id.model)}`;
-    const url=itemUrl(item);if(url)return`url:${url}`;
+    const url=canonicalProductUrl(itemUrl(item));if(url)return`url:${url}`;
     return`title:${norm(itemTitle(item))}`;
   }
   function groupKey(group){
@@ -84,8 +93,8 @@
     return ISO.test(c)?c:'';
   }
   function pointFor(item,p,now){
-    const url=itemUrl(item);
-    return{ts:now,amount:p.amount,currency:p.currency,source:domain(url)||String(item.source||item.provider||''),url,title:itemTitle(item)};
+    const rawUrl=itemUrl(item),url=canonicalProductUrl(rawUrl);
+    return{ts:now,amount:p.amount,currency:p.currency,source:domain(rawUrl)||String(item.source||item.provider||''),url,title:itemTitle(item)};
   }
   function shouldAppend(points,point){
     const last=[...points].reverse().find(x=>(x.url&&point.url&&x.url===point.url)||(!x.url&&x.source===point.source));
@@ -122,6 +131,9 @@
     box.innerHTML=`<b>${esc(title)}</b><span>${esc(message)}</span>`;box.classList.add('show');
     clearTimeout(box._hideTimer);box._hideTimer=setTimeout(()=>box.classList.remove('show'),4800);
   }
+  function trustedBuckets(group){
+    const api=priceApi();return api?.buckets?.(group)||[];
+  }
   function checkAlerts(items){
     const api=priceApi();if(!api)return;
     const best=new Map();
@@ -133,16 +145,24 @@
     for(const group of api.groups?.(items)||[]){
       for(const currency of groupCurrencies(group)){
         const amount=currentBest(group,currency);if(amount==null)continue;
-        const item=group.find(x=>api.parsePrice(x)?.currency===currency)||group[0];
-        best.set(groupHistoryKey(group,currency),{amount,item,p:api.parsePrice(item)});
+        const bucket=trustedBuckets(group).find(x=>x.currency===currency),cheap=bucket?.cheapest;
+        const item=group.find(x=>itemUrl(x)===cheap?.url)||group.find(x=>api.parsePrice(x)?.currency===currency)||group[0];
+        best.set(groupHistoryKey(group,currency),{amount,item,p:{amount,currency,kind:'standard'}});
       }
     }
-    let changed=false;
+    let changed=false;const now=Date.now();
     for(const [key,alert] of Object.entries(state.alerts)){
       if(!alert?.enabled||!(alert.target>0))continue;
-      const entry=best.get(key);if(!entry||entry.amount>alert.target)continue;
-      if(alert.lastTriggeredAmount===entry.amount&&Date.now()-(alert.lastTriggeredAt||0)<24*60*60*1000)continue;
-      alert.lastTriggeredAmount=entry.amount;alert.lastTriggeredAt=Date.now();changed=true;
+      const entry=best.get(key);if(!entry)continue;
+      const prevObserved=Number(alert.lastObservedAmount),hasObserved=Number.isFinite(prevObserved)&&prevObserved>0;
+      const prevTriggered=Number(alert.lastTriggeredAmount),hasTriggered=Number.isFinite(prevTriggered)&&prevTriggered>0;
+      if(!hasObserved||prevObserved!==entry.amount){alert.lastObservedAmount=entry.amount;alert.lastObservedAt=now;changed=true}
+      if(entry.amount>alert.target)continue;
+      const crossed=!hasObserved?!hasTriggered:prevObserved>alert.target;
+      const newLow=hasTriggered&&entry.amount<prevTriggered;
+      if(!crossed&&!newLow)continue;
+      if(hasTriggered&&prevTriggered===entry.amount&&now-(alert.lastTriggeredAt||0)<24*60*60*1000)continue;
+      alert.lastTriggeredAmount=entry.amount;alert.lastTriggeredAt=now;changed=true;
       notify('达到目标价',`${itemTitle(entry.item)||'商品'} · ${money(entry.p?.currency||alert.currency,entry.amount)} ≤ ${money(alert.currency,alert.target)}`);
     }
     if(changed)saveAlerts();
@@ -172,7 +192,10 @@
       const url=new URL('/api/fx-rates',location.origin);url.searchParams.set('base',state.base);url.searchParams.set('quotes',quotes.join(','));
       const r=await fetch(url,{headers:{accept:'application/json'}});const data=await r.json();
       if(!r.ok||!data.enabled)throw new Error(data.message||`FX ${r.status}`);
-      const entry={base:data.base,date:data.date||'',provider:data.provider||'Frankfurter',rates:{[data.base]:1,...data.rates},fetchedAt:Date.now()};
+      const base=canonicalCurrency(data.base);if(base!==state.base)throw new Error('FX base mismatch');
+      const rates={[base]:1};
+      for(const quote of quotes){const rate=Number(data.rates?.[quote]);if(!(rate>0))throw new Error(`FX rate missing: ${quote}`);rates[quote]=rate}
+      const entry={base,date:data.date||'',provider:data.provider||'Frankfurter',rates,fetchedAt:Date.now()};
       state.fx[state.base]=entry;writeJson(FX_CACHE_KEY,state.fx);return entry;
     }catch(error){state.fxError=error?.message||'FX unavailable';return null}
     finally{state.fxLoading=false;scheduleSync()}
@@ -187,23 +210,20 @@
     const api=priceApi();const c=api?.confidenceFor?.(item,group);return !c||c.score>=.7;
   }
   function bestOffer(group){
-    const api=priceApi();if(!api)return null;
     let best=null;
-    for(const item of group){
-      const p=api.parsePrice(item);if(!p||p.kind==='list'||!confidenceOk(item,group))continue;
-      const converted=convertToBase(p.amount,p.currency);if(converted==null)continue;
-      const url=itemUrl(item),candidate={converted,amount:p.amount,currency:p.currency,title:itemTitle(item),source:domain(url)||String(item.source||item.provider||''),url};
+    for(const bucket of trustedBuckets(group)){
+      const converted=convertToBase(bucket.min,bucket.currency);if(converted==null)continue;
+      const cheap=bucket.cheapest||{},candidate={converted,amount:bucket.min,currency:bucket.currency,title:cheap.title||'',source:cheap.domain||'',url:cheap.url||''};
       if(!best||candidate.converted<best.converted)best=candidate;
     }
     return best;
   }
   function groupCurrencies(group){
+    const trusted=trustedBuckets(group).map(x=>x.currency).filter(Boolean);if(trusted.length)return[...new Set(trusted)];
     const api=priceApi();return [...new Set(group.map(x=>api?.parsePrice?.(x)?.currency).filter(Boolean))];
   }
   function currentBest(group,currency){
-    const api=priceApi();let best=Infinity;
-    for(const item of group){const p=api?.parsePrice?.(item);if(p&&p.currency===currency&&p.kind!=='list'&&confidenceOk(item,group))best=Math.min(best,p.amount)}
-    return Number.isFinite(best)?best:null;
+    const bucket=trustedBuckets(group).find(x=>x.currency===currency);return bucket?bucket.min:null;
   }
 
   function sparkline(points){
@@ -277,7 +297,7 @@
   }
   function saveAlert(key,currency,target){
     if(!(target>0))return false;
-    state.alerts[key]={enabled:true,currency,target,createdAt:state.alerts[key]?.createdAt||Date.now(),updatedAt:Date.now(),lastTriggeredAmount:null,lastTriggeredAt:0};saveAlerts();state.renderSignature='';notify('降价提醒已保存',`${money(currency,target)} · 打开搜图 Pro 时检测`);scheduleSync();return true;
+    state.alerts[key]={enabled:true,currency,target,createdAt:state.alerts[key]?.createdAt||Date.now(),updatedAt:Date.now(),lastTriggeredAmount:null,lastTriggeredAt:0,lastObservedAmount:null,lastObservedAt:0};saveAlerts();state.renderSignature='';notify('降价提醒已保存',`${money(currency,target)} · 打开搜图 Pro 时检测`);scheduleSync();return true;
   }
   function clearAlert(key){delete state.alerts[key];saveAlerts();state.renderSignature='';scheduleSync();notify('降价提醒已取消','该目标价不再检测。')}
   function clearHistory(){state.history={};writeJson(HISTORY_KEY,state.history);state.renderSignature='';scheduleSync()}
