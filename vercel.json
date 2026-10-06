@@ -48,6 +48,5 @@
     }
   ],
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "outputDirectory": "public",
-  "ignoreCommand": "git diff --quiet HEAD^ HEAD -- index.html styles.css v9.css app.js v9.js perspective-worker.js config.js manifest.webmanifest icon.svg maskable.svg sw.js api package.json package-lock.json build-static.mjs vercel.json"
+  "outputDirectory": "public"
 }
