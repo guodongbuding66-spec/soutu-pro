@@ -66,7 +66,7 @@ test('V9.4 history deduplicates unchanged samples and persists target-price aler
   await expect(page.locator('#soutuPriceToast')).toContainText('达到目标价');
 });
 
-test('V9.4 renders price-history workbench and Best Offer for identity groups',async({page})=>{
+test('V9.4.1 renders price-history workbench and Best Offer for identity groups',async({page})=>{
   await ready(page);
   await page.evaluate(()=>{
     const p=window.SOUTU_PRICE_INTELLIGENCE;
@@ -81,7 +81,7 @@ test('V9.4 renders price-history workbench and Best Offer for identity groups',a
     window.SOUTU_PRICE_HISTORY.refresh();
   });
   await expect(page.locator('[data-price-history-workbench]')).toHaveCount(1);
-  await expect(page.locator('[data-price-history-workbench]')).toContainText('V9.4 · PRICE INTELLIGENCE');
+  await expect(page.locator('[data-price-history-workbench]')).toContainText('V9.4.1 · PRICE INTELLIGENCE');
   await expect(page.locator('[data-price-history-workbench]')).toContainText('USD 90 等值');
   await expect(page.locator('[data-price-history-workbench]')).toContainText('EUR 72 · eu.example');
   await expect(page.locator('[data-price-history-workbench]')).toContainText('歧义符号 $ / ¥ 不参与跨币种换算');
@@ -121,13 +121,12 @@ test('V9.4.1 target alert does not retrigger on a higher price still below targe
   expect(result).toEqual({first:90,higher:90,lower:89,lastObserved:89});
 });
 
-test('V9.4.1 history canonicalizes tracking URLs before deduplication',async({page})=>{
+test('V9.4.1 history canonicalizes tracking URLs before URL-key deduplication',async({page})=>{
   await ready(page);
   const result=await page.evaluate(()=>{
     const h=window.SOUTU_PRICE_HISTORY;
     h.clearHistory();
-    const identity='Brand: iSUNOR Model: MS86GY MPN: RY-MS86 EAN: 4006381333931';
-    const a={title:'Tracked item',price:'USD 100',snippet:identity,link:'https://track.example/item?id=7&utm_source=google#top'};
+    const a={title:'Tracked item',price:'USD 100',link:'https://track.example/item?id=7&utm_source=google#top'};
     const b={...a,link:'https://track.example/item?utm_medium=cpc&id=7&utm_source=bing'};
     const now=Date.now();
     return{
@@ -137,7 +136,8 @@ test('V9.4.1 history canonicalizes tracking URLs before deduplication',async({pa
       duplicate:h.recordItem(b,now+100)
     };
   });
-  expect(result.keyA).toBe(result.keyB);
+  expect(result.keyA).toBe('url:https://track.example/item?id=7');
+  expect(result.keyB).toBe(result.keyA);
   expect(result.first).toBe(true);
   expect(result.duplicate).toBe(false);
 });
