@@ -22,7 +22,7 @@ assert.equal(vercel.outputDirectory,'public','Vercel must deploy the generated p
 assert(!Object.hasOwn(vercel,'ignoreCommand'),'production builds must not be skipped by an Ignore Build Step');
 assert(vercel.headers?.some(rule=>rule.source==='/release.json'&&rule.headers?.some(h=>h.key==='Cache-Control'&&/no-store/.test(h.value||''))),'release metadata must bypass CDN/browser caching');
 
-execFileSync(process.execPath,['build-static.mjs'],{stdio:'pipe',env:{...process.env,GITHUB_SHA:'qa-release-sha'}});
+execFileSync(process.execPath,['build-static.mjs'],{stdio:'pipe',env:{...process.env,VERCEL_GIT_COMMIT_SHA:'qa-release-sha',GITHUB_SHA:'qa-release-sha'}});
 const publicHtml=read('public/index.html');
 const publicApp=read('public/app.js');
 const publicV9=read('public/v9.js');
