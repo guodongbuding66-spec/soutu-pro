@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import {execFileSync} from 'node:child_process';
 
 const read=p=>fs.readFileSync(p,'utf8');
 const pkg=JSON.parse(read('package.json'));
@@ -14,8 +15,20 @@ assert(config.includes(`||'${version}'`),'feature loader fallback must match pac
 assert(sw.includes(`soutu-pro-v${cacheVersion}-shell`),'service worker cache namespace must match package release');
 assert(build.includes("JSON.parse(read('package.json')).version"),'static build must derive release version from package.json');
 assert(build.includes('normalizeReleaseIndex'),'static build must normalize index release metadata');
-assert(build.includes('meta name="soutu-version"'),'static build must rewrite release meta version');
-assert(build.includes('styles\\.css|v9\\.css|config\\.js|app\\.js|v9\\.js'),'static build must rewrite asset cache-busting versions');
-assert(build.includes("fs.writeFileSync(path.join(outDir,'index.html'),releaseIndex)"),'normalized release index must be emitted to public');
+assert(build.includes('normalizeRuntimeVersion'),'static build must normalize runtime versions');
+
+execFileSync(process.execPath,['build-static.mjs'],{stdio:'pipe'});
+const publicHtml=read('public/index.html');
+const publicApp=read('public/app.js');
+const publicV9=read('public/v9.js');
+const standalone=read('public/standalone.html');
+
+assert(publicHtml.includes(`content="${version}"`),'public index meta version mismatch');
+assert(publicHtml.includes(`v${version}`),'public visible version badge mismatch');
+assert(publicHtml.includes(`?v=${version}`),'public asset cache-bust mismatch');
+assert(publicApp.includes(`const APP_VERSION='${version}';`),'public app runtime version mismatch');
+assert(publicV9.includes(`const V9_VERSION = '${version}';`),'public V9 runtime version mismatch');
+assert(standalone.includes(`const APP_VERSION='${version}';`),'standalone app runtime version mismatch');
+assert(standalone.includes(`const V9_VERSION = '${version}';`),'standalone V9 runtime version mismatch');
 
 console.log(`Release version regression passed for ${version}`);
