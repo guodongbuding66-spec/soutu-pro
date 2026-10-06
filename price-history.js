@@ -32,7 +32,7 @@
   function writeJson(key,value){
     try{localStorage.setItem(key,JSON.stringify(value));return true}catch{return false}
   }
-  function esc(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#39;'}[c]))}
+  function esc(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
   function norm(v){return String(v||'').normalize('NFKC').toUpperCase().replace(/[^A-Z0-9]+/g,'')}
   function domain(url){try{return new URL(url).hostname.replace(/^www\./,'')}catch{return''}}
   function fmt(n){return new Intl.NumberFormat('en-US',{maximumFractionDigits:2}).format(n)}
@@ -206,9 +206,6 @@
     const rate=fxRates()?.rates?.[c];return Number(rate)>0?amount/Number(rate):null;
   }
 
-  function confidenceOk(item,group){
-    const api=priceApi();const c=api?.confidenceFor?.(item,group);return !c||c.score>=.7;
-  }
   function bestOffer(group){
     let best=null;
     for(const bucket of trustedBuckets(group)){
@@ -281,7 +278,7 @@
     ensureFx(currencies);
     const fx=fxRates();
     const body=`<section class="price-history-workbench" data-price-history-workbench>
-      <div class="price-history-head"><div><span class="price-history-kicker">V9.4 · PRICE INTELLIGENCE</span><b>价格历史与 Best Offer</b><small>价格历史保存在本浏览器；目标价提醒仅在打开搜图 Pro 并检测到新价格时触发。</small></div><label>基准币种<select data-price-base>${BASE_CHOICES.map(c=>`<option value="${c}"${c===state.base?' selected':''}>${c}</option>`).join('')}</select></label></div>
+      <div class="price-history-head"><div><span class="price-history-kicker">V9.4.1 · PRICE INTELLIGENCE</span><b>价格历史与 Best Offer</b><small>价格历史保存在本浏览器；目标价提醒仅在打开搜图 Pro 并检测到新价格时触发。</small></div><label>基准币种<select data-price-base>${BASE_CHOICES.map(c=>`<option value="${c}"${c===state.base?' selected':''}>${c}</option>`).join('')}</select></label></div>
       <div class="price-history-meta">${fx?`汇率：${esc(fx.provider)} · ${esc(fx.date||'latest')}`:state.fxLoading?'正在获取汇率…':state.fxError?`汇率不可用：${esc(state.fxError)}`:'仅比较相同或可安全换算的 ISO 币种'} · 歧义符号 $ / ¥ 不参与跨币种换算</div>
       <div class="price-history-list">${mapped.map((x,i)=>groupCard(x.group,i)).join('')}</div>
     </section>`;
