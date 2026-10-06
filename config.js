@@ -25,5 +25,6 @@ const loadSoutuFeatures=()=>{
   loadSoutuFeature(`./competitor-intelligence-ui.js?v=${encodeURIComponent(version)}`,'soutu-competitor-intelligence-ui');
   loadSoutuFeature(`./competitor-intelligence.js?v=${encodeURIComponent(version)}`,'soutu-competitor-intelligence');
   loadSoutuFeature(`./price-history.js?v=${encodeURIComponent(version)}`,'soutu-price-history');
+  loadSoutuFeature(`./provenance-lineage.js?v=${encodeURIComponent(version)}`,'soutu-provenance-lineage');
 };
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',loadSoutuFeatures,{once:true});else loadSoutuFeatures();
