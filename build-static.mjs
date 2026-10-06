@@ -20,27 +20,35 @@ const files = [
 
 const read=file=>fs.readFileSync(path.resolve(file),'utf8');
 const releaseVersion=JSON.parse(read('package.json')).version;
-const normalizeReleaseIndex=html=>html
-  .replace(/(<meta name="soutu-version" content=")[^"]+(" \/>)/,`$1${releaseVersion}$2`)
-  .replace(/(\.\/(?:styles\.css|v9\.css|config\.js|app\.js|v9\.js)\?v=)[^"]+/g,`$1${releaseVersion}`);
+const sourceIndex=read('index.html');
+const sourceVersion=(sourceIndex.match(/<meta name="soutu-version" content="([^"]+)"/i)||[])[1]||releaseVersion;
+const normalizeReleaseIndex=html=>html.split(sourceVersion).join(releaseVersion);
+const normalizeRuntimeVersion=(file,text)=>{
+  if(file==='app.js')return text.replace(/const APP_VERSION='[^']+';/,`const APP_VERSION='${releaseVersion}';`);
+  if(file==='v9.js')return text.replace(/const V9_VERSION = '[^']+';/,`const V9_VERSION = '${releaseVersion}';`);
+  return text;
+};
 
 fs.rmSync(outDir, { recursive: true, force: true });
 fs.mkdirSync(outDir, { recursive: true });
 
 for (const file of files) {
-  fs.copyFileSync(path.resolve(file), path.join(outDir, file));
+  const target=path.join(outDir,file);
+  if(file==='index.html')fs.writeFileSync(target,normalizeReleaseIndex(sourceIndex));
+  else if(file==='app.js'||file==='v9.js')fs.writeFileSync(target,normalizeRuntimeVersion(file,read(file)));
+  else fs.copyFileSync(path.resolve(file),target);
 }
 
-const releaseIndex=normalizeReleaseIndex(read('index.html'));
-fs.writeFileSync(path.join(outDir,'index.html'),releaseIndex);
-
+const releaseIndex=normalizeReleaseIndex(sourceIndex);
+const releaseApp=normalizeRuntimeVersion('app.js',read('app.js'));
+const releaseV9=normalizeRuntimeVersion('v9.js',read('v9.js'));
 let standalone=releaseIndex;
 standalone=standalone
   .replace(/<link rel="stylesheet" href="\.\/styles\.css\?v=[^"]+" \/>/, `<style>\n${read('styles.css')}\n</style>`)
   .replace(/<link rel="stylesheet" href="\.\/v9\.css\?v=[^"]+" \/>/, `<style>\n${read('v9.css')}\n</style>`)
   .replace(/<script src="\.\/config\.js\?v=[^"]+"><\/script>/, `<script>\n${read('config.js')}\n</script>`)
-  .replace(/<script src="\.\/app\.js\?v=[^"]+"><\/script>/, `<script>\n${read('app.js')}\n</script>`)
-  .replace(/<script src="\.\/v9\.js\?v=[^"]+"><\/script>/, `<script>\n${read('v9.js')}\n</script>`)
+  .replace(/<script src="\.\/app\.js\?v=[^"]+"><\/script>/, `<script>\n${releaseApp}\n</script>`)
+  .replace(/<script src="\.\/v9\.js\?v=[^"]+"><\/script>/, `<script>\n${releaseV9}\n</script>`)
   .replace('</body>', `<script>\n${read('price-intelligence.js')}\n</script>\n<script>\n${read('price-history.js')}\n</script>\n</body>`);
 fs.writeFileSync(path.join(outDir,'standalone.html'),standalone);
 
