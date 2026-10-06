@@ -6,6 +6,7 @@
   const moneyCodes=['USD','EUR','GBP','CNY','RMB','JPY','CAD','AUD','CHF','HKD','SGD','KRW','INR','BRL','MXN'];
   const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const norm=v=>String(v||'').normalize('NFKC').toUpperCase().replace(/[^A-Z0-9]+/g,'');
+  const fmt=n=>new Intl.NumberFormat('en-US',{maximumFractionDigits:2}).format(n);
 
   function gtinValid(v=''){
     const s=String(v).replace(/\D/g,'');
@@ -93,14 +94,20 @@
     const out=new Map();for(let i=0;i<n;i++){const r=root(i);if(!out.has(r))out.set(r,[]);out.get(r).push(items[i])}
     return [...out.values()].filter(g=>g.length>1);
   }
+  function domain(item){try{return new URL(item.link||item.url||'').hostname.replace(/^www\./,'')}catch{return''}}
+  function median(values){const v=[...values].sort((a,b)=>a-b),m=Math.floor(v.length/2);return v.length%2?v[m]:(v[m-1]+v[m])/2}
   function buckets(items){
     const map=new Map();
-    for(const item of items){const p=price(item);if(!p)continue;if(!map.has(p.currency))map.set(p.currency,[]);map.get(p.currency).push(p.amount)}
-    return [...map.entries()].map(([currency,values])=>{values.sort((a,b)=>a-b);const min=values[0],max=values.at(-1),spread=min?((max-min)/min)*100:0;return{currency,count:values.length,min,max,spread}}).sort((a,b)=>b.count-a.count||a.currency.localeCompare(b.currency));
+    for(const item of items){const p=price(item);if(!p)continue;if(!map.has(p.currency))map.set(p.currency,[]);map.get(p.currency).push({amount:p.amount,item})}
+    return [...map.entries()].map(([currency,entries])=>{
+      entries.sort((a,b)=>a.amount-b.amount);
+      const values=entries.map(x=>x.amount),min=values[0],max=values.at(-1),mid=median(values),spread=min?((max-min)/min)*100:0,cheapest=entries[0],highest=entries.at(-1);
+      return{currency,count:values.length,min,max,median:mid,spread,cheapest:{amount:cheapest.amount,title:cheapest.item.title||'',domain:domain(cheapest.item),url:cheapest.item.link||cheapest.item.url||''},highest:{amount:highest.amount,title:highest.item.title||'',domain:domain(highest.item),url:highest.item.link||highest.item.url||''}};
+    }).sort((a,b)=>b.count-a.count||a.currency.localeCompare(b.currency));
   }
   function moneyLabel(b){
-    const f=n=>new Intl.NumberFormat('en-US',{maximumFractionDigits:2}).format(n),range=b.min===b.max?f(b.min):`${f(b.min)}–${f(b.max)}`;
-    return `${b.currency} ${range} · ${b.count} 条${b.count>1?` · 价差 ${Math.round(b.spread)}%`:''}`;
+    const range=b.min===b.max?fmt(b.min):`${fmt(b.min)}–${fmt(b.max)}`;
+    return `${b.currency} ${range} · ${b.count} 条${b.count>1?` · 中位 ${fmt(b.median)} · 价差 ${Math.round(b.spread)}%`:''}`;
   }
   function itemTitle(x){return String(x.title||'').trim()}
   function bestGroupForButton(button,allGroups){
@@ -116,7 +123,7 @@
       if(button.querySelector('[data-price-intelligence]'))return;
       const g=bestGroupForButton(button,allGroups),bs=g?buckets(g):[];if(!bs.length)return;
       const div=document.createElement('div');div.className='identity-price-buckets';div.dataset.priceIntelligence='';
-      div.innerHTML=bs.map(b=>`<span title="不同币种不做直接换算比较">${esc(moneyLabel(b))}</span>`).join('');
+      div.innerHTML=bs.map(b=>`<div class="identity-price-bucket" title="不同币种不做直接换算比较"><b>${esc(moneyLabel(b))}</b><small>最低价来源：${esc(b.cheapest.domain||b.cheapest.title||'未知来源')}</small></div>`).join('');
       button.appendChild(div);
     });
   }
@@ -127,7 +134,7 @@
       const title=card.querySelector('.universal-result-body>b')?.textContent?.trim();const item=byTitle.get(title);if(!item)return;
       const p=price(item);if(!p)return;
       const target=card.querySelector('.product-identity-strip')||card.querySelector('.universal-evidence-badges');if(!target)return;
-      const el=document.createElement('div');el.className='product-price-strip';el.dataset.resultPrice='';el.innerHTML=`<span>Price</span><b>${esc(p.currency)} ${esc(new Intl.NumberFormat('en-US',{maximumFractionDigits:2}).format(p.amount))}</b>`;
+      const el=document.createElement('div');el.className='product-price-strip';el.dataset.resultPrice='';el.innerHTML=`<span>Price</span><b>${esc(p.currency)} ${esc(fmt(p.amount))}</b>`;
       target.insertAdjacentElement('afterend',el);
     });
   }
@@ -148,7 +155,7 @@
   };
 
   const style=document.createElement('style');
-  style.textContent=`.identity-price-buckets{display:flex;flex-wrap:wrap;gap:5px;margin-top:8px}.identity-price-buckets span{display:inline-flex;align-items:center;min-height:24px;padding:4px 7px;border:1px solid var(--line);border-radius:8px;background:var(--panel-subtle);font-size:8px;font-weight:700;color:var(--text-2)}.product-price-strip{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:7px;padding:7px 8px;border:1px solid var(--line);border-radius:8px;background:var(--panel-subtle)}.product-price-strip span{font-size:8px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}.product-price-strip b{font-size:10px}@media(max-width:520px){.identity-price-buckets span{width:100%;justify-content:space-between}}`;
+  style.textContent=`.identity-price-buckets{display:grid;gap:5px;margin-top:8px}.identity-price-bucket{display:grid;gap:2px;padding:6px 7px;border:1px solid var(--line);border-radius:8px;background:var(--panel-subtle);text-align:left}.identity-price-bucket b{font-size:8px;color:var(--text-2)}.identity-price-bucket small{font-size:8px;color:var(--muted)}.product-price-strip{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:7px;padding:7px 8px;border:1px solid var(--line);border-radius:8px;background:var(--panel-subtle)}.product-price-strip span{font-size:8px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}.product-price-strip b{font-size:10px}@media(max-width:520px){.identity-price-bucket{width:100%}}`;
   document.head.appendChild(style);
 
   const observer=new MutationObserver(schedule);observer.observe(document.documentElement,{childList:true,subtree:true});
