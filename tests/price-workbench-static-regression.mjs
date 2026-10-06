@@ -11,6 +11,7 @@ const workflow=read('.github/workflows/e2e.yml');
 
 assert(wb.includes("const VERSION='V9.5'"),'V9.5 workbench marker missing');
 assert(wb.includes('data-price-workbench-v95'),'workbench root marker missing');
+assert(wb.includes("host.classList.remove('hidden')"),'workbench must unhide the universal insights host when price data exists');
 assert(wb.includes('priceComponents'),'landed-price component integration missing');
 assert(wb.includes('sourceReliability'),'source reliability integration missing');
 assert(wb.includes('mergeGroupHistory'),'history integration missing');
