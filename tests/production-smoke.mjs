@@ -30,20 +30,32 @@ async function waitForDeployment(){
   }
   throw new Error(`Production did not reach ${version}${expectedCommit?` @ ${expectedCommit}`:''}; last release status=${lastStatus}, payload=${JSON.stringify(lastRelease)}`);
 }
+async function waitForFx(){
+  let lastStatus=0,lastPayload=null;
+  for(let attempt=1;attempt<=4;attempt++){
+    const r=await get(`${base}/api/fx-rates?base=USD&quotes=EUR&qa=${Date.now()}-${attempt}`);
+    lastStatus=r.status;
+    try{lastPayload=await r.json()}catch{lastPayload=null}
+    if(r.ok&&lastPayload?.enabled===true&&Number(lastPayload?.rates?.EUR)>0)return{r,j:lastPayload};
+    if(attempt<4)await sleep(1500*attempt);
+  }
+  throw new Error(`FX route stayed unavailable; status=${lastStatus}, payload=${JSON.stringify(lastPayload)}`);
+}
 
 const {html,release}=await waitForDeployment();
 assert.equal(release.version,version,'release version mismatch');
 if(expectedCommit)assert.equal(release.commit,expectedCommit,'release commit mismatch');
 assert(html.includes('data-nav="research"'),'research nav missing in production');
 
-for(const asset of ['app.js','v9.js','styles.css','v9.css','perspective-worker.js','manifest.webmanifest','config.js','price-intelligence.js','price-history.js']){
+for(const asset of ['app.js','v9.js','styles.css','v9.css','perspective-worker.js','manifest.webmanifest','config.js','price-intelligence.js','price-reliability.js','competitor-intelligence-ui.js','competitor-intelligence.js','price-history.js']){
   const r=await get(`${base}/${asset}?qa=${Date.now()}`);
   assert.equal(r.status,200,`${asset} status`);
 }
 
-const [app,priceModule,historyModule]=await Promise.all([
+const [app,priceModule,competitorModule,historyModule]=await Promise.all([
   get(`${base}/app.js?v=${version}&qa=${Date.now()}`).then(r=>r.text()),
   get(`${base}/price-intelligence.js?v=${version}&qa=${Date.now()}`).then(r=>r.text()),
+  get(`${base}/competitor-intelligence.js?v=${version}&qa=${Date.now()}`).then(r=>r.text()),
   get(`${base}/price-history.js?v=${version}&qa=${Date.now()}`).then(r=>r.text())
 ]);
 assert(app.includes('function engineBrand'),'official brand renderer missing');
@@ -52,16 +64,15 @@ assert(!app.includes('images/searchbyimage/upload'),'obsolete Bing path returned
 const popupCalls=[...app.matchAll(/window\.open\s*\(([^\n;]+)/g)].map(m=>m[1]);
 assert(popupCalls.length<=4,'unexpected popup script returned');
 assert(app.includes('function openExecutionEngine'),'dynamic execution opener missing');
-assert(priceModule.includes('SOUTU_PRICE_INTELLIGENCE')&&priceModule.includes('ignoredResponses')&&priceModule.includes('anomalyCount'), 'hardened price intelligence module missing');
+assert(priceModule.includes('SOUTU_PRICE_INTELLIGENCE')&&priceModule.includes('ignoredResponses')&&priceModule.includes('anomalyCount'),'hardened price intelligence module missing');
+assert(competitorModule.includes('SOUTU_COMPETITOR_INTELLIGENCE')&&competitorModule.includes('explicitGtinConflict')&&competitorModule.includes('supplierSignal'),'competitor / supplier intelligence module missing');
 assert(historyModule.includes('SOUTU_PRICE_HISTORY')&&historyModule.includes('soutu-price-history-v1')&&historyModule.includes('Best Offer'),'price history module missing');
 
-let r=await get(`${base}/api/fx-rates?base=USD&quotes=EUR&qa=${Date.now()}`);
-assert.notEqual(r.status,404,'FX route missing');
-let j=await r.json();
-assert.equal(j.enabled,true,'FX route disabled');
+let {j}=await waitForFx();
 assert.match(j.provider||'',/Frankfurter/i,'unexpected FX provider');
 assert(Number(j.rates?.EUR)>0,'EUR FX rate missing');
 
+let r;
 const official=[
   'https://www.gstatic.com/images/branding/product/2x/lens_96dp.png',
   'https://www.bing.com/favicon.ico',
@@ -114,4 +125,4 @@ assert((await r.arrayBuffer()).byteLength>0,'Blob GET returned empty body');
 r=await fetch(j.deleteUrl,{method:'DELETE'});
 assert(r.ok,`Blob DELETE failed ${r.status}`);
 
-console.log(JSON.stringify({passed:true,version,commit:release.commit,base,officialIcons:official.length,blobRoundTrip:true,ssrfGuards:true,priceHistory:true,fx:true},null,2));
+console.log(JSON.stringify({passed:true,version,commit:release.commit,base,officialIcons:official.length,blobRoundTrip:true,ssrfGuards:true,priceHistory:true,competitorIntelligence:true,fx:true},null,2));
