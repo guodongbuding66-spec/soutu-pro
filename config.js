@@ -15,11 +15,12 @@ function loadSoutuFeature(src,id){
   const script=document.createElement('script');
   script.id=id;
   script.src=src;
-  script.defer=true;
+  script.async=false;
   document.head.appendChild(script);
 }
 const loadSoutuFeatures=()=>{
   const version=document.querySelector('meta[name="soutu-version"]')?.content||'9.3.1';
   loadSoutuFeature(`./price-intelligence.js?v=${encodeURIComponent(version)}`,'soutu-price-intelligence');
+  loadSoutuFeature(`./price-history.js?v=${encodeURIComponent(version)}`,'soutu-price-history');
 };
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',loadSoutuFeatures,{once:true});else loadSoutuFeatures();
