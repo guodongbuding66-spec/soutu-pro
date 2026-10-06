@@ -9,6 +9,7 @@ const files = [
   'app.js',
   'v9.js',
   'price-intelligence.js',
+  'price-reliability.js',
   'price-history.js',
   'perspective-worker.js',
   'config.js',
@@ -53,7 +54,7 @@ standalone=standalone
   .replace(/<script src="\.\/config\.js\?v=[^"]+"><\/script>/, `<script>\n${read('config.js')}\n</script>`)
   .replace(/<script src="\.\/app\.js\?v=[^"]+"><\/script>/, `<script>\n${releaseApp}\n</script>`)
   .replace(/<script src="\.\/v9\.js\?v=[^"]+"><\/script>/, `<script>\n${releaseV9}\n</script>`)
-  .replace('</body>', `<script>\n${read('price-intelligence.js')}\n</script>\n<script>\n${read('price-history.js')}\n</script>\n</body>`);
+  .replace('</body>', `<script>\n${read('price-intelligence.js')}\n</script>\n<script>\n${read('price-reliability.js')}\n</script>\n<script>\n${read('price-history.js')}\n</script>\n</body>`);
 fs.writeFileSync(path.join(outDir,'standalone.html'),standalone);
 
-console.log(`Static frontend copied to ${outDir}; release ${releaseVersion} @ ${releaseCommit}; standalone generated from current assets including price intelligence + history`);
+console.log(`Static frontend copied to ${outDir}; release ${releaseVersion} @ ${releaseCommit}; standalone generated from current assets including price intelligence + reliability + history`);
