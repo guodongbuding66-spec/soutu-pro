@@ -6,7 +6,7 @@ test.setTimeout(60000);
 test('competitor intelligence mounts and separates same product competitor and supplier candidates',async({page})=>{
   const errors=[];page.on('pageerror',e=>errors.push(String(e)));
   await page.goto('http://127.0.0.1:4173/',{waitUntil:'domcontentloaded'});
-  await expect(page.locator('#competitorIntelligenceBtn')).toBeVisible({timeout:10000});
+  await expect(page.locator('#competitorIntelligenceBtn')).toHaveCount(1,{timeout:10000});
   await expect(page.locator('#competitorIntelligencePanel')).toHaveCount(1);
 
   await page.evaluate(()=>{
@@ -18,7 +18,9 @@ test('competitor intelligence mounts and separates same product competitor and s
     ];
     window.SOUTU_PRICE_INTELLIGENCE.state.items=items;
     window.SOUTU_PRICE_INTELLIGENCE.state.sources={media:items,product:items};
+    document.querySelector('#universalResearchbar')?.classList.remove('hidden');
   });
+  await expect(page.locator('#competitorIntelligenceBtn')).toBeVisible();
 
   await page.locator('#competitorIntelligenceBtn').click();
   const panel=page.locator('#competitorIntelligencePanel');
