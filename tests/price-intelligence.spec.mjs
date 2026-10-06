@@ -53,7 +53,9 @@ test('same-product price intelligence separates currencies, variants and merges 
   expect(parsed.cny).toMatchObject({amount:1299,currency:'CNY'});
 
   await page.locator('#fileInput').setInputFiles({name:'price.svg',mimeType:'image/svg+xml',buffer:fixture});
+  await expect(page.locator('#workbench')).toBeVisible();
   await page.evaluate(()=>document.querySelector('#researchPanel')?.classList.remove('hidden'));
+  await expect(page.locator('#researchPanel')).toBeVisible();
   await page.locator('#addQueryBtn').click();
   await page.locator('[data-query-index]').last().fill('garden shed');
   await page.locator('#universalSearchBtn').click();
