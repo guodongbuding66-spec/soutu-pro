@@ -2,7 +2,7 @@
   'use strict';
   if(window.SOUTU_PRICE_INTELLIGENCE)return;
 
-  const state={items:[],updatedAt:0};
+  const state={items:[],sources:{media:[],product:[]},updatedAt:0};
   const moneyCodes=['USD','EUR','GBP','CNY','RMB','JPY','CAD','AUD','CHF','HKD','SGD','KRW','INR','BRL','MXN'];
   const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const norm=v=>String(v||'').normalize('NFKC').toUpperCase().replace(/[^A-Z0-9]+/g,'');
@@ -110,11 +110,28 @@
     return `${b.currency} ${range} · ${b.count} 条${b.count>1?` · 中位 ${fmt(b.median)} · 价差 ${Math.round(b.spread)}%`:''}`;
   }
   function itemTitle(x){return String(x.title||'').trim()}
+  function itemUrl(x){return String(x.link||x.url||'').trim()}
+  function rebuildItems(){
+    const merged=new Map();
+    [...state.sources.media,...state.sources.product].forEach(x=>{
+      const key=itemUrl(x)||`${itemTitle(x)}|${String(x.price||x.product?.price||'')}`;
+      if(!merged.has(key))merged.set(key,x);else merged.set(key,{...merged.get(key),...x,product:{...(merged.get(key).product||{}),...(x.product||{})}})
+    });
+    state.items=[...merged.values()];state.updatedAt=Date.now();schedule();
+  }
+  function capture(kind,items){state.sources[kind]=Array.isArray(items)?items:[];rebuildItems()}
   function bestGroupForButton(button,allGroups){
     const txt=button.textContent||'';
     let best=null,score=0;
     for(const g of allGroups){const hit=g.reduce((n,x)=>n+(itemTitle(x)&&txt.includes(itemTitle(x))?1:0),0);if(hit>score){score=hit;best=g}}
     return score?best:null;
+  }
+  function itemForCard(card){
+    const href=card.querySelector('.universal-media')?.getAttribute('href')||'';
+    if(href){const exact=state.items.find(x=>itemUrl(x)===href);if(exact)return exact}
+    const title=card.querySelector('.universal-result-body>b')?.textContent?.trim()||'';
+    const matches=state.items.filter(x=>itemTitle(x)===title);
+    return matches.length===1?matches[0]:null;
   }
   function augmentIdentityGroups(){
     const insight=document.querySelector('#universalInsights');if(!insight||!insight.textContent.includes('同款候选归组'))return;
@@ -128,10 +145,9 @@
     });
   }
   function augmentResultCards(){
-    const byTitle=new Map(state.items.map(x=>[itemTitle(x),x]));
     document.querySelectorAll('.universal-result-card').forEach(card=>{
       if(card.querySelector('[data-result-price]'))return;
-      const title=card.querySelector('.universal-result-body>b')?.textContent?.trim();const item=byTitle.get(title);if(!item)return;
+      const item=itemForCard(card);if(!item)return;
       const p=price(item);if(!p)return;
       const target=card.querySelector('.product-identity-strip')||card.querySelector('.universal-evidence-badges');if(!target)return;
       const el=document.createElement('div');el.className='product-price-strip';el.dataset.resultPrice='';el.innerHTML=`<span>Price</span><b>${esc(p.currency)} ${esc(fmt(p.amount))}</b>`;
@@ -147,9 +163,8 @@
     const res=await originalFetch(...args);
     try{
       const input=args[0],url=typeof input==='string'?input:input?.url||'';
-      if(String(url).includes('/api/media-search')){
-        res.clone().json().then(data=>{if(Array.isArray(data?.items)){state.items=data.items;state.updatedAt=Date.now();schedule()}}).catch(()=>{});
-      }
+      if(String(url).includes('/api/media-search'))res.clone().json().then(data=>capture('media',data?.items)).catch(()=>{});
+      if(String(url).includes('/api/product-search'))res.clone().json().then(data=>capture('product',data?.items)).catch(()=>{});
     }catch{}
     return res;
   };
@@ -159,5 +174,5 @@
   document.head.appendChild(style);
 
   const observer=new MutationObserver(schedule);observer.observe(document.documentElement,{childList:true,subtree:true});
-  window.SOUTU_PRICE_INTELLIGENCE={state,parsePrice:price,identity,groups,buckets,refresh:apply};
+  window.SOUTU_PRICE_INTELLIGENCE={state,parsePrice:price,identity,groups,buckets,refresh:apply,capture};
 })();
