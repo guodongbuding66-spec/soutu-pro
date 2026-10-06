@@ -4,7 +4,7 @@ const fixture=Buffer.from(`<svg xmlns="http://www.w3.org/2000/svg" width="160" h
 test.use({serviceWorkers:'block'});
 test.setTimeout(60000);
 
-test('same-product price intelligence separates currencies and GTIN variants',async({page})=>{
+test('same-product price intelligence separates currencies, variants and summarizes price evidence',async({page})=>{
   await page.addInitScript(()=>{
     localStorage.setItem('soutu-pro-settings-v5',JSON.stringify({tempEndpoint:'',productEndpoint:'',ttl:30,defaultPreset:'product',autoPreset:true}));
     localStorage.removeItem('soutu-pro-history-v5');
@@ -50,12 +50,23 @@ test('same-product price intelligence separates currencies and GTIN variants',as
   await expect(usCard.locator('[data-result-price]')).toContainText('$ 299');
   await expect(euCard.locator('[data-result-price]')).toContainText('EUR 329');
 
+  const bucketStats=await page.evaluate(()=>{
+    const api=window.SOUTU_PRICE_INTELLIGENCE;
+    const source=api.state.items.filter(x=>!String(x.title).includes('Different Variant'));
+    return api.buckets(source);
+  });
+  expect(bucketStats.find(x=>x.currency==='$')).toMatchObject({count:2,min:299,max:349,median:324});
+  expect(bucketStats.find(x=>x.currency==='$').cheapest).toMatchObject({amount:299,domain:'shop-a.example'});
+  expect(bucketStats.find(x=>x.currency==='EUR')).toMatchObject({count:1,min:329,max:329,median:329});
+
   await page.locator('#universalIdentityGroupBtn').click();
   await expect(page.locator('#universalInsights')).toContainText('同款候选归组');
   const group=page.locator('[data-identity-group-key]').filter({hasText:'US Retail Listing'});
   await expect(group).toHaveCount(1);
   await expect(group.locator('[data-price-intelligence]')).toContainText('$ 299–349');
+  await expect(group.locator('[data-price-intelligence]')).toContainText('中位 324');
   await expect(group.locator('[data-price-intelligence]')).toContainText('价差 17%');
+  await expect(group.locator('[data-price-intelligence]')).toContainText('最低价来源：shop-a.example');
   await expect(group.locator('[data-price-intelligence]')).toContainText('EUR 329');
   await expect(group.locator('[data-price-intelligence]')).not.toContainText('279');
 
