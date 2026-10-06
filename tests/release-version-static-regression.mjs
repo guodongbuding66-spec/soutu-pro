@@ -4,6 +4,7 @@ import {execFileSync} from 'node:child_process';
 
 const read=p=>fs.readFileSync(p,'utf8');
 const pkg=JSON.parse(read('package.json'));
+const vercel=JSON.parse(read('vercel.json'));
 const version=pkg.version;
 const cacheVersion=version.replace(/\./g,'-');
 const config=read('config.js');
@@ -16,6 +17,8 @@ assert(sw.includes(`soutu-pro-v${cacheVersion}-shell`),'service worker cache nam
 assert(build.includes("JSON.parse(read('package.json')).version"),'static build must derive release version from package.json');
 assert(build.includes('normalizeReleaseIndex'),'static build must normalize index release metadata');
 assert(build.includes('normalizeRuntimeVersion'),'static build must normalize runtime versions');
+assert.equal(vercel.outputDirectory,'public','Vercel must deploy the generated public directory');
+assert(!Object.hasOwn(vercel,'ignoreCommand'),'production builds must not be skipped by an Ignore Build Step');
 
 execFileSync(process.execPath,['build-static.mjs'],{stdio:'pipe'});
 const publicHtml=read('public/index.html');
@@ -31,4 +34,4 @@ assert(publicV9.includes(`const V9_VERSION = '${version}';`),'public V9 runtime 
 assert(standalone.includes(`const APP_VERSION='${version}';`),'standalone app runtime version mismatch');
 assert(standalone.includes(`const V9_VERSION = '${version}';`),'standalone V9 runtime version mismatch');
 
-console.log(`Release version regression passed for ${version}`);
+console.log(`Release/deployment regression passed for ${version}`);
