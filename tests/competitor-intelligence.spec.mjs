@@ -31,7 +31,9 @@ test('competitor intelligence mounts and separates same product competitor and s
   await expect(panel).toContainText('GTIN 冲突强制隔离');
   await expect(panel.locator('.ci-group')).toHaveCount(1);
   await expect(panel.locator('.ci-group')).toContainText('2 条结果');
-  await expect(panel.locator('.ci-card.competitor')).toContainText('Shed Charcoal');
+  const charcoalCompetitor=panel.locator('.ci-card.competitor').filter({hasText:'Shed Charcoal'});
+  await expect(charcoalCompetitor).toHaveCount(1);
+  await expect(charcoalCompetitor).toContainText('Acme 8x6 Metal Garden Shed Charcoal');
   await expect(panel.locator('.ci-card.supplier')).toContainText('Manufacturer OEM Supplier');
   await expect(panel.locator('.ci-card.supplier .ci-reasons')).toContainText('B2B / 批发来源');
   await expect(panel.locator('.ci-card').first()).toContainText(/来源可靠 \d+%/);
