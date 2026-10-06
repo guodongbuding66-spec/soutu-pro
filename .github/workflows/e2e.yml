@@ -33,7 +33,7 @@ jobs:
           cat /tmp/soutu-http.log
           exit 1
       - name: Browser regression
-        run: npx playwright test tests/e2e.spec.mjs tests/full-regression.spec.mjs tests/price-intelligence.spec.mjs --reporter=line
+        run: npx playwright test tests/e2e.spec.mjs tests/full-regression.spec.mjs tests/price-intelligence.spec.mjs tests/price-history.spec.mjs --reporter=line
       - name: Check production release state
         id: production
         run: |
@@ -45,19 +45,25 @@ jobs:
             let current = false;
             try {
               const stamp = Date.now();
-              const [page,config,module] = await Promise.all([
+              const [page,config,priceModule,historyModule,fxRoute] = await Promise.all([
                 fetch(base + '/?qa=' + stamp, { headers: { 'cache-control': 'no-cache' } }),
                 fetch(base + '/config.js?qa=' + stamp, { headers: { 'cache-control': 'no-cache' } }),
-                fetch(base + '/price-intelligence.js?qa=' + stamp, { headers: { 'cache-control': 'no-cache' } })
+                fetch(base + '/price-intelligence.js?qa=' + stamp, { headers: { 'cache-control': 'no-cache' } }),
+                fetch(base + '/price-history.js?qa=' + stamp, { headers: { 'cache-control': 'no-cache' } }),
+                fetch(base + '/api/fx-rates?base=USD&quotes=EUR&qa=' + stamp, { headers: { 'cache-control': 'no-cache' } })
               ]);
               const html = await page.text();
               const configText = await config.text();
-              const moduleText = await module.text();
-              const hardenedPriceModule = moduleText.includes('SOUTU_PRICE_INTELLIGENCE') && moduleText.includes('ignoredResponses') && moduleText.includes('anomalyCount') && moduleText.includes("kind==='sale'");
-              current = page.ok && html.includes('?v=' + version) && config.ok && configText.includes('price-intelligence.js') && module.ok && hardenedPriceModule;
+              const priceText = await priceModule.text();
+              const historyText = await historyModule.text();
+              const fxText = await fxRoute.text();
+              const hardenedPriceModule = priceText.includes('SOUTU_PRICE_INTELLIGENCE') && priceText.includes('ignoredResponses') && priceText.includes('anomalyCount') && priceText.includes("kind==='sale'");
+              const historyReady = historyModule.ok && historyText.includes('SOUTU_PRICE_HISTORY') && historyText.includes('soutu-price-history-v1') && historyText.includes('Best Offer');
+              const fxRouteReady = fxRoute.status !== 404 && fxText.includes('Frankfurter');
+              current = page.ok && html.includes('?v=' + version) && config.ok && configText.includes('price-intelligence.js') && configText.includes('price-history.js') && priceModule.ok && hardenedPriceModule && historyReady && fxRouteReady;
             } catch {}
             fs.appendFileSync(process.env.GITHUB_OUTPUT, 'current=' + current + '\n');
-            if (!current) console.log('::warning::Production does not yet contain the repository frontend + runtime loader + hardened price-intelligence module; production verification is deferred, not passed.');
+            if (!current) console.log('::warning::Production does not yet contain the hardened price module + V9.4 price history + FX route; production verification is deferred, not passed.');
           })().catch(err => { console.error(err); process.exit(1); });
           NODE
       - name: Production smoke regression
@@ -72,7 +78,7 @@ jobs:
         run: npx playwright test tests/production-ui.spec.mjs --reporter=line
       - name: Report deferred production verification
         if: steps.production.outputs.current != 'true'
-        run: echo "Production verification deferred because soutu-pro.vercel.app is missing the current frontend, runtime loader, or hardened modular price intelligence asset."
+        run: echo "Production verification deferred because soutu-pro.vercel.app is missing the current V9.4 price intelligence assets or FX route."
       - name: Upload visual QA evidence
         if: always()
         uses: actions/upload-artifact@v4
