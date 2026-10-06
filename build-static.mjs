@@ -31,7 +31,8 @@ standalone=standalone
   .replace(/<link rel="stylesheet" href="\.\/v9\.css\?v=[^"]+" \/>/, `<style>\n${read('v9.css')}\n</style>`)
   .replace(/<script src="\.\/config\.js\?v=[^"]+"><\/script>/, `<script>\n${read('config.js')}\n</script>`)
   .replace(/<script src="\.\/app\.js\?v=[^"]+"><\/script>/, `<script>\n${read('app.js')}\n</script>`)
-  .replace(/<script src="\.\/v9\.js\?v=[^"]+"><\/script>/, `<script>\n${read('v9.js')}\n</script>`);
+  .replace(/<script src="\.\/v9\.js\?v=[^"]+"><\/script>/, `<script>\n${read('v9.js')}\n</script>`)
+  .replace('</body>', `<script>\n${read('price-intelligence.js')}\n</script>\n</body>`);
 fs.writeFileSync(path.join(outDir,'standalone.html'),standalone);
 
-console.log(`Static frontend copied to ${outDir}; standalone generated from current assets`);
+console.log(`Static frontend copied to ${outDir}; standalone generated from current assets including price intelligence`);
