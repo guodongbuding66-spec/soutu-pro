@@ -1,8 +1,18 @@
 import {test,expect} from '@playwright/test';
 
+test.use({serviceWorkers:'block'});
+test.setTimeout(30000);
+
 test('V9.5 price workbench ranks landed cost and explains excluded offers',async({page})=>{
-  await page.goto('http://127.0.0.1:4173/');
-  await page.waitForFunction(()=>window.SOUTU_PRICE_INTELLIGENCE&&window.SOUTU_PRICE_RELIABILITY&&window.SOUTU_PRICE_HISTORY&&window.SOUTU_PRICE_WORKBENCH);
+  await page.addInitScript(()=>{
+    localStorage.removeItem('soutu-price-workbench-v1');
+    localStorage.removeItem('soutu-price-history-v1');
+    localStorage.removeItem('soutu-price-alerts-v1');
+    localStorage.removeItem('soutu-price-source-reliability-v1');
+  });
+  await page.goto('http://127.0.0.1:4173/',{waitUntil:'domcontentloaded'});
+  await page.waitForFunction(()=>Boolean(window.SOUTU_PRICE_INTELLIGENCE&&window.SOUTU_PRICE_RELIABILITY&&window.SOUTU_PRICE_HISTORY&&window.SOUTU_PRICE_WORKBENCH));
+  await page.waitForFunction(()=>window.SOUTU_PRICE_RELIABILITY.state.migrated===true);
 
   await page.evaluate(()=>{
     const api=window.SOUTU_PRICE_INTELLIGENCE;
