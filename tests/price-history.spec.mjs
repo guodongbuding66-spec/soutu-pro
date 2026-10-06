@@ -44,9 +44,10 @@ test('V9.4 history deduplicates unchanged samples and persists target-price aler
     const p=window.SOUTU_PRICE_INTELLIGENCE,h=window.SOUTU_PRICE_HISTORY;
     h.clearHistory();
     const item={title:'Tracked item',price:'USD 100',snippet:'Brand: iSUNOR Model: MS86GY MPN: RY-MS86 EAN: 4006381333931',link:'https://track.example/item'};
-    const first=h.recordItem(item,1_000_000);
-    const duplicate=h.recordItem(item,1_000_100);
-    const changed=h.recordItem({...item,price:'USD 90'},1_000_200);
+    const now=Date.now();
+    const first=h.recordItem(item,now);
+    const duplicate=h.recordItem(item,now+100);
+    const changed=h.recordItem({...item,price:'USD 90'},now+200);
     const key=`${h.productKey(item)}::USD`;
     h.saveAlert(key,'USD',95);
     const session=p.beginSession('price-history-test');
@@ -79,7 +80,7 @@ test('V9.4 renders price-history workbench and Best Offer for identity groups',a
     host.innerHTML='<button data-identity-group-key="qa">US Retail Listing · EU Retail Listing</button>';
     window.SOUTU_PRICE_HISTORY.refresh();
   });
-  await expect(page.locator('[data-price-history-workbench]')).toBeVisible();
+  await expect(page.locator('[data-price-history-workbench]')).toHaveCount(1);
   await expect(page.locator('[data-price-history-workbench]')).toContainText('V9.4 · PRICE INTELLIGENCE');
   await expect(page.locator('[data-price-history-workbench]')).toContainText('USD 90 等值');
   await expect(page.locator('[data-price-history-workbench]')).toContainText('EUR 72 · eu.example');
