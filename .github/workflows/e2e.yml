@@ -53,10 +53,11 @@ jobs:
               const html = await page.text();
               const configText = await config.text();
               const moduleText = await module.text();
-              current = page.ok && html.includes('?v=' + version) && config.ok && configText.includes('price-intelligence.js') && module.ok && moduleText.includes('SOUTU_PRICE_INTELLIGENCE');
+              const hardenedPriceModule = moduleText.includes('SOUTU_PRICE_INTELLIGENCE') && moduleText.includes('ignoredResponses') && moduleText.includes('anomalyCount') && moduleText.includes("kind==='sale'");
+              current = page.ok && html.includes('?v=' + version) && config.ok && configText.includes('price-intelligence.js') && module.ok && hardenedPriceModule;
             } catch {}
             fs.appendFileSync(process.env.GITHUB_OUTPUT, 'current=' + current + '\n');
-            if (!current) console.log('::warning::Production does not yet contain the repository frontend + runtime price-intelligence loader + module; production verification is deferred, not passed.');
+            if (!current) console.log('::warning::Production does not yet contain the repository frontend + runtime loader + hardened price-intelligence module; production verification is deferred, not passed.');
           })().catch(err => { console.error(err); process.exit(1); });
           NODE
       - name: Production smoke regression
@@ -71,7 +72,7 @@ jobs:
         run: npx playwright test tests/production-ui.spec.mjs --reporter=line
       - name: Report deferred production verification
         if: steps.production.outputs.current != 'true'
-        run: echo "Production verification deferred because soutu-pro.vercel.app is missing the current frontend, runtime loader, or modular price intelligence asset."
+        run: echo "Production verification deferred because soutu-pro.vercel.app is missing the current frontend, runtime loader, or hardened modular price intelligence asset."
       - name: Upload visual QA evidence
         if: always()
         uses: actions/upload-artifact@v4
@@ -79,5 +80,6 @@ jobs:
           name: qa-evidence-${{ github.sha }}
           path: |
             test-results/**/*.png
+            test-results/**/error-context.md
             playwright-report/
           if-no-files-found: ignore
