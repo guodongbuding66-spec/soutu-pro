@@ -33,7 +33,7 @@ jobs:
           cat /tmp/soutu-http.log
           exit 1
       - name: Browser regression
-        run: npx playwright test tests/e2e.spec.mjs tests/full-regression.spec.mjs --reporter=line
+        run: npx playwright test tests/e2e.spec.mjs tests/full-regression.spec.mjs tests/price-intelligence.spec.mjs --reporter=line
       - name: Check production release state
         id: production
         run: |
