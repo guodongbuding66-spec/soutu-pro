@@ -23,5 +23,6 @@ const loadSoutuFeatures=()=>{
   loadSoutuFeature(`./price-intelligence.js?v=${encodeURIComponent(version)}`,'soutu-price-intelligence');
   loadSoutuFeature(`./price-reliability.js?v=${encodeURIComponent(version)}`,'soutu-price-reliability');
   loadSoutuFeature(`./price-history.js?v=${encodeURIComponent(version)}`,'soutu-price-history');
+  loadSoutuFeature(`./price-workbench.js?v=${encodeURIComponent(version)}`,'soutu-price-workbench');
 };
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',loadSoutuFeatures,{once:true});else loadSoutuFeatures();
