@@ -3,37 +3,64 @@ import fs from 'node:fs';
 
 const base=process.env.SOUTU_PRO_URL||'https://soutu-pro.vercel.app';
 const version=JSON.parse(fs.readFileSync('package.json','utf8')).version;
+const expectedCommit=String(process.env.SOUTU_EXPECTED_COMMIT||process.env.GITHUB_SHA||'').trim();
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 
-async function get(url,opts={}){const r=await fetch(url,opts);return r}
+async function get(url,opts={}){return fetch(url,{cache:'no-store',...opts})}
 async function waitForDeployment(){
-  const deadline=Date.now()+180000;
-  let last='';
+  const deadline=Date.now()+240000;
+  let lastRelease=null,lastStatus=0;
   while(Date.now()<deadline){
     try{
-      const r=await get(base+'/?qa='+Date.now(),{headers:{'cache-control':'no-cache'}});
-      last=await r.text();
-      if(r.ok&&last.includes(`?v=${version}`))return last;
+      const stamp=Date.now();
+      const [releaseResponse,pageResponse]=await Promise.all([
+        get(`${base}/release.json?qa=${stamp}`,{headers:{'cache-control':'no-cache'}}),
+        get(`${base}/?qa=${stamp}`,{headers:{'cache-control':'no-cache'}})
+      ]);
+      lastStatus=releaseResponse.status;
+      if(releaseResponse.ok){
+        lastRelease=await releaseResponse.json();
+        const html=await pageResponse.text();
+        const versionReady=lastRelease.version===version&&html.includes(`?v=${version}`);
+        const commitReady=!expectedCommit||lastRelease.commit===expectedCommit;
+        if(pageResponse.ok&&versionReady&&commitReady)return{html,release:lastRelease};
+      }
     }catch{}
     await sleep(5000);
   }
-  throw new Error(`Production did not reach version ${version} in time`);
+  throw new Error(`Production did not reach ${version}${expectedCommit?` @ ${expectedCommit}`:''}; last release status=${lastStatus}, payload=${JSON.stringify(lastRelease)}`);
 }
 
-const html=await waitForDeployment();
+const {html,release}=await waitForDeployment();
+assert.equal(release.version,version,'release version mismatch');
+if(expectedCommit)assert.equal(release.commit,expectedCommit,'release commit mismatch');
 assert(html.includes('data-nav="research"'),'research nav missing in production');
-for(const asset of ['app.js','v9.js','styles.css','v9.css','perspective-worker.js','manifest.webmanifest']){
+
+for(const asset of ['app.js','v9.js','styles.css','v9.css','perspective-worker.js','manifest.webmanifest','config.js','price-intelligence.js','price-history.js']){
   const r=await get(`${base}/${asset}?qa=${Date.now()}`);
   assert.equal(r.status,200,`${asset} status`);
 }
 
-const app=await (await get(`${base}/app.js?v=${version}&qa=${Date.now()}`)).text();
+const [app,priceModule,historyModule]=await Promise.all([
+  get(`${base}/app.js?v=${version}&qa=${Date.now()}`).then(r=>r.text()),
+  get(`${base}/price-intelligence.js?v=${version}&qa=${Date.now()}`).then(r=>r.text()),
+  get(`${base}/price-history.js?v=${version}&qa=${Date.now()}`).then(r=>r.text())
+]);
 assert(app.includes('function engineBrand'),'official brand renderer missing');
 assert(!app.includes("short:'G'"),'letter engine marks returned');
 assert(!app.includes('images/searchbyimage/upload'),'obsolete Bing path returned');
 const popupCalls=[...app.matchAll(/window\.open\s*\(([^\n;]+)/g)].map(m=>m[1]);
 assert(popupCalls.length<=4,'unexpected popup script returned');
 assert(app.includes('function openExecutionEngine'),'dynamic execution opener missing');
+assert(priceModule.includes('SOUTU_PRICE_INTELLIGENCE')&&priceModule.includes('ignoredResponses')&&priceModule.includes('anomalyCount'), 'hardened price intelligence module missing');
+assert(historyModule.includes('SOUTU_PRICE_HISTORY')&&historyModule.includes('soutu-price-history-v1')&&historyModule.includes('Best Offer'),'price history module missing');
+
+let r=await get(`${base}/api/fx-rates?base=USD&quotes=EUR&qa=${Date.now()}`);
+assert.notEqual(r.status,404,'FX route missing');
+let j=await r.json();
+assert.equal(j.enabled,true,'FX route disabled');
+assert.match(j.provider||'',/Frankfurter/i,'unexpected FX provider');
+assert(Number(j.rates?.EUR)>0,'EUR FX rate missing');
 
 const official=[
   'https://www.gstatic.com/images/branding/product/2x/lens_96dp.png',
@@ -47,14 +74,14 @@ const official=[
   'https://s.globalsources.com/favicon.ico'
 ];
 for(const url of official){
-  const r=await get(`${base}/api/image-proxy?url=${encodeURIComponent(url)}`);
+  r=await get(`${base}/api/image-proxy?url=${encodeURIComponent(url)}`);
   assert.equal(r.status,200,`official icon proxy failed: ${url}`);
   assert.match(r.headers.get('content-type')||'',/^image\//,`official icon content type: ${url}`);
 }
 
-let r=await get(`${base}/api/image-proxy?url=${encodeURIComponent('http://127.0.0.1/private.png')}`);
+r=await get(`${base}/api/image-proxy?url=${encodeURIComponent('http://127.0.0.1/private.png')}`);
 assert.equal(r.status,400,'private image proxy target must be blocked');
-let j=await r.json(); assert.match(j.error||'',/Private/i);
+j=await r.json(); assert.match(j.error||'',/Private/i);
 
 r=await get(`${base}/api/url-status?url=${encodeURIComponent(base+'/')}`);
 assert.equal(r.status,200,'url-status public page');
@@ -87,4 +114,4 @@ assert((await r.arrayBuffer()).byteLength>0,'Blob GET returned empty body');
 r=await fetch(j.deleteUrl,{method:'DELETE'});
 assert(r.ok,`Blob DELETE failed ${r.status}`);
 
-console.log(JSON.stringify({passed:true,version,base,officialIcons:official.length,blobRoundTrip:true,ssrfGuards:true},null,2));
+console.log(JSON.stringify({passed:true,version,commit:release.commit,base,officialIcons:official.length,blobRoundTrip:true,ssrfGuards:true,priceHistory:true,fx:true},null,2));
