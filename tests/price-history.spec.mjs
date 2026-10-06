@@ -86,3 +86,58 @@ test('V9.4 renders price-history workbench and Best Offer for identity groups',a
   await expect(page.locator('[data-price-history-workbench]')).toContainText('EUR 72 · eu.example');
   await expect(page.locator('[data-price-history-workbench]')).toContainText('歧义符号 $ / ¥ 不参与跨币种换算');
 });
+
+test('V9.4.1 Best Offer excludes anomalous outlier prices',async({page})=>{
+  await ready(page);
+  const best=await page.evaluate(()=>{
+    const h=window.SOUTU_PRICE_HISTORY;
+    const identity='Brand: iSUNOR Model: MS86GY MPN: RY-MS86 EAN: 4006381333931';
+    return h.bestOffer([
+      {title:'Normal A',price:'USD 100',snippet:identity,link:'https://a.example/item'},
+      {title:'Normal B',price:'USD 105',snippet:identity,link:'https://b.example/item'},
+      {title:'Broken decimal',price:'USD 1',snippet:identity,link:'https://bad.example/item'}
+    ]);
+  });
+  expect(best).toMatchObject({currency:'USD',amount:100,source:'a.example'});
+});
+
+test('V9.4.1 target alert does not retrigger on a higher price still below target',async({page})=>{
+  await ready(page);
+  const result=await page.evaluate(()=>{
+    const p=window.SOUTU_PRICE_INTELLIGENCE,h=window.SOUTU_PRICE_HISTORY;
+    const identity='Brand: iSUNOR Model: MS86GY MPN: RY-MS86 EAN: 4006381333931';
+    const item={title:'Tracked offer',price:'USD 90',snippet:identity,link:'https://alert.example/item'};
+    const key=`${h.productKey(item)}::USD`;
+    h.saveAlert(key,'USD',95);
+    const session=p.beginSession('alert-hysteresis');
+    p.capture('media',[item],{sessionId:session});h.ingest();
+    const first=h.state.alerts[key].lastTriggeredAmount;
+    p.capture('media',[{...item,price:'USD 91'}],{sessionId:session});h.ingest();
+    const higher=h.state.alerts[key].lastTriggeredAmount;
+    p.capture('media',[{...item,price:'USD 89'}],{sessionId:session});h.ingest();
+    const lower=h.state.alerts[key].lastTriggeredAmount;
+    return{first,higher,lower,lastObserved:h.state.alerts[key].lastObservedAmount};
+  });
+  expect(result).toEqual({first:90,higher:90,lower:89,lastObserved:89});
+});
+
+test('V9.4.1 history canonicalizes tracking URLs before deduplication',async({page})=>{
+  await ready(page);
+  const result=await page.evaluate(()=>{
+    const h=window.SOUTU_PRICE_HISTORY;
+    h.clearHistory();
+    const identity='Brand: iSUNOR Model: MS86GY MPN: RY-MS86 EAN: 4006381333931';
+    const a={title:'Tracked item',price:'USD 100',snippet:identity,link:'https://track.example/item?id=7&utm_source=google#top'};
+    const b={...a,link:'https://track.example/item?utm_medium=cpc&id=7&utm_source=bing'};
+    const now=Date.now();
+    return{
+      keyA:h.productKey(a),
+      keyB:h.productKey(b),
+      first:h.recordItem(a,now),
+      duplicate:h.recordItem(b,now+100)
+    };
+  });
+  expect(result.keyA).toBe(result.keyB);
+  expect(result.first).toBe(true);
+  expect(result.duplicate).toBe(false);
+});
