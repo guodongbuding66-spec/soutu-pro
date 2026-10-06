@@ -137,21 +137,25 @@
     const insight=document.querySelector('#universalInsights');if(!insight||!insight.textContent.includes('同款候选归组'))return;
     const allGroups=groups(state.items);
     insight.querySelectorAll('[data-identity-group-key]').forEach(button=>{
-      if(button.querySelector('[data-price-intelligence]'))return;
-      const g=bestGroupForButton(button,allGroups),bs=g?buckets(g):[];if(!bs.length)return;
-      const div=document.createElement('div');div.className='identity-price-buckets';div.dataset.priceIntelligence='';
+      const existing=button.querySelector('[data-price-intelligence]');
+      const g=bestGroupForButton(button,allGroups),bs=g?buckets(g):[];
+      if(!bs.length){existing?.remove();return}
+      const div=existing||document.createElement('div');div.className='identity-price-buckets';div.dataset.priceIntelligence='';
       div.innerHTML=bs.map(b=>`<div class="identity-price-bucket" title="不同币种不做直接换算比较"><b>${esc(moneyLabel(b))}</b><small>最低价来源：${esc(b.cheapest.domain||b.cheapest.title||'未知来源')}</small></div>`).join('');
-      button.appendChild(div);
+      if(!existing)button.appendChild(div);
     });
   }
   function augmentResultCards(){
     document.querySelectorAll('.universal-result-card').forEach(card=>{
-      if(card.querySelector('[data-result-price]'))return;
-      const item=itemForCard(card);if(!item)return;
-      const p=price(item);if(!p)return;
+      const existing=card.querySelector('[data-result-price]');
+      const item=itemForCard(card);
+      if(!item){existing?.remove();return}
+      const p=price(item);
+      if(!p){existing?.remove();return}
+      const sourceKey=itemUrl(item)||`${itemTitle(item)}|${p.currency}|${p.amount}`;
       const target=card.querySelector('.product-identity-strip')||card.querySelector('.universal-evidence-badges');if(!target)return;
-      const el=document.createElement('div');el.className='product-price-strip';el.dataset.resultPrice='';el.innerHTML=`<span>Price</span><b>${esc(p.currency)} ${esc(fmt(p.amount))}</b>`;
-      target.insertAdjacentElement('afterend',el);
+      const el=existing||document.createElement('div');el.className='product-price-strip';el.dataset.resultPrice='';el.dataset.priceSource=sourceKey;el.innerHTML=`<span>Price</span><b>${esc(p.currency)} ${esc(fmt(p.amount))}</b>`;
+      if(!existing)target.insertAdjacentElement('afterend',el);
     });
   }
   function apply(){augmentResultCards();augmentIdentityGroups()}
