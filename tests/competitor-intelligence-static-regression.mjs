@@ -42,7 +42,7 @@ window.SOUTU_PRICE_INTELLIGENCE={
   parsePrice:x=>({amount:Number(String(x.price||'').match(/\d+(?:\.\d+)?/)?.[0]||0),currency:'USD',kind:'standard'}),
   groups:list=>[[A,B]].filter(g=>g.every(x=>list.includes(x)))
 };
-window.SOUTU_PRICE_RELIABILITY={sourceReliability:x=>x===D?.84:.8};
+window.SOUTU_PRICE_RELIABILITY={sourceReliability:x=>x===D ? .84 : .8};
 window.eval(feature);
 const api=window.SOUTU_COMPETITOR_INTELLIGENCE;
 assert(api,'competitor API failed to initialize');
