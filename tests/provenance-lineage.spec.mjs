@@ -1,6 +1,7 @@
 import {test,expect} from '@playwright/test';
+import {readFile} from 'node:fs/promises';
 
-test('provenance lineage renders supported uncertain and conflicting directions',async({page})=>{
+test('provenance lineage renders directions and exports evidence',async({page})=>{
   await page.goto('http://127.0.0.1:4173/',{waitUntil:'domcontentloaded'});
   await page.waitForFunction(()=>Boolean(window.SOUTU_PROVENANCE_LINEAGE));
   await expect(page.locator('#universalLineageBtn')).toHaveCount(1);
@@ -48,13 +49,40 @@ test('provenance lineage renders supported uncertain and conflicting directions'
   await expect(page.locator('#universalLineagePanel')).toContainText('时间冲突');
   await expect(page.locator('#universalLineagePanel')).not.toContainText('确定原创');
   await expect(page.locator('.lineage-edge')).toHaveCount(3);
+  await expect(page.locator('[data-lineage-export="json"]')).toBeEnabled();
+  await expect(page.locator('[data-lineage-export="csv"]')).toBeEnabled();
 
   const helper=await page.evaluate(()=>({
     supported:window.SOUTU_PROVENANCE_LINEAGE.directionEvidence({time:1,date:'A'},{time:2,date:'B'}).label,
     conflict:window.SOUTU_PROVENANCE_LINEAGE.directionEvidence({time:2,date:'B'},{time:1,date:'A'}).label,
-    uncertain:window.SOUTU_PROVENANCE_LINEAGE.directionEvidence({time:0,date:''},{time:2,date:'B'}).label
+    uncertain:window.SOUTU_PROVENANCE_LINEAGE.directionEvidence({time:0,date:''},{time:2,date:'B'}).label,
+    payload:window.SOUTU_PROVENANCE_LINEAGE.evidencePayload()
   }));
-  expect(helper).toEqual({supported:'时间支持',conflict:'时间冲突',uncertain:'方向待验证'});
+  expect({supported:helper.supported,conflict:helper.conflict,uncertain:helper.uncertain}).toEqual({supported:'时间支持',conflict:'时间冲突',uncertain:'方向待验证'});
+  expect(helper.payload.schema).toBe('soutu-pro.provenance-lineage.v1');
+  expect(helper.payload.summary).toEqual({families:1,relations:3,timeSupported:1,pending:1,timeConflicts:1});
+  expect(helper.payload.disclaimer).toContain('不得视为已验证原创');
+  expect(helper.payload.rows).toHaveLength(4);
+
+  const [jsonDownload]=await Promise.all([page.waitForEvent('download'),page.locator('[data-lineage-export="json"]').click()]);
+  expect(jsonDownload.suggestedFilename()).toMatch(/^soutu-lineage-\d+\.json$/);
+  const json=JSON.parse(await readFile(await jsonDownload.path(),'utf8'));
+  expect(json.schema).toBe('soutu-pro.provenance-lineage.v1');
+  expect(json.families[0].root.title).toBe('Original A');
+  expect(json.families[0].variants.map(x=>x.direction.label).sort()).toEqual(['方向待验证','时间冲突','时间支持'].sort());
+  expect(json.rows.find(x=>x.title==='Cropped B')?.directionState).toBe('时间支持');
+  expect(json.rows.find(x=>x.title==='Watermarked C')?.directionState).toBe('方向待验证');
+  expect(json.rows.find(x=>x.title==='Earlier D')?.directionState).toBe('时间冲突');
+
+  const [csvDownload]=await Promise.all([page.waitForEvent('download'),page.locator('[data-lineage-export="csv"]').click()]);
+  expect(csvDownload.suggestedFilename()).toMatch(/^soutu-lineage-\d+\.csv$/);
+  const csv=await readFile(await csvDownload.path(),'utf8');
+  expect(csv).toContain('"family_id"');
+  expect(csv).toContain('"direction_state"');
+  expect(csv).toContain('"Cropped / reframed"');
+  expect(csv).toContain('"时间支持"');
+  expect(csv).toContain('"方向待验证"');
+  expect(csv).toContain('"时间冲突"');
 
   await page.locator('#universalLineageBtn').click();
   await expect(page.locator('#universalLineagePanel')).toBeHidden();
