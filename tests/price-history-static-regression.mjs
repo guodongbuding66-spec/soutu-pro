@@ -15,6 +15,11 @@ assert(history.includes("c===state.base")&&history.includes('amount/Number(rate)
 assert(history.includes("return ISO.test(c)?c:''"),'ambiguous symbol currencies must not be converted');
 assert(history.includes('Best Offer'),'Best Offer UI missing');
 assert(history.includes('打开搜图 Pro'),'local-only alert disclosure missing');
+assert(history.includes('identityCardKey')&&history.includes('data-price-identity-key'),'stable semantic identity mapping missing');
+assert(!history.includes('function bestGroupForCard'),'title-text identity mapping must not return');
+assert(history.includes('qualityPoints')&&history.includes('rejectedIngestSamples'),'historical price quality filtering missing');
+assert(history.includes("return`mpn:${mpns[0]}`"),'MPN-only stable group key missing');
+assert(history.includes('历史异常点不会计入最低价/趋势'),'history quality disclosure missing');
 assert(fx.includes("https://api.frankfurter.dev/v2/rates"),'Frankfurter v2 fixed upstream missing');
 assert(fx.includes("quotes.length>20"),'FX quote limit missing');
 assert(config.includes('price-history.js'),'runtime loader missing price history module');
