@@ -96,7 +96,7 @@ test('verification workspace persists statuses into Evidence, Case and report',a
   expect(report.html).toContain('已否决');
   expect(report.html).toContain('证据不足');
   expect(report.html).toContain('拒绝当前传播方向');
-  expect(report.html).not.toContain('已验证原创');
+  expect(report.html).toContain('不代表已验证原创');
 
   await page.locator('[data-v9-mode="evidence"]').click();
   await page.locator('[data-open-verification]').click();
