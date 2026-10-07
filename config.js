@@ -26,5 +26,6 @@ const loadSoutuFeatures=()=>{
   loadSoutuFeature(`./competitor-intelligence.js?v=${encodeURIComponent(version)}`,'soutu-competitor-intelligence');
   loadSoutuFeature(`./price-history.js?v=${encodeURIComponent(version)}`,'soutu-price-history');
   loadSoutuFeature(`./provenance-lineage.js?v=${encodeURIComponent(version)}`,'soutu-provenance-lineage');
+  loadSoutuFeature(`./evidence-verification.js?v=${encodeURIComponent(version)}`,'soutu-evidence-verification');
 };
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',loadSoutuFeatures,{once:true});else loadSoutuFeatures();
