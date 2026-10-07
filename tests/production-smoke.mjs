@@ -47,17 +47,18 @@ assert.equal(release.version,version,'release version mismatch');
 if(expectedCommit)assert.equal(release.commit,expectedCommit,'release commit mismatch');
 assert(html.includes('data-nav="research"'),'research nav missing in production');
 
-for(const asset of ['app.js','v9.js','styles.css','v9.css','perspective-worker.js','manifest.webmanifest','config.js','price-intelligence.js','price-reliability.js','competitor-intelligence-ui.js','competitor-intelligence.js','price-history.js','provenance-lineage.js']){
+for(const asset of ['app.js','v9.js','styles.css','v9.css','perspective-worker.js','manifest.webmanifest','config.js','price-intelligence.js','price-reliability.js','competitor-intelligence-ui.js','competitor-intelligence.js','price-history.js','provenance-lineage.js','evidence-verification.js','verification-audit.js']){
   const r=await get(`${base}/${asset}?qa=${Date.now()}`);
   assert.equal(r.status,200,`${asset} status`);
 }
 
-const [app,priceModule,competitorModule,historyModule,lineageModule]=await Promise.all([
+const [app,priceModule,competitorModule,historyModule,lineageModule,auditModule]=await Promise.all([
   get(`${base}/app.js?v=${version}&qa=${Date.now()}`).then(r=>r.text()),
   get(`${base}/price-intelligence.js?v=${version}&qa=${Date.now()}`).then(r=>r.text()),
   get(`${base}/competitor-intelligence.js?v=${version}&qa=${Date.now()}`).then(r=>r.text()),
   get(`${base}/price-history.js?v=${version}&qa=${Date.now()}`).then(r=>r.text()),
-  get(`${base}/provenance-lineage.js?v=${version}&qa=${Date.now()}`).then(r=>r.text())
+  get(`${base}/provenance-lineage.js?v=${version}&qa=${Date.now()}`).then(r=>r.text()),
+  get(`${base}/verification-audit.js?v=${version}&qa=${Date.now()}`).then(r=>r.text())
 ]);
 assert(app.includes('function engineBrand'),'official brand renderer missing');
 assert(!app.includes("short:'G'"),'letter engine marks returned');
@@ -69,6 +70,8 @@ assert(priceModule.includes('SOUTU_PRICE_INTELLIGENCE')&&priceModule.includes('i
 assert(competitorModule.includes('SOUTU_COMPETITOR_INTELLIGENCE')&&competitorModule.includes('explicitGtinConflict')&&competitorModule.includes('supplierSignal'),'competitor / supplier intelligence module missing');
 assert(historyModule.includes('SOUTU_PRICE_HISTORY')&&historyModule.includes('soutu-price-history-v1')&&historyModule.includes('Best Offer'),'price history module missing');
 assert(lineageModule.includes('SOUTU_PROVENANCE_LINEAGE')&&lineageModule.includes('时间支持')&&lineageModule.includes('方向待验证')&&lineageModule.includes('时间冲突'),'provenance lineage module missing');
+
+assert(auditModule.includes('SOUTU_VERIFICATION_AUDIT')&&auditModule.includes('legacy-baseline')&&auditModule.includes('stale-review'),'verification audit module missing');
 
 let {j}=await waitForFx();
 assert.match(j.provider||'',/Frankfurter/i,'unexpected FX provider');

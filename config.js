@@ -19,13 +19,14 @@ function loadSoutuFeature(src,id){
   document.head.appendChild(script);
 }
 const loadSoutuFeatures=()=>{
-  const version=document.querySelector('meta[name="soutu-version"]')?.content||'9.4.3';
+  const version=document.querySelector('meta[name="soutu-version"]')?.content||'9.4.4';
   loadSoutuFeature(`./price-intelligence.js?v=${encodeURIComponent(version)}`,'soutu-price-intelligence');
   loadSoutuFeature(`./price-reliability.js?v=${encodeURIComponent(version)}`,'soutu-price-reliability');
   loadSoutuFeature(`./competitor-intelligence-ui.js?v=${encodeURIComponent(version)}`,'soutu-competitor-intelligence-ui');
   loadSoutuFeature(`./competitor-intelligence.js?v=${encodeURIComponent(version)}`,'soutu-competitor-intelligence');
   loadSoutuFeature(`./price-history.js?v=${encodeURIComponent(version)}`,'soutu-price-history');
   loadSoutuFeature(`./provenance-lineage.js?v=${encodeURIComponent(version)}`,'soutu-provenance-lineage');
+  loadSoutuFeature(`./verification-audit.js?v=${encodeURIComponent(version)}`,'soutu-verification-audit');
   loadSoutuFeature(`./evidence-verification.js?v=${encodeURIComponent(version)}`,'soutu-evidence-verification');
 };
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',loadSoutuFeatures,{once:true});else loadSoutuFeatures();

@@ -55,13 +55,37 @@
 
   const lineageKey=r=>[r.familyId,r.role,r.title,r.url,r.relationType,r.directionState].map(clean).join('|');
   function lineageEvidenceRecords(p=evidencePayload()){const capturedAt=Date.now();return p.rows.map(r=>({id:uid(),capturedAt,title:r.title||r.familyLabel||'版本链证据',url:r.url||'',domain:r.domain||'',price:'',product:{},engine:'provenance-lineage',manualLabel:'',kind:'provenance-lineage',lineageKey:lineageKey(r),note:[r.familyLabel,r.role==='candidate-root'?'候选根节点':r.relationType,r.relationConfidence,r.directionState,r.directionReason,r.date,r.source,r.reasons].filter(Boolean).join(' · '),lineage:{schema:p.schema,disclaimer:p.disclaimer,...r}}))}
-  function mergeLineageEvidence(existing,incoming,limit=120){const seen=new Set(),out=[];for(const e of [...incoming,...existing]){const key=e.lineageKey||((e.kind==='provenance-lineage'||e.lineage)?lineageKey(e.lineage||{}):`evidence:${e.id||uid()}`);if(seen.has(key))continue;seen.add(key);out.push(e);if(out.length>=limit)break}return out}
+  function mergeLineageEvidence(existing,incoming,limit=120){
+    const key=e=>e.lineageKey||((e.kind==='provenance-lineage'||e.lineage)?lineageKey(e.lineage||{}):`evidence:${e.id||uid()}`),seen=new Set(),out=[];
+    for(const e of [...incoming,...existing]){const k=key(e);if(seen.has(k))continue;seen.add(k);const prior=existing.find(x=>key(x)===k);
+      // Re-importing the same candidate must preserve its ID, human decision and history.
+      const record=prior?{...e,...prior}:e;out.push(record.lineage&&window.SOUTU_VERIFICATION_AUDIT?window.SOUTU_VERIFICATION_AUDIT.canonical(record,[...existing,...incoming]):record);
+    }
+    // Existing Evidence and audit histories are never silently dropped to satisfy a count limit.
+    return out
+  }
   function sourceSnapshot(){const s=window.SOUTU_BRIDGE?.source?.()||{},u=String(s.activeUrl||'');return{name:s.name||'',thumb:u.startsWith('data:')&&u.length<120000?u:''}}
   function handoffToHub({mode='evidence',caseName='',caseId='',payload=evidencePayload(),reload=true}={}){
     if(!payload.rows.length){toast('没有可保存的版本链','请先建立版本链。','error');return{ok:false,reason:'empty'}}
-    const incoming=lineageEvidenceRecords(payload),merged=mergeLineageEvidence(read(KEYS.evidence,[]),incoming,120);if(!write(KEYS.evidence,merged)){toast('Evidence 保存失败','本机存储空间不足。','error');return{ok:false,reason:'storage'}}
-    let linkedCaseId='';if(mode==='new'||mode==='existing'){const cases=read(KEYS.cases,[]);if(mode==='new'){const c={id:uid(),name:clean(caseName)||`版本链调查 ${new Date().toLocaleDateString()}`,createdAt:Date.now(),source:sourceSnapshot(),query:window.SOUTU_BRIDGE?.primaryQuery?.()||'',results:read(KEYS.results,[]).slice(0,50),evidence:mergeLineageEvidence([],incoming,40),weights:read(KEYS.weights,{visual:.5,structure:.3,text:.2}),lineageSummary:payload.summary};cases.unshift(c);linkedCaseId=c.id}else{const c=cases.find(x=>x.id===caseId);if(!c){toast('Case 不存在','请重新选择调查项目。','error');return{ok:false,reason:'case-not-found'}}c.evidence=mergeLineageEvidence(c.evidence||[],incoming,40);c.lineageSummary=payload.summary;linkedCaseId=c.id}if(!write(KEYS.cases,cases.slice(0,40))){toast('Case 关联失败','本机存储空间不足。','error');return{ok:false,reason:'case-storage'}}}
-    write(KEYS.view,'evidence');const result={ok:true,mode,caseId:linkedCaseId,rows:payload.rows.length,saved:merged.filter(e=>e.kind==='provenance-lineage'||e.lineage).length,summary:payload.summary};if(!reload){toast('版本链已送入 Investigation Hub',`${result.rows} 条 lineage 证据${linkedCaseId?' · 已关联 Case':''}`,'ok');return result}try{sessionStorage.setItem(HANDOFF_SESSION,JSON.stringify(result))}catch{}location.reload();return result
+    const evidenceRaw=localStorage.getItem(KEYS.evidence),casesRaw=localStorage.getItem(KEYS.cases),cases=read(KEYS.cases,[]);
+    const existingCase=mode==='existing'?cases.find(c=>c.id===caseId):null;
+    if(mode==='existing'&&!existingCase){toast('Case 不存在','请重新选择调查项目。','error');return{ok:false,reason:'case-not-found'}}
+    let incoming,merged,linkedCaseId='';
+    try{
+      incoming=lineageEvidenceRecords(payload);const copies=cases.flatMap(c=>c.evidence||[]);
+      merged=mergeLineageEvidence(read(KEYS.evidence,[]),incoming).map(e=>e.lineage&&window.SOUTU_VERIFICATION_AUDIT?window.SOUTU_VERIFICATION_AUDIT.canonical(e,copies):e);
+      const selected=merged.filter(e=>incoming.some(x=>x.lineageKey===e.lineageKey));
+      if(mode==='new'){
+        const c={id:uid(),name:clean(caseName)||`版本链调查 ${new Date().toLocaleDateString()}`,createdAt:Date.now(),source:sourceSnapshot(),query:window.SOUTU_BRIDGE?.primaryQuery?.()||'',results:read(KEYS.results,[]).slice(0,50),evidence:mergeLineageEvidence([],selected),weights:read(KEYS.weights,{visual:.5,structure:.3,text:.2}),lineageSummary:payload.summary};cases.unshift(c);linkedCaseId=c.id;
+      }else if(existingCase){existingCase.evidence=mergeLineageEvidence(existingCase.evidence||[],selected);existingCase.lineageSummary=payload.summary;linkedCaseId=existingCase.id}
+      if(linkedCaseId){const c=cases.find(c=>c.id===linkedCaseId);c.verificationSummary=window.SOUTU_EVIDENCE_VERIFICATION?.summary(c.evidence)||undefined;c.verificationAuditSummary=window.SOUTU_VERIFICATION_AUDIT?.summary(c.evidence.filter(e=>e.lineage))||undefined}
+    }catch{return{ok:false,reason:'audit-conflict'}}
+    if(!write(KEYS.evidence,merged)){toast('Evidence 保存失败','本机存储空间不足。','error');return{ok:false,reason:'storage'}}
+    if(linkedCaseId&&!write(KEYS.cases,cases)){
+      try{evidenceRaw===null?localStorage.removeItem(KEYS.evidence):localStorage.setItem(KEYS.evidence,evidenceRaw);casesRaw===null?localStorage.removeItem(KEYS.cases):localStorage.setItem(KEYS.cases,casesRaw)}catch{return{ok:false,reason:'rollback-failed'}}
+      toast('Case 关联失败','未保存本次版本链；请先导出备份。','error');return{ok:false,reason:'case-storage'}
+    }
+    write(KEYS.view,'evidence');const result={ok:true,mode,caseId:linkedCaseId,rows:payload.rows.length,saved:merged.filter(e=>e.kind==='provenance-lineage'||e.lineage).length,summary:payload.summary};if(!reload){window.SOUTU_V9?.refreshEvidence?.();toast('版本链已送入 Investigation Hub',`${result.rows} 条 lineage 证据${linkedCaseId?' · 已关联 Case':''}`,'ok');return result}try{sessionStorage.setItem(HANDOFF_SESSION,JSON.stringify(result))}catch{}location.reload();return result
   }
 
   function renderHandoffMode(){const v=document.getElementById('lineageHandoffMode')?.value;document.getElementById('lineageNewCaseRow')?.classList.toggle('hidden',v!=='new');document.getElementById('lineageExistingCaseRow')?.classList.toggle('hidden',v!=='existing')}
@@ -70,7 +94,7 @@
   function confirmHandoff(){const result=handoffToHub({mode:document.getElementById('lineageHandoffMode')?.value||'evidence',caseName:document.getElementById('lineageNewCaseName')?.value||'',caseId:document.getElementById('lineageExistingCase')?.value||''});if(result?.ok)closeHandoffModal()}
 
   function appendReportEvidence(target=document.getElementById('v9PrintReport')){
-    if(!target||target.querySelector('.lineage-report-section'))return 0;const all=read(KEYS.evidence,[]),rows=all.filter(e=>e.kind==='provenance-lineage'||e.lineage).map(e=>e.lineage||{}).filter(r=>r.familyId||r.title);if(!rows.length)return 0;const disclaimer=all.find(e=>e.lineage?.disclaimer)?.lineage?.disclaimer||'根节点与传播方向属于证据候选，不代表已验证原创或确定传播顺序。',role=r=>r.role==='candidate-root'?'候选根节点':'衍生版本';target.insertAdjacentHTML('beforeend',`<section class="lineage-report-section"><h2>版本传播链证据</h2><p>${esc(disclaimer)}</p><table><thead><tr><th>图片家族</th><th>角色 / 节点</th><th>关系</th><th>置信度</th><th>方向状态</th><th>时间 / 来源</th><th>依据</th></tr></thead><tbody>${rows.slice(0,120).map(r=>`<tr><td>${esc(r.familyLabel||r.familyId||'')}</td><td><b>${esc(role(r))}</b><small>${esc(r.title||'')}</small></td><td>${esc(r.relationType||'')}</td><td>${esc(r.relationConfidence||'')}</td><td><b>${esc(r.directionState||'')}</b><small>${esc(r.directionReason||'')}</small></td><td>${esc(r.date||'')}<small>${esc(r.source||r.domain||'')}</small><small>${esc(r.url||'')}</small></td><td>${esc(r.reasons||'')}</td></tr>`).join('')}</tbody></table></section>`);return rows.length
+    if(!target||target.querySelector('.lineage-report-section'))return 0;const all=read(KEYS.evidence,[]),rows=all.filter(e=>e.kind==='provenance-lineage'||e.lineage).map(e=>e.lineage||{}).filter(r=>r.familyId||r.title);if(!rows.length)return 0;const disclaimer=all.find(e=>e.lineage?.disclaimer)?.lineage?.disclaimer||'根节点与传播方向属于证据候选，不代表已验证原创或确定传播顺序。',role=r=>r.role==='candidate-root'?'候选根节点':'衍生版本';target.insertAdjacentHTML('beforeend',`<section class="lineage-report-section"><h2>版本传播链证据</h2><p>${esc(disclaimer)}</p><table><thead><tr><th>图片家族</th><th>角色 / 节点</th><th>关系</th><th>置信度</th><th>方向状态</th><th>时间 / 来源</th><th>依据</th></tr></thead><tbody>${rows.map(r=>`<tr><td>${esc(r.familyLabel||r.familyId||'')}</td><td><b>${esc(role(r))}</b><small>${esc(r.title||'')}</small></td><td>${esc(r.relationType||'')}</td><td>${esc(r.relationConfidence||'')}</td><td><b>${esc(r.directionState||'')}</b><small>${esc(r.directionReason||'')}</small></td><td>${esc(r.date||'')}<small>${esc(r.source||r.domain||'')}</small><small>${esc(r.url||'')}</small></td><td>${esc(r.reasons||'')}</td></tr>`).join('')}</tbody></table></section>`);return rows.length
   }
   function setupReportObserver(){const t=document.getElementById('v9PrintReport');if(!t||reportObserver)return;reportObserver=new MutationObserver(()=>{if(enhancingReport||!t.innerHTML||t.querySelector('.lineage-report-section'))return;enhancingReport=true;try{appendReportEvidence(t)}finally{enhancingReport=false}});reportObserver.observe(t,{childList:true,subtree:false})}
 

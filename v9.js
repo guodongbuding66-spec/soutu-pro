@@ -1,7 +1,7 @@
 (() => {
   'use strict';
 
-  const V9_VERSION = '9.3.1';
+  const V9_VERSION = '9.4.4';
   const KEYS = {
     results: 'soutu-pro-v9-results',
     watch: 'soutu-pro-v9-watch',
@@ -66,8 +66,7 @@
       bridge()?.toast?.('本机存储接近上限','已自动压缩研究结果，原始网页链接仍保留。','error');
     }
     if(!write(KEYS.watch,state.watch.slice(0,100)))write(KEYS.watch,state.watch.slice(0,40));
-    if(!write(KEYS.cases,state.cases.slice(0,40)))write(KEYS.cases,state.cases.slice(0,12));
-    if(!write(KEYS.evidence,state.evidence.slice(0,120)))write(KEYS.evidence,state.evidence.slice(0,50));
+    if(!write(KEYS.cases,state.cases)||!write(KEYS.evidence,state.evidence))bridge()?.toast?.('证据保存失败','本机存储空间不足；请先导出备份，审核历史不会自动裁剪。','error');
     write(KEYS.weights,state.weights);
     write(KEYS.view,state.mode);
   }
@@ -349,12 +348,13 @@
     const src=bridge()?.source?.(),name=prompt('调查项目名称',sourceQuery()||src?.name||'图片调查')||'';
     if(!name)return;
     const thumb=src?.activeUrl?.startsWith('data:')&&src.activeUrl.length<120000?src.activeUrl:'';
-    const cs={id:uid(),name,createdAt:Date.now(),source:{name:src?.name||'',thumb},query:sourceQuery(),results:state.results.slice(0,50).map(compactResult),evidence:state.evidence.slice(0,40),weights:state.weights};
+    const cs={id:uid(),name,createdAt:Date.now(),source:{name:src?.name||'',thumb},query:sourceQuery(),results:state.results.slice(0,50).map(compactResult),evidence:JSON.parse(JSON.stringify(state.evidence)),weights:state.weights};
+    cs.verificationSummary=window.SOUTU_EVIDENCE_VERIFICATION?.summary(cs.evidence.filter(e=>e.lineage))||undefined;
+    cs.verificationAuditSummary=window.SOUTU_VERIFICATION_AUDIT?.summary(cs.evidence.filter(e=>e.lineage))||undefined;
     state.cases.unshift(cs);
-    if(!write(KEYS.cases,state.cases.slice(0,40))){
-      cs.results=cs.results.slice(0,20);cs.evidence=cs.evidence.slice(0,20);cs.source.thumb='';
-      state.cases=state.cases.slice(0,12);
-      if(!write(KEYS.cases,state.cases))return bridge()?.toast?.('项目保存失败','浏览器本机存储空间不足，请先导出或删除旧项目。','error')
+    if(!write(KEYS.cases,state.cases)){
+      cs.results=cs.results.slice(0,20);cs.source.thumb='';
+      if(!write(KEYS.cases,state.cases)){state.cases=state.cases.filter(c=>c.id!==cs.id);return bridge()?.toast?.('项目保存失败','浏览器本机存储空间不足，请先导出或删除旧项目。','error')}
     }
     persist();bridge()?.toast?.('调查项目已保存',`${cs.results.length} 条结果 · ${cs.evidence.length} 条证据`,'ok')
   }
@@ -413,7 +413,7 @@
       const wd=e.target.closest('[data-watch-remove]');if(wd){state.watch=state.watch.filter(x=>x.id!==wd.dataset.watchRemove);persist();renderWatch();renderStats();return}
       const er=e.target.closest('[data-evidence-remove]');if(er){state.evidence=state.evidence.filter(x=>x.id!==er.dataset.evidenceRemove);persist();renderEvidence();renderStats();return}
       const nav=e.target.closest('[data-nav]');if(nav){bridge()?.setView?.(nav.dataset.nav);return}
-      const co=e.target.closest('[data-case-open]');if(co){const cs=state.cases.find(x=>x.id===co.dataset.caseOpen);if(cs){state.results=cs.results||[];state.evidence=cs.evidence||[];state.weights=normalizeWeights(cs.weights||DEFAULT_WEIGHTS);persist();state.mode='results';render();bridge()?.toast?.('调查项目已打开',cs.name,'ok')}return}
+      const co=e.target.closest('[data-case-open]');if(co){refreshEvidence();const cs=state.cases.find(x=>x.id===co.dataset.caseOpen);if(cs){let restored;try{const copies=[...state.evidence,...state.cases.flatMap(c=>c.evidence||[])];restored=(cs.evidence||[]).map(e=>e.lineage?window.SOUTU_VERIFICATION_AUDIT?.canonical(e,copies)||e:e)}catch{return bridge()?.toast?.('审核记录冲突','项目未打开，请导出备份并核对审计记录。','error')}state.results=cs.results||[];state.evidence=JSON.parse(JSON.stringify(restored));cs.evidence=JSON.parse(JSON.stringify(restored));state.weights=normalizeWeights(cs.weights||DEFAULT_WEIGHTS);persist();state.mode='results';render();bridge()?.toast?.('调查项目已打开',cs.name,'ok')}return}
       const ce=e.target.closest('[data-case-export]');if(ce){const cs=state.cases.find(x=>x.id===ce.dataset.caseExport);if(cs)download(`soutu-case-${Date.now()}.json`,new Blob([JSON.stringify(cs,null,2)],{type:'application/json'}));return}
       const cd=e.target.closest('[data-case-delete]');if(cd){state.cases=state.cases.filter(x=>x.id!==cd.dataset.caseDelete);persist();renderCases();return}
       if(e.target.closest('[data-v9-demo]'))return demo();
@@ -426,6 +426,10 @@
     document.querySelector('#v9CompareClose').onclick=()=>document.querySelector('#v9CompareModal').classList.add('hidden');
     document.querySelector('#v9CompareModal').addEventListener('mousedown',e=>{if(e.target.id==='v9CompareModal')e.currentTarget.classList.add('hidden')});
   }
+
+  function refreshEvidence(){state.evidence=read(KEYS.evidence,[]);state.cases=read(KEYS.cases,[]);renderStats();renderBody()}
+  window.SOUTU_V9={refreshEvidence};
+  window.addEventListener('storage',e=>{if(e.key===KEYS.evidence||e.key===KEYS.cases)refreshEvidence()});
 
   function init(){if(!root())return;renderShell();bind();decodeCollectorHash();importPendingUniversal();render();window.addEventListener('soutu:source-changed',()=>{state.sourceFeatures=null;state.exif=null;renderSource();renderMetadata()});window.addEventListener('soutu:analysis-changed',()=>{renderSource();renderMetadata()});}
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();

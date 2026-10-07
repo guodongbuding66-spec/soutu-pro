@@ -1,5 +1,6 @@
 import {test,expect} from '@playwright/test';
 import {readFile} from 'node:fs/promises';
+const releaseVersion=JSON.parse(await readFile(new URL('../package.json',import.meta.url),'utf8')).version;
 
 const fixture=Buffer.from(`<svg xmlns="http://www.w3.org/2000/svg" width="160" height="100"><rect width="160" height="100" fill="white"/><rect x="24" y="18" width="112" height="64" rx="8" fill="#1f2937"/><circle cx="80" cy="50" r="18" fill="#60a5fa"/></svg>`);
 test.use({serviceWorkers:'block'});
@@ -132,7 +133,7 @@ test('settings system status exposes persisted engine and provider health diagno
   await page.locator('#settingsBtn').click();
   await expect(page.locator('#settingsModal')).toBeVisible();
   await expect(page.locator('#systemStatusGrid .system-status-item')).toHaveCount(10);
-  await expect(page.locator('#systemStatusGrid')).toContainText('v9.3.1');
+  await expect(page.locator('#systemStatusGrid')).toContainText(`v${releaseVersion}`);
   await expect(page.locator('#systemStatusGrid')).toContainText('网络状态');
   await expect(page.locator('#systemStatusGrid')).toContainText('API Providers');
   await expect(page.locator('#providerHealthDetail')).toContainText('Openverse');

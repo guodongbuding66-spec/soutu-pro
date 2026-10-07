@@ -1,5 +1,7 @@
 import {test,expect} from '@playwright/test';
 import {readFile} from 'node:fs/promises';
+// Fixture mutations must not be reset by an unrelated PWA installation reload.
+test.use({serviceWorkers:'block'});
 
 test('provenance lineage renders, exports, hands off to Hub and reports evidence',async({page})=>{
   await page.goto('http://127.0.0.1:4173/',{waitUntil:'domcontentloaded'});

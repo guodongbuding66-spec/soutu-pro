@@ -1,5 +1,7 @@
 import {test,expect} from '@playwright/test';
 import {readFile} from 'node:fs/promises';
+// Fixture mutations must not be reset by an unrelated PWA installation reload.
+test.use({serviceWorkers:'block'});
 
 const evidence=[
   {id:'e-root',title:'Original A',url:'https://origin.example/item',domain:'origin.example',capturedAt:1,kind:'provenance-lineage',lineageKey:'f1|root',lineage:{schema:'soutu-pro.provenance-lineage.v1',familyId:'f1',familyLabel:'图片家族 1',role:'candidate-root',title:'Original A',relationType:'Original candidate',relationConfidence:'100%',directionState:'candidate-root',directionReason:'来源证据最高候选；不代表已验证原创',date:'2025-03-01',source:'origin.example',url:'https://origin.example/item',reasons:'当前家族最高来源证据候选'}},
@@ -37,6 +39,8 @@ test('verification workspace persists statuses into Evidence, Case and report',a
   await expect(page.locator('#verificationSummary')).toContainText('4');
   await expect(page.locator('#verificationSummary')).toContainText('待复核');
 
+  await page.locator('#verificationReviewer').fill('Silvia');
+  for(const card of await page.locator('.verification-card').all())await card.locator('[data-review-reason]').fill('核对来源与时间证据');
   const root=page.locator('[data-verification-id="e-root"]');
   await root.locator('[data-review-status]').selectOption('verified');
   await root.locator('[data-review-note]').fill('人工核对发布时间与来源页面，确认其为当前候选根节点。');

@@ -1,6 +1,10 @@
-# 搜图 Pro · Image Compass V9.3.1
+# 搜图 Pro · Image Compass V9.4.4
 
 面向高频图片调查、商品找同款、来源溯源和采购研究的浏览器工作台。核心路径是：**放入图片 → 预处理/智能分析 → 自动任务建议 → 多引擎搜索 → 商品/供应商研究 → 保存项目或批量继续**。
+
+## V9.2 第 7 步：Verification Audit Trail
+
+核验工作区新增追加式审核历史、审核人和修改理由、撤销/恢复、最终裁定、Case 同步统计，以及报告/PDF、审计 JSON/CSV。重复送入版本链会保留原核验记录；旧版结果迁移为快照，不虚构早期历史。操作、数据和验收说明见 [verification-audit.md](docs/verification-audit.md)。
 
 ## V5–V9 已完成
 
