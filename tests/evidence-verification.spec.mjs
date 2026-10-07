@@ -7,11 +7,12 @@ const evidence=[
   {id:'e-water',title:'Watermarked C',url:'https://water.example/item',domain:'water.example',capturedAt:3,kind:'provenance-lineage',lineageKey:'f1|water',lineage:{schema:'soutu-pro.provenance-lineage.v1',familyId:'f1',familyLabel:'图片家族 1',role:'variant',title:'Watermarked C',relationType:'Likely text / watermark added',relationConfidence:'81%',directionState:'方向待验证',directionReason:'至少一端缺少可验证日期',date:'',source:'water.example',url:'https://water.example/item',reasons:'主体接近但边缘结构变化较多'}},
   {id:'e-early',title:'Earlier D',url:'https://earlier.example/item',domain:'earlier.example',capturedAt:4,kind:'provenance-lineage',lineageKey:'f1|early',lineage:{schema:'soutu-pro.provenance-lineage.v1',familyId:'f1',familyLabel:'图片家族 1',role:'variant',title:'Earlier D',relationType:'Modified variant',relationConfidence:'76%',directionState:'时间冲突',directionReason:'子项日期 2025-02-01 早于候选根节点 2025-03-01',date:'2025-02-01',source:'earlier.example',url:'https://earlier.example/item',reasons:'保留部分主要视觉结构'}}
 ];
-
 const caseEvidence=evidence.map((e,i)=>({...e,id:`case-copy-${i}`}));
 
 test('verification workspace persists statuses into Evidence, Case and report',async({page})=>{
   await page.addInitScript(({evidence,caseEvidence})=>{
+    if(sessionStorage.getItem('verification-seeded'))return;
+    sessionStorage.setItem('verification-seeded','1');
     localStorage.setItem('soutu-pro-v9-evidence',JSON.stringify(evidence));
     localStorage.setItem('soutu-pro-v9-cases',JSON.stringify([{id:'case-1',name:'Lineage Case',createdAt:1,query:'demo',results:[],evidence:caseEvidence,weights:{visual:.5,structure:.3,text:.2}}]));
     localStorage.setItem('soutu-pro-v9-view',JSON.stringify('evidence'));
@@ -33,15 +34,12 @@ test('verification workspace persists statuses into Evidence, Case and report',a
   const root=page.locator('[data-verification-id="e-root"]');
   await root.locator('[data-review-status]').selectOption('verified');
   await root.locator('[data-review-note]').fill('人工核对发布时间与来源页面，确认其为当前候选根节点。');
-
   const crop=page.locator('[data-verification-id="e-crop"]');
   await crop.locator('[data-review-status]').selectOption('verified');
   await crop.locator('[data-review-note]').fill('裁切关系与时间顺序一致。');
-
   const water=page.locator('[data-verification-id="e-water"]');
   await water.locator('[data-review-status]').selectOption('inconclusive');
   await water.locator('[data-review-note]').fill('缺少可验证发布时间。');
-
   const early=page.locator('[data-verification-id="e-early"]');
   await early.locator('[data-review-status]').selectOption('rejected');
   await early.locator('[data-review-conflict]').check();
