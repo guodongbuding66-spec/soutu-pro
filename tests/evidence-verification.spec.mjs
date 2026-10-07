@@ -11,7 +11,7 @@ const caseEvidence=evidence.map((e,i)=>({...e,id:`case-copy-${i}`}));
 
 async function enterResearch(page){
   await page.getByRole('button',{name:'研究',exact:true}).click();
-  await expect(page.locator('#researchPanel')).toBeVisible();
+  await expect(page.locator('#researchHubView')).toBeVisible();
 }
 
 test('verification workspace persists statuses into Evidence, Case and report',async({page})=>{
