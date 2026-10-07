@@ -19,6 +19,20 @@ assert(lineage.includes('data-lineage-export="csv"'),'CSV export control missing
 assert(lineage.includes("direction_state"),'CSV direction evidence column missing');
 assert(lineage.includes('不得视为已验证原创'),'export disclaimer missing');
 assert(!lineage.includes('确定原创'),'lineage must not claim verified originality');
+
+assert(lineage.includes('data-lineage-handoff'),'Investigation Hub handoff control missing');
+assert(lineage.includes('handoffToHub'),'Investigation Hub handoff API missing');
+assert(lineage.includes("soutu-pro-v9-evidence"),'handoff must use V9 evidence state source');
+assert(lineage.includes("soutu-pro-v9-cases"),'handoff must use V9 cases state source');
+assert(lineage.includes("soutu-pro-v9-view"),'handoff must target V9 view state');
+assert(lineage.includes("kind:'provenance-lineage'"),'lineage evidence type missing');
+assert(lineage.includes('lineageKey'),'lineage evidence dedupe key missing');
+assert(lineage.includes('appendReportEvidence'),'report integration API missing');
+assert(lineage.includes('版本传播链证据'),'lineage report section missing');
+assert(lineage.includes('lineageSummary'),'case lineage summary missing');
+assert(lineage.includes("mode==='existing'"),'existing Case association missing');
+assert(lineage.includes("mode==='new'"),'new Case association missing');
+
 assert(config.includes("provenance-lineage.js"),'runtime loader missing lineage module');
 assert(config.includes("soutu-provenance-lineage"),'runtime loader id missing');
 assert(build.includes("'provenance-lineage.js'"),'static build missing lineage asset');
