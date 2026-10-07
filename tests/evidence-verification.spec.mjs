@@ -9,6 +9,11 @@ const evidence=[
 ];
 const caseEvidence=evidence.map((e,i)=>({...e,id:`case-copy-${i}`}));
 
+async function enterResearch(page){
+  await page.getByRole('button',{name:'研究',exact:true}).click();
+  await expect(page.locator('#researchPanel')).toBeVisible();
+}
+
 test('verification workspace persists statuses into Evidence, Case and report',async({page})=>{
   await page.addInitScript(({evidence,caseEvidence})=>{
     if(sessionStorage.getItem('verification-seeded'))return;
@@ -20,8 +25,9 @@ test('verification workspace persists statuses into Evidence, Case and report',a
 
   await page.goto('http://127.0.0.1:4173/',{waitUntil:'domcontentloaded'});
   await page.waitForFunction(()=>Boolean(window.SOUTU_EVIDENCE_VERIFICATION));
+  await enterResearch(page);
   await expect(page.locator('#v9Body .v9-evidence-list article')).toHaveCount(4);
-  await expect(page.locator('[data-open-verification]')).toHaveCount(1);
+  await expect(page.locator('[data-open-verification]')).toBeVisible();
   await expect(page.locator('.evidence-review-badge')).toHaveCount(4);
   await expect(page.locator('.evidence-review-badge').first()).toContainText('待复核');
 
@@ -50,7 +56,8 @@ test('verification workspace persists statuses into Evidence, Case and report',a
     page.locator('[data-verification-save]').click()
   ]);
   await page.waitForFunction(()=>Boolean(window.SOUTU_EVIDENCE_VERIFICATION));
-  await expect(page.locator('[data-open-verification]')).toHaveCount(1);
+  await enterResearch(page);
+  await expect(page.locator('[data-open-verification]')).toBeVisible();
   await expect(page.locator('.evidence-review-badge.verified')).toHaveCount(2);
   await expect(page.locator('.evidence-review-badge.inconclusive')).toHaveCount(1);
   await expect(page.locator('.evidence-review-badge.rejected.conflict')).toHaveCount(1);
