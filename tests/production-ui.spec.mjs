@@ -57,3 +57,31 @@ test('production renders distinct official search-engine brands on desktop and m
   const relevant=errors.filter(x=>!x.includes('favicon')&&!x.includes('Failed to load resource'));
   expect(relevant).toEqual([]);
 });
+
+test('production native search opens a real tab after a real Blob upload while script popups are disabled',async({page,context})=>{
+  await page.setViewportSize({width:390,height:844});
+  await page.addInitScript(()=>{window.__scriptPopupCalls=0;window.open=()=>{window.__scriptPopupCalls++;return null}});
+  // Only the external engine document is a fixture; preparation, token API, Blob PUT and GET are live.
+  await context.route('https://lens.google.com/**',route=>route.fulfill({status:200,contentType:'text/html',body:'<h1>External engine destination</h1>'}));
+  await page.goto(base+'/?native-search-qa='+Date.now(),{waitUntil:'domcontentloaded'});
+  const png=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=','base64');
+  await page.locator('#fileInput').setInputFiles({name:'production-native-qa.png',mimeType:'image/png',buffer:png});
+  await expect(page.locator('#sourceKind')).toContainText('本地文件');
+  await page.locator('[data-preset="product"]').click();await page.locator('#runSearch').click();
+  const tokenResponse=page.waitForResponse(response=>response.url().includes('/api/temp-token')&&response.request().method()==='POST');
+  const popupPromise=page.waitForEvent('popup');
+  await page.locator('[data-execution-id="google"] [data-execution-open]').click();
+  const response=await tokenResponse;expect(response.status()).toBe(200);const token=await response.json();
+  try{
+    const popup=await popupPromise;await popup.waitForURL('https://lens.google.com/**');
+    expect(new URL(popup.url()).searchParams.get('url')).toBe(token.url);
+    const stored=await context.request.get(token.url);expect(stored.ok()).toBe(true);expect((await stored.body()).length).toBeGreaterThan(0);
+    expect(await page.evaluate(()=>window.__scriptPopupCalls)).toBe(0);
+    expect(new URL(page.url()).origin).toBe(new URL(base).origin);
+    await expect(page.locator('#executionModal')).toBeVisible();
+    await expect(page.locator('[data-execution-id="google"] .status-pill')).toContainText('已打开');
+    await page.locator('#executionModal .modal').screenshot({path:'test-results/production-native-search-mobile.png'});
+  }finally{
+    const removed=await context.request.delete(token.deleteUrl);expect(removed.ok()).toBe(true);
+  }
+});

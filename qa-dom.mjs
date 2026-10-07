@@ -21,7 +21,7 @@ window.fetch=async()=>({ok:false,status:503,json:async()=>({}),blob:async()=>new
 
 const failures=[];
 const check=(cond,msg)=>{if(!cond)failures.push(msg)};
-try{window.eval(app)}catch(e){failures.push('app.js init: '+e.stack)}
+try{window.eval(fs.readFileSync('search-launch-bridge.js','utf8'));window.eval(app)}catch(e){failures.push('app.js init: '+e.stack)}
 try{window.eval(v9)}catch(e){failures.push('v9.js init: '+e.stack)}
 if(!window.document.querySelector('#v9Root .v9-hero')){
   window.document.dispatchEvent(new window.Event('DOMContentLoaded',{bubbles:true}));

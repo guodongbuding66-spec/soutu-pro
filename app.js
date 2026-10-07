@@ -1,7 +1,7 @@
 (() => {
   'use strict';
 
-  const APP_VERSION='9.4.4';
+  const APP_VERSION='9.4.5';
 
   const MAX_FILE = 20 * 1024 * 1024;
   const MAX_BATCH = 50;
@@ -743,41 +743,25 @@
     els.runSearch.classList.remove('busy');els.runSearch.querySelector('span').textContent='搜索所选引擎'
   }
   function renderExecution(items){
-    els.executionList.innerHTML=items.map(x=>{const e=allEngines().find(v=>v.id===x.id);return `<div class="execution-row" data-execution-id="${escapeHtml(x.id)}"><span class="execution-engine-brand">${e?engineBrand(e):icon('search')}</span><div><b>${escapeHtml(x.name)}</b><small>${x.direct?'点击时重新校验图片链接，过期会自动刷新':x.copied?'图片已复制；打开后可直接粘贴':'请先复制图片，再打开上传/粘贴'}</small></div><span class="status-pill ready">待打开</span><div class="execution-actions">${x.direct?'':`<button class="secondary-btn compact" data-copy-execution>${icon('copy')}复制图片</button>`}<button class="secondary-btn compact execution-link" type="button" data-execution-open>打开</button></div></div>`}).join('')
+    els.executionList.innerHTML=items.map(x=>{const e=allEngines().find(v=>v.id===x.id);return `<div class="execution-row" data-execution-id="${escapeHtml(x.id)}"><span class="execution-engine-brand">${e?engineBrand(e):icon('search')}</span><div><b>${escapeHtml(x.name)}</b><small>${x.direct?'点击时重新校验图片链接，过期会自动刷新':x.copied?'图片已复制；打开后可直接粘贴':'请先复制图片，再打开上传/粘贴'}</small></div><span class="status-pill ready">待打开</span><div class="execution-actions">${x.direct?'':`<button class="secondary-btn compact" data-copy-execution>${icon('copy')}复制图片</button>`}<a class="secondary-btn compact execution-link" data-execution-open target="_blank" rel="noopener noreferrer">打开</a></div></div>`}).join('');
+    els.executionList.querySelectorAll('.execution-row').forEach(openExecutionEngine)
   }
-  function prepareSearchPopup(label='搜索'){
-    const popup=window.open('about:blank','_blank');
-    if(!popup)return null;
-    try{
-      popup.document.title=`搜图 Pro · ${label}`;
-      popup.document.body.innerHTML=`<main style="font-family:system-ui,-apple-system,sans-serif;display:grid;place-items:center;min-height:90vh;color:#1f2937"><div style="text-align:center"><div style="width:34px;height:34px;border:3px solid #dbe3f0;border-top-color:#4f46e5;border-radius:50%;margin:0 auto 16px;animation:s 1s linear infinite"></div><b>正在准备 ${escapeHtml(label)}</b><p style="font-size:13px;color:#6b7280">正在校验图片链接并生成搜索地址…</p><style>@keyframes s{to{transform:rotate(360deg)}}</style></div></main>`;
-      popup.opener=null
-    }catch{}
-    return popup
-  }
-  async function openExecutionEngine(row){
+  function openExecutionEngine(row){
     const id=row?.dataset.executionId,engine=allEngines().find(x=>x.id===id);if(!engine)return;
     const btn=row.querySelector('[data-execution-open]'),pill=row.querySelector('.status-pill');
-    const popup=prepareSearchPopup(engine.name);
-    if(!popup){toast('浏览器拦截了搜索窗口','请允许本站打开新窗口后重试。','error');return}
-    if(btn){btn.disabled=true;btn.textContent='正在准备…'}if(pill){pill.className='status-pill ready';pill.textContent='校验中'}
-    try{
-      let target=engine.uploadPage;
-      if(engine.direct){
-        const publicUrl=await ensurePublicUrl({silent:false});
-        if(!publicUrl)throw new Error(state.tempUnavailableReason||'临时图片服务不可用，无法生成直连搜索地址。');
-        target=engineTarget(engine,publicUrl);
-      }else{
-        const copied=await quietCopy();
-        if(!copied)throw new Error('浏览器未允许复制图片，请手动选择文件。');
-      }
-      if(popup&&!popup.closed)popup.location.replace(target);else throw new Error('搜索窗口已被浏览器关闭，请重试。');
-      if(pill){pill.className='status-pill opened';pill.textContent='已打开'}if(btn)btn.textContent='再次打开'
-    }catch(err){
-      if(popup&&!popup.closed)popup.close();
-      if(pill){pill.className='status-pill ready';pill.textContent='打开失败'}if(btn)btn.textContent='重试';
-      toast('搜索页打开失败',err?.message||'请重试。','error')
-    }finally{if(btn)btn.disabled=false}
+    if(!engine.direct){btn.href=engine.uploadPage;return}
+    const source=activeUrl();
+    window.SOUTU_SEARCH_LAUNCH.arm(btn,async()=>{
+      if(!source||activeUrl()!==source)throw new Error('图片已更换，请重新准备搜索结果。');
+      const publicUrl=await ensurePublicUrl({silent:false});
+      if(activeUrl()!==source)throw new Error('图片已更换，请重新准备搜索结果。');
+      if(!publicUrl)throw new Error(state.tempUnavailableReason||'临时图片服务不可用，无法生成直连搜索地址。');
+      return engineTarget(engine,publicUrl)
+    },(status,message)=>{
+      if(status==='preparing'){pill.className='status-pill ready';pill.textContent='校验中';btn.textContent='正在准备…'}
+      else if(status==='opened'){pill.className='status-pill opened';pill.textContent='已打开';btn.textContent='再次打开'}
+      else{pill.className='status-pill ready';pill.textContent='打开失败';btn.textContent='重试';toast('搜索页打开失败',message,'error')}
+    })
   }
   async function prepareSingleEngine(id){
     const engine=allEngines().find(x=>x.id===id);
@@ -828,7 +812,8 @@
   async function addBatch(files){for(const file of [...files].slice(0,MAX_BATCH-state.batch.length)){if(!file.type.startsWith('image/')||file.size>MAX_FILE)continue;try{const url=await fileData(file),d=await probe(url),thumb=await makeThumb(url);state.batch.push({id:uid(),file,url,thumb,name:file.name,size:file.size,preset:state.batchPreset||state.settings.defaultPreset||'product',status:'ready',...d})}catch{}}renderBatch()}
   function renderBatch(){
     if(!state.batch.length){els.batchList.innerHTML='<div class="batch-empty">队列为空。拖入图片后会在这里显示。</div>';return}
-    els.batchList.innerHTML=state.batch.map(x=>`<article class="batch-row ${x.links?.length?'has-links':''}" data-batch-row="${x.id}"><img src="${x.thumb}" alt=""><div class="batch-name"><b>${escapeHtml(x.name)}</b><small>${x.width}×${x.height} · ${formatBytes(x.size)}</small></div><select data-batch-preset="${x.id}">${presets.map(p=>`<option value="${p.id}" ${x.preset===p.id?'selected':''}>${p.title}</option>`).join('')}</select><span class="batch-status ${x.status}">${x.status==='done'?'已准备':x.status==='running'?'准备中':x.status==='error'?'准备失败':'待准备'}</span><button class="secondary-btn compact" data-run-batch="${x.id}">${icon('play')}${x.links?.length?'重新准备':'准备结果'}</button><button class="icon-btn danger" data-del-batch="${x.id}">${icon('trash')}</button>${x.links?.length?`<div class="batch-links">${x.links.map(l=>`<button type="button" data-open-batch-engine="${escapeHtml(l.id)}" data-batch-id="${x.id}" title="${escapeHtml(l.name)}">${l.iconUrl?`<img src="${escapeHtml('/api/image-proxy?url='+encodeURIComponent(l.iconUrl))}" alt="" referrerpolicy="no-referrer">`:icon('search')}<span>${escapeHtml(l.name)}</span></button>`).join('')}</div>`:''}</article>`).join('')
+    els.batchList.innerHTML=state.batch.map(x=>`<article class="batch-row ${x.links?.length?'has-links':''}" data-batch-row="${x.id}"><img src="${x.thumb}" alt=""><div class="batch-name"><b>${escapeHtml(x.name)}</b><small>${x.width}×${x.height} · ${formatBytes(x.size)}</small></div><select data-batch-preset="${x.id}">${presets.map(p=>`<option value="${p.id}" ${x.preset===p.id?'selected':''}>${p.title}</option>`).join('')}</select><span class="batch-status ${x.status}">${x.status==='done'?'已准备':x.status==='running'?'准备中':x.status==='error'?'准备失败':'待准备'}</span><button class="secondary-btn compact" data-run-batch="${x.id}">${icon('play')}${x.links?.length?'重新准备':'准备结果'}</button><button class="icon-btn danger" data-del-batch="${x.id}">${icon('trash')}</button>${x.links?.length?`<div class="batch-links">${x.links.map(l=>`<a target="_blank" rel="noopener noreferrer" data-open-batch-engine="${escapeHtml(l.id)}" data-batch-id="${x.id}" title="${escapeHtml(l.name)}">${l.iconUrl?`<img src="${escapeHtml('/api/image-proxy?url='+encodeURIComponent(l.iconUrl))}" alt="" referrerpolicy="no-referrer">`:icon('search')}<span>${escapeHtml(l.name)}</span></a>`).join('')}</div>`:''}</article>`).join('');
+    els.batchList.querySelectorAll('[data-open-batch-engine]').forEach(button=>{const item=state.batch.find(x=>x.id===button.dataset.batchId);openBatchEngine(item,button.dataset.openBatchEngine,button)})
   }
   function batchEngines(item){const p=presets.find(x=>x.id===item.preset)||presets[0];return allEngines().filter(e=>p.engines.includes(e.id))}
   async function createBatchPublicUrl(item){
@@ -851,18 +836,19 @@
     item.links=engines.map(e=>({id:e.id,name:e.name,direct:typeof e.direct==='function',iconUrl:e.iconUrl||''}));
     item.status='done';renderBatch()
   }
-  async function openBatchEngine(item,engineId,button){
+  function openBatchEngine(item,engineId,button){
     const engine=allEngines().find(e=>e.id===engineId);if(!item||!engine)return;
-    const popup=prepareSearchPopup(engine.name);
-    if(!popup){toast('浏览器拦截了搜索窗口','请允许本站打开新窗口后重试。','error');return}
-    const old=button?.innerHTML;if(button){button.disabled=true;button.classList.add('busy')}
-    try{
-      let target=engine.uploadPage;
-      if(engine.direct){const publicUrl=await createBatchPublicUrl(item);if(!publicUrl)throw new Error('临时图片服务不可用');target=engineTarget(engine,publicUrl)}
-      else throw new Error('该引擎暂不支持批量一键直连');
-      if(popup&&!popup.closed)popup.location.replace(target);else throw new Error('搜索窗口已被浏览器关闭，请重试。')
-    }catch(e){if(popup&&!popup.closed)popup.close();toast('批量搜索打开失败',e?.message||'请重试。','error')}
-    finally{if(button){button.disabled=false;button.classList.remove('busy');button.innerHTML=old}}
+    if(!engine.direct){button.href=engine.uploadPage;return}
+    window.SOUTU_SEARCH_LAUNCH.arm(button,async()=>{
+      if(!state.batch.includes(item))throw new Error('图片已从队列移除，请重新准备搜索。');
+      const publicUrl=await createBatchPublicUrl(item);
+      if(!state.batch.includes(item))throw new Error('图片已从队列移除，请重新准备搜索。');
+      if(!publicUrl)throw new Error('临时图片服务不可用');
+      return engineTarget(engine,publicUrl)
+    },(status,message)=>{
+      button.classList.toggle('busy',status==='preparing');
+      if(status==='error')toast('批量搜索打开失败',message,'error')
+    })
   }
   async function runBatch(){
     if(!state.batch.length)return toast('批量队列为空','先加入需要搜索的图片。','error');
@@ -929,7 +915,7 @@ els.federatedSearchBtn.onclick=federatedProductSearch;if(els.supplierSearchBtn)e
       const copy=e.target.closest('[data-copy-execution]');
       if(copy){const done=await quietCopy();copy.innerHTML=done?`${icon('check')}已复制`:`${icon('info')}复制失败`;if(!done)toast('复制失败','浏览器没有授予剪贴板写入权限，可在目标页面手动选择文件。','error');return}
       const open=e.target.closest('[data-execution-open]');if(!open)return;
-      await openExecutionEngine(open.closest('.execution-row'))
+      openExecutionEngine(open.closest('.execution-row'))
     };
     els.clearHistory.onclick=()=>{state.history=[];localStorage.removeItem(KEYS.history);renderHistory();toast('历史记录已清空','','ok')};els.historyContent.onclick=e=>{const d=e.target.closest('[data-del-history]');if(d){state.history=state.history.filter(x=>x.id!==d.dataset.delHistory);writeJson(KEYS.history,state.history);renderHistory()}const r=e.target.closest('[data-rerun-history]');if(r)restoreHistory(r.dataset.rerunHistory);const n=e.target.closest('[data-nav]');if(n)setView(n.dataset.nav)};
     els.projectsContent.onclick=e=>{const o=e.target.closest('[data-open-project]');if(o)restoreProject(o.dataset.openProject);const d=e.target.closest('[data-del-project]');if(d){state.projects=state.projects.filter(x=>x.id!==d.dataset.delProject);writeJson(KEYS.projects,state.projects);renderProjects()}const u=e.target.closest('[data-use-fav]');if(u){const q=state.favorites[Number(u.dataset.useFav)];if(q){setView('search');state.analysis.queries=[q];els.researchPanel.classList.remove('hidden');renderAnalysis();toast('收藏搜索词已载入',q,'ok')}}const f=e.target.closest('[data-del-fav]');if(f){state.favorites.splice(Number(f.dataset.delFav),1);writeJson(KEYS.favorites,state.favorites);renderProjects()}const rf=e.target.closest('[data-del-result-fav]');if(rf){state.universalFavorites.splice(Number(rf.dataset.delResultFav),1);writeJson(KEYS.universalFavorites,state.universalFavorites);renderProjects()}};els.clearProjects.onclick=()=>{state.projects=[];writeJson(KEYS.projects,[]);renderProjects()};

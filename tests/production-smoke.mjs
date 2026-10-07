@@ -47,7 +47,7 @@ assert.equal(release.version,version,'release version mismatch');
 if(expectedCommit)assert.equal(release.commit,expectedCommit,'release commit mismatch');
 assert(html.includes('data-nav="research"'),'research nav missing in production');
 
-for(const asset of ['app.js','v9.js','styles.css','v9.css','perspective-worker.js','manifest.webmanifest','config.js','price-intelligence.js','price-reliability.js','competitor-intelligence-ui.js','competitor-intelligence.js','price-history.js','provenance-lineage.js','evidence-verification.js','verification-audit.js']){
+for(const asset of ['search-launch.html','search-launch.js','search-launch-bridge.js','app.js','v9.js','styles.css','v9.css','perspective-worker.js','manifest.webmanifest','config.js','price-intelligence.js','price-reliability.js','competitor-intelligence-ui.js','competitor-intelligence.js','price-history.js','provenance-lineage.js','evidence-verification.js','verification-audit.js']){
   const r=await get(`${base}/${asset}?qa=${Date.now()}`);
   assert.equal(r.status,200,`${asset} status`);
 }
@@ -64,7 +64,7 @@ assert(app.includes('function engineBrand'),'official brand renderer missing');
 assert(!app.includes("short:'G'"),'letter engine marks returned');
 assert(!app.includes('images/searchbyimage/upload'),'obsolete Bing path returned');
 const popupCalls=[...app.matchAll(/window\.open\s*\(([^\n;]+)/g)].map(m=>m[1]);
-assert(popupCalls.length<=4,'unexpected popup script returned');
+assert.equal(popupCalls.length,0,'script popup dependency returned');
 assert(app.includes('function openExecutionEngine'),'dynamic execution opener missing');
 assert(priceModule.includes('SOUTU_PRICE_INTELLIGENCE')&&priceModule.includes('ignoredResponses')&&priceModule.includes('anomalyCount'),'hardened price intelligence module missing');
 assert(competitorModule.includes('SOUTU_COMPETITOR_INTELLIGENCE')&&competitorModule.includes('explicitGtinConflict')&&competitorModule.includes('supplierSignal'),'competitor / supplier intelligence module missing');

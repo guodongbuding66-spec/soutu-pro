@@ -1,7 +1,7 @@
 (() => {
   'use strict';
 
-  const V9_VERSION = '9.4.4';
+  const V9_VERSION = '9.4.5';
   const KEYS = {
     results: 'soutu-pro-v9-results',
     watch: 'soutu-pro-v9-watch',

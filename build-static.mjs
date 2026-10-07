@@ -7,6 +7,9 @@ const files = [
   'styles.css',
   'v9.css',
   'app.js',
+  'search-launch-bridge.js',
+  'search-launch.html',
+  'search-launch.js',
   'v9.js',
   'price-intelligence.js',
   'price-reliability.js',
@@ -57,6 +60,7 @@ standalone=standalone
   .replace(/<link rel="stylesheet" href="\.\/styles\.css\?v=[^"]+" \/>/, `<style>\n${read('styles.css')}\n</style>`)
   .replace(/<link rel="stylesheet" href="\.\/v9\.css\?v=[^"]+" \/>/, `<style>\n${read('v9.css')}\n</style>`)
   .replace(/<script src="\.\/config\.js\?v=[^"]+"><\/script>/, `<script>\n${read('config.js')}\n</script>`)
+  .replace(/<script src="\.\/search-launch-bridge\.js\?v=[^"]+"><\/script>/, `<script>\n${read('search-launch-bridge.js')}\n</script>`)
   .replace(/<script src="\.\/app\.js\?v=[^"]+"><\/script>/, `<script>\n${releaseApp}\n</script>`)
   .replace(/<script src="\.\/v9\.js\?v=[^"]+"><\/script>/, `<script>\n${releaseV9}\n</script>`)
   .replace('</body>', `<script>\n${read('price-intelligence.js')}\n</script>\n<script>\n${read('price-reliability.js')}\n</script>\n<script>\n${read('competitor-intelligence-ui.js')}\n</script>\n<script>\n${read('competitor-intelligence.js')}\n</script>\n<script>\n${read('price-history.js')}\n</script>\n<script id="soutu-provenance-lineage">\n${read('provenance-lineage.js')}\n</script>\n<script id="soutu-verification-audit">\n${read('verification-audit.js')}\n</script>\n<script id="soutu-evidence-verification">\n${read('evidence-verification.js')}\n</script>\n</body>`);

@@ -166,29 +166,50 @@ test('execution targets refresh expired temporary image URLs before reopening',a
   await expect(page.locator('#executionModal')).toBeVisible();
   expect(tokenCount).toBe(0);
 
-  await page.evaluate(()=>{window.__opened=[];window.open=(url)=>{const fake={closed:false,location:{replace:v=>window.__opened.push(v)},close(){this.closed=true}};if(url&&url!=='about:blank')window.__opened.push(url);return fake}});
+  await context.route('https://lens.google.com/**',route=>route.fulfill({status:200,contentType:'text/html',body:'<h1>Search destination</h1>'}));
   const googleRow=page.locator('[data-execution-id="google"]');
+  const popupPromise=page.waitForEvent('popup');
   await googleRow.locator('[data-execution-open]').click();
+  const popup=await popupPromise;
+  await popup.waitForURL('https://lens.google.com/**');
+  expect(popup.url()).toContain(encodeURIComponent('https://cdn.example.com/image-1.png'));
+  await popup.close();
   await expect(googleRow.locator('.status-pill')).toContainText('已打开');
   expect(tokenCount).toBe(1);
 
   await page.waitForTimeout(1200);
+  const nextPopupPromise=page.waitForEvent('popup');
   await googleRow.locator('[data-execution-open]').click();
+  const nextPopup=await nextPopupPromise;
+  await nextPopup.waitForURL('https://lens.google.com/**');
+  expect(nextPopup.url()).toContain(encodeURIComponent('https://cdn.example.com/image-2.png'));
   await expect(googleRow.locator('.status-pill')).toContainText('已打开');
   expect(tokenCount).toBe(2);
-  const opened=await page.evaluate(()=>window.__opened||[]);
-  expect(opened.filter(x=>String(x).includes('lens.google.com/uploadbyurl')).length).toBeGreaterThanOrEqual(2);
+  expect(page.url()).toBe('http://127.0.0.1:4173/');
+
 });
 
-test('blocked search popup never navigates the workbench away',async({page})=>{
-  await page.addInitScript(()=>localStorage.setItem('soutu-pro-settings-v5',JSON.stringify({tempEndpoint:'',productEndpoint:'',ttl:30,defaultPreset:'product',autoPreset:true})));
+test('native search link works when scripted popups are blocked and retains the workbench',async({page,context})=>{
+  await page.addInitScript(()=>{
+    localStorage.setItem('soutu-pro-settings-v5',JSON.stringify({tempEndpoint:'',productEndpoint:'',ttl:30,defaultPreset:'product',autoPreset:true}));
+    window.__popupCalls=0;window.open=()=>{window.__popupCalls++;return null};
+  });
+  await page.route('https://remote.example.com/native.svg',route=>route.fulfill({status:200,contentType:'image/svg+xml',body:fixture}));
+  await context.route('https://lens.google.com/**',route=>route.fulfill({status:200,contentType:'text/html',body:'<h1>Search destination</h1>'}));
   await page.goto('http://127.0.0.1:4173/',{waitUntil:'domcontentloaded'});
-  await page.locator('#fileInput').setInputFiles({name:'blocked.svg',mimeType:'image/svg+xml',buffer:fixture});
+  await page.locator('#urlInput').fill('https://remote.example.com/native.svg');
+  await page.locator('#urlForm button').click();
+  await expect(page.locator('#sourceKind')).toContainText('图片链接');
   await page.locator('[data-preset="product"]').click();
   await page.locator('#runSearch').click();
-  await page.evaluate(()=>{window.open=()=>null});
-  await page.locator('[data-execution-id="google"] [data-execution-open]').click();
-  await expect(page.locator('#toastStack')).toContainText('浏览器拦截了搜索窗口');
+  const link=page.locator('[data-execution-id="google"] [data-execution-open]');
+  await expect(link).toHaveAttribute('target','_blank');
+  await expect(link).toHaveAttribute('href',/search-launch.html#[a-f0-9]{32}$/);
+  const popupPromise=page.waitForEvent('popup');await link.click();const popup=await popupPromise;
+  await popup.waitForURL('https://lens.google.com/**');
+  expect(popup.url()).toContain(encodeURIComponent('https://remote.example.com/native.svg'));
+  expect(await popup.evaluate(()=>window.opener)).toBeNull();
+  expect(await page.evaluate(()=>window.__popupCalls)).toBe(0);
   await expect(page.locator('#executionModal')).toBeVisible();
   expect(page.url()).toBe('http://127.0.0.1:4173/');
 });
@@ -223,7 +244,7 @@ test('remote image can be rehosted for stronger direct search and restored',asyn
   await expect(page.locator('#tempLinkStatus')).toContainText('原图可直连');
 });
 
-test('expired rehost falls back to the original remote URL if Blob refresh fails',async({page})=>{
+test('expired rehost falls back to the original remote URL if Blob refresh fails',async({page,context})=>{
   await page.addInitScript(()=>{
     window.SOUTU_CONFIG={tempUploadEndpoint:'http://127.0.0.1:4173',tempUploadProvider:'vercel',productSearchEndpoint:'',tempUploadTtlMinutes:30};
     localStorage.setItem('soutu-pro-settings-v5',JSON.stringify({tempEndpoint:'http://127.0.0.1:4173',productEndpoint:'',ttl:30,defaultPreset:'product',autoPreset:true}));
@@ -246,12 +267,14 @@ test('expired rehost falls back to the original remote URL if Blob refresh fails
   await page.waitForTimeout(1200);
   await page.locator('[data-preset="product"]').click();
   await page.locator('#runSearch').click();
-  await page.evaluate(()=>{window.__opened=[];window.open=()=>({closed:false,document:{title:'',body:{innerHTML:''}},location:{replace:v=>window.__opened.push(v)},close(){this.closed=true}})});
+  await context.route('https://lens.google.com/**',route=>route.fulfill({status:200,contentType:'text/html',body:'<h1>Search destination</h1>'}));
+  const popupPromise=page.waitForEvent('popup');
   await page.locator('[data-execution-id="google"] [data-execution-open]').click();
+  const popup=await popupPromise;await popup.waitForURL('https://lens.google.com/**');
   await expect(page.locator('[data-execution-id="google"] .status-pill')).toContainText('已打开');
   expect(tokenCount).toBe(2);
-  const opened=await page.evaluate(()=>window.__opened||[]);
-  expect(opened.some(x=>String(x).includes(encodeURIComponent('https://remote.example.com/fallback.svg')))).toBeTruthy();
+  expect(popup.url()).toContain(encodeURIComponent('https://remote.example.com/fallback.svg'));
+
 });
 
 test('V9 investigation workspace: import, dedupe, compare, watch, evidence, cases and exports',async({page,context})=>{

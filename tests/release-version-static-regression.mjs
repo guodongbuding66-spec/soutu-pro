@@ -36,6 +36,8 @@ assert(publicApp.includes(`const APP_VERSION='${version}';`),'public app runtime
 assert(publicV9.includes(`const V9_VERSION = '${version}';`),'public V9 runtime version mismatch');
 assert(standalone.includes(`const APP_VERSION='${version}';`),'standalone app runtime version mismatch');
 assert(standalone.includes(`const V9_VERSION = '${version}';`),'standalone V9 runtime version mismatch');
+for(const asset of ['search-launch.html','search-launch.js','search-launch-bridge.js'])assert(fs.existsSync('public/'+asset),`native search asset missing: ${asset}`);
+assert(standalone.includes('window.SOUTU_SEARCH_LAUNCH={arm,transport,id,validId}'),'standalone native bridge missing');
 assert.deepEqual({version:release.version,commit:release.commit},{version,commit:'qa-release-sha'},'release metadata mismatch');
 assert(!Number.isNaN(Date.parse(release.builtAt)),'release metadata builtAt must be ISO date');
 

@@ -47,7 +47,7 @@ ok(app.includes("return `<span class=\"engine-mark engine-custom-mark\">${icon('
 ok(app.includes("cap==='auto'?'可直连'"),'auto temporary-URL capability is surfaced');
 
 const popupCalls=[...app.matchAll(/window\.open\s*\(([^\n;]+)/g)].map(m=>m[1]);
-ok(popupCalls.length<=4,'main app has only guarded execution popup calls');
+ok(popupCalls.length===0,'main app uses native links instead of script popups');
 ok(app.includes('function openExecutionEngine')&&app.includes('data-execution-open'),'execution uses click-time refreshed targets');
 ok(app.includes('data-open-engine')&&app.includes('prepareSingleEngine'),'single-engine launch prepares Blob/direct state before opening');
 ok(!app.includes('<a class="engine-open"'),'engine-card quick action never bypasses URL preparation with a raw anchor');

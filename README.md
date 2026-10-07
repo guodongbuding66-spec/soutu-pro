@@ -1,6 +1,10 @@
-# 搜图 Pro · Image Compass V9.4.4
+# 搜图 Pro · Image Compass V9.4.5
 
 面向高频图片调查、商品找同款、来源溯源和采购研究的浏览器工作台。核心路径是：**放入图片 → 预处理/智能分析 → 自动任务建议 → 多引擎搜索 → 商品/供应商研究 → 保存项目或批量继续**。
+
+## V9.4.5 搜索打开修复
+
+单图与批量引擎使用普通链接打开独立准备页，再自动跳转至搜索引擎。准备页在点击时向原工作台请求有效图片链接；慢上传可等待、失败可重试，原工作台继续保留。原页面需保持打开。支持右键新标签页与不支持 BroadcastChannel 的浏览器回退。
 
 ## V9.2 第 7 步：Verification Audit Trail
 
@@ -11,7 +15,7 @@
 ### V5 · 搜图基础能力
 - 拖拽 / 点击上传、Ctrl/Cmd + V 粘贴、公开图片 URL
 - Google Lens、Bing Visual Search、Yandex Images、TinEye、SauceNAO、trace.moe、Ascii2D、IQDB
-- 任务预设、搜索执行状态、弹窗拦截重试
+- 任务预设、搜索执行状态、独立准备页与失败重试
 - Cloudflare Worker + R2 临时图片 URL（5–120 分钟，可主动删除、定时清理）
 - 图片裁剪、旋转、翻转、自动裁白边、对比度增强、锐化、线稿增强、2× 放大、OpenCV 自动透视矫正
 - Tesseract OCR
