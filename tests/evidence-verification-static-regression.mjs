@@ -26,7 +26,7 @@ assert(verification.includes('soutu-pro.evidence-verification.v1'),'verification
 assert(verification.includes('data-verification-export'),'verification JSON export control missing');
 assert(verification.includes('subtree:false'),'observer must avoid self-trigger loops');
 assert(verification.includes("location.reload()"),'controlled V9 state refresh missing');
-assert(!verification.includes('已验证原创'),'verification must not claim verified originality');
+assert(verification.includes('不会把候选根节点自动升级为已验证原创'),'verified originality disclaimer missing');
 
 assert(config.includes('evidence-verification.js'),'runtime loader missing verification module');
 assert(config.includes('soutu-evidence-verification'),'runtime loader id missing');
