@@ -101,7 +101,11 @@ test.describe('preparation page cache isolation',()=>{
   test.use({serviceWorkers:'allow'});
   test('opening a preparation page does not replace the offline workbench shell',async({page,context})=>{
     await page.goto(base+'/',{waitUntil:'domcontentloaded'});
-    await page.evaluate(async()=>{await navigator.serviceWorker.ready;if(!navigator.serviceWorker.controller)await new Promise(resolve=>navigator.serviceWorker.addEventListener('controllerchange',resolve,{once:true}))});
+    await expect.poll(async()=>{
+      try{return await page.evaluate(()=>Boolean(navigator.serviceWorker.controller&&window.SOUTU_BRIDGE))}
+      catch(error){if(/Execution context was destroyed|Cannot find context with specified id/.test(String(error)))return false;throw error}
+    },{timeout:15000}).toBe(true);
+    await page.waitForLoadState('networkidle');
     const preparation=await context.newPage();await preparation.goto(base+'/search-launch.html');
     await expect(preparation.locator('#message')).toContainText('搜索任务无效');
     // Wait for the navigation response to be cached before verifying offline behavior.
