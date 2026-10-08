@@ -1,4 +1,5 @@
 import {test,expect} from '@playwright/test';
+import {coordinateFixture,drawSelection,expectOverlay,expectRegion} from './crop-helpers.mjs';
 
 const base=process.env.SOUTU_PRO_URL||'https://soutu-pro.vercel.app';
 test.use({serviceWorkers:'block'});
@@ -96,4 +97,17 @@ test('production auto-crop removes gray borders and reports real output dimensio
   expect(output).toEqual({width:104,height:84,productPixels:8000});
   await page.locator('[data-use="original"]').click();await expect(page.locator('#dims')).toHaveText('240 × 180');
   await page.locator('[data-use="processed"]').click();await expect(page.locator('#dims')).toHaveText('104 × 84');
+});
+
+test('production manual crop preserves exactly the pixels displayed inside the selection',async({page})=>{
+  await page.emulateMedia({reducedMotion:'reduce'});await page.setViewportSize({width:1440,height:1000});
+  await page.goto(base+'/?manual-crop-qa='+Date.now(),{waitUntil:'domcontentloaded'});
+  const buffer=await coordinateFixture(page,1448,1086);
+  await page.locator('#fileInput').setInputFiles({name:'production-manual-crop-qa.png',mimeType:'image/png',buffer});
+  await expect(page.locator('#dims')).toHaveText('1448 × 1086');await page.locator('#cropBtn').click();
+  const region={x:480,y:210,w:968,h:786};await drawSelection(page,region);await expectOverlay(page,region);
+  await expect(page.locator('#cropHint')).toContainText('968 × 786');
+  await page.setViewportSize({width:390,height:844});await page.locator('#imageStage').scrollIntoViewIfNeeded();await expectOverlay(page,region);
+  await page.locator('#applyCrop').click();await expectRegion(page,region);
+  await expect(page.locator('#imageProcessStatus')).toContainText('968 × 786');
 });

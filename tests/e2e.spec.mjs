@@ -46,11 +46,11 @@ test('core product flow, local image tools, batch, projects and V9 research',asy
 
   await page.locator('#cropBtn').click();
   await page.locator('#imageStage').scrollIntoViewIfNeeded();
-  const stage=await page.locator('#imageStage').boundingBox();
-  expect(stage).toBeTruthy();
-  await page.mouse.move(stage.x+stage.width*.18,stage.y+stage.height*.18);
+  const image=await page.locator('#previewImg').boundingBox();
+  expect(image).toBeTruthy();
+  await page.mouse.move(image.x+image.width*.18,image.y+image.height*.18);
   await page.mouse.down();
-  await page.mouse.move(stage.x+stage.width*.82,stage.y+stage.height*.82);
+  await page.mouse.move(image.x+image.width*.82,image.y+image.height*.82);
   await page.mouse.up();
   await expect(page.locator('#applyCrop')).toBeEnabled();
   await page.locator('#applyCrop').click();
