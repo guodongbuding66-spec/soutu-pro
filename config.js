@@ -19,7 +19,7 @@ function loadSoutuFeature(src,id){
   document.head.appendChild(script);
 }
 const loadSoutuFeatures=()=>{
-  const version=document.querySelector('meta[name="soutu-version"]')?.content||'9.4.5';
+  const version=document.querySelector('meta[name="soutu-version"]')?.content||'9.4.6';
   loadSoutuFeature(`./price-intelligence.js?v=${encodeURIComponent(version)}`,'soutu-price-intelligence');
   loadSoutuFeature(`./price-reliability.js?v=${encodeURIComponent(version)}`,'soutu-price-reliability');
   loadSoutuFeature(`./competitor-intelligence-ui.js?v=${encodeURIComponent(version)}`,'soutu-competitor-intelligence-ui');

@@ -424,3 +424,5 @@ html[data-theme="dark"] .engine-card[data-tone] .engine-mark{border-color:var(--
 @media(max-width:520px){.identity-match-groups{grid-template-columns:1fr}}
 
 .execution-link{text-decoration:none;cursor:pointer}
+
+.image-process-status{margin:10px 0 0;padding:10px 12px;border-radius:10px;background:var(--primary-soft);color:var(--text);font-size:12px;line-height:1.6;overflow-wrap:anywhere}

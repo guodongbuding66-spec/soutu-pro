@@ -85,3 +85,15 @@ test('production native search opens a real tab after a real Blob upload while s
     const removed=await context.request.delete(token.deleteUrl);expect(removed.ok()).toBe(true);
   }
 });
+
+test('production auto-crop removes gray borders and reports real output dimensions',async({page})=>{
+  await page.goto(base+'/?autocrop-qa='+Date.now(),{waitUntil:'domcontentloaded'});
+  const fixture=Buffer.from('<svg xmlns="http://www.w3.org/2000/svg" width="240" height="180"><rect width="240" height="180" fill="#f4f4f4"/><rect x="70" y="50" width="100" height="80" fill="#333"/></svg>');
+  await page.locator('#fileInput').setInputFiles({name:'production-autocrop-qa.svg',mimeType:'image/svg+xml',buffer:fixture});
+  await page.locator('[data-process="autocrop"]').click();await expect(page.locator('#dims')).toHaveText('104 × 84');
+  await expect(page.locator('#imageProcessStatus')).toContainText('240 × 180 → 104 × 84');
+  const output=await page.evaluate(async()=>{const img=document.querySelector('#previewImg');await img.decode();const canvas=document.createElement('canvas');canvas.width=img.naturalWidth;canvas.height=img.naturalHeight;const context=canvas.getContext('2d');context.drawImage(img,0,0);const data=context.getImageData(0,0,canvas.width,canvas.height).data;let count=0;for(let i=0;i<data.length;i+=4)if(data[i]===51&&data[i+1]===51&&data[i+2]===51&&data[i+3]===255)count++;return{width:canvas.width,height:canvas.height,productPixels:count}});
+  expect(output).toEqual({width:104,height:84,productPixels:8000});
+  await page.locator('[data-use="original"]').click();await expect(page.locator('#dims')).toHaveText('240 × 180');
+  await page.locator('[data-use="processed"]').click();await expect(page.locator('#dims')).toHaveText('104 × 84');
+});
