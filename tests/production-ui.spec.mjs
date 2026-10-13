@@ -127,6 +127,10 @@ test('production investigation queries live image providers and saves real sourc
   await page.locator('.v9-result-card [data-action="evidence"]').first().click();
   await page.locator('[data-v9-mode="evidence"]').click();await expect(page.locator('.v9-evidence-list article')).toHaveCount(1);
   expect(await page.evaluate(()=>JSON.parse(localStorage.getItem('soutu-pro-v9-evidence'))[0].url)).toBe(source);
+  await page.locator('[data-v9-mode="results"]').click();const count=await page.locator('.v9-result-card').count();await page.locator('#v9SelectVisible').click();await expect(page.locator('[data-result-select]:checked')).toHaveCount(count);await page.locator('#v9SaveSelectedEvidence').click();
+  expect(await page.evaluate(()=>JSON.parse(localStorage.getItem('soutu-pro-v9-evidence')).length)).toBe(count);
+  const csvPromise=page.waitForEvent('download');await page.locator('#v9ExportCsv').click();const csv=await csvPromise;expect(csv.suggestedFilename()).toContain('selected');const csvText=await (await import('node:fs/promises')).readFile(await csv.path(),'utf8');expect(csvText).toContain('来源链接');expect(csvText).toContain(source);expect(csvText).toContain('garden shed');
+  await expect(page.locator('#investigationHistory')).toBeVisible();await page.locator('#investigationHistorySummary').click();await expect(page.locator('#investigationHistoryList button')).toHaveText('garden shed');
   await page.setViewportSize({width:390,height:844});expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(1);
   await page.locator('#v9Workflow').screenshot({path:'test-results/production-investigation-live-mobile.png'});
 });

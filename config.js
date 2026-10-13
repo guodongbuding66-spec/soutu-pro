@@ -19,7 +19,7 @@ function loadSoutuFeature(src,id){
   document.head.appendChild(script);
 }
 const loadSoutuFeatures=()=>{
-  const version=document.querySelector('meta[name="soutu-version"]')?.content||'9.5.0';
+  const version=document.querySelector('meta[name="soutu-version"]')?.content||'9.6.0';
   loadSoutuFeature(`./investigation-workflow.js?v=${encodeURIComponent(version)}`,'soutu-investigation-workflow');
   loadSoutuFeature(`./price-intelligence.js?v=${encodeURIComponent(version)}`,'soutu-price-intelligence');
   loadSoutuFeature(`./price-reliability.js?v=${encodeURIComponent(version)}`,'soutu-price-reliability');

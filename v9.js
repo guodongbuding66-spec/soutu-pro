@@ -1,7 +1,7 @@
 (() => {
   'use strict';
 
-  const V9_VERSION = '9.5.0';
+  const V9_VERSION = '9.6.0';
   const KEYS = {
     results: 'soutu-pro-v9-results',
     watch: 'soutu-pro-v9-watch',
@@ -127,6 +127,10 @@
           <button class="secondary-btn compact" id="v9Dedupe">${icon('grid')}智能去重</button>
           <button class="secondary-btn compact" id="v9Compare">${icon('origin')}比较选中</button>
         </div>
+        <div class="v9-selection-bar" id="v9SelectionBar" hidden>
+          <div class="v9-selection-summary"><button class="secondary-btn compact" id="v9SelectVisible">全选筛选结果</button><button class="secondary-btn compact" id="v9ClearSelection">取消选择</button><span id="v9SelectionCount" role="status" aria-live="polite"></span></div>
+          <div class="v9-selection-actions"><button class="secondary-btn compact" id="v9SaveSelectedEvidence">批量留证</button><button class="secondary-btn compact" id="v9WatchSelected">批量追踪</button><button class="secondary-btn compact" id="v9ExportCsv">导出筛选 CSV</button></div>
+        </div>
       </section>
       <section id="v9Body"></section>
       <section class="v9-bottom-grid">
@@ -168,7 +172,7 @@
   }
 
   function productText(r){const p=r.product||{};return [r.title,r.snippet,p.name,p.brand,p.sku,p.mpn,p.gtin,p.model].filter(Boolean).join(' ')}
-  function displayPrice(r){const value=String(r.price||r.product?.price||''),currency=String(r.product?.currency||'').trim();return currency&&!value.toUpperCase().includes(currency.toUpperCase())?`${value} ${currency}`:value;}
+  function displayPrice(r){const value=String(r.price||r.product?.price||'').trim(),currency=String(r.product?.currency||'').trim();return value&&currency&&!value.toUpperCase().includes(currency.toUpperCase())?`${value} ${currency}`:value;}
   function resultPriceNumber(r){const raw=r.price||r.product?.price||'';const m=String(raw).replace(/,/g,'').match(/-?\d+(?:\.\d+)?/);return m?Number(m[0]):0;}
   function resultDate(r){const raw=r.date||r.published||r.capturedAt;const t=raw?Date.parse(raw)||Number(raw):0;return Number.isFinite(t)?t:0;}
   function dedupeBasic(items){const seen=new Set();return items.filter(r=>{const k=`${canonicalUrl(r.url)}|${String(r.title||'').toLowerCase().replace(/\s+/g,' ').slice(0,120)}`;if(seen.has(k))return false;seen.add(k);return true;});}
@@ -191,10 +195,24 @@
 
   function renderDomainOptions(){const sel=document.querySelector('#v9Domain');if(!sel)return;const counts={};state.results.forEach(r=>{const d=r.domain||domainOf(r.url)||'unknown';counts[d]=(counts[d]||0)+1});const current=state.domain;sel.innerHTML='<option value="all">全部域名</option>'+Object.entries(counts).sort((a,b)=>b[1]-a[1]).map(([d,n])=>`<option value="${escapeHtml(d)}">${escapeHtml(d)} (${n})</option>`).join('');sel.value=counts[current]?current:'all';state.domain=sel.value;}
 
+  function selectedResults(){return state.results.filter(r=>state.selected.has(r.id));}
+  function renderSelection(){
+    const valid=new Set(state.results.map(r=>r.id));state.selected.forEach(id=>{if(!valid.has(id))state.selected.delete(id)});
+    const bar=document.querySelector('#v9SelectionBar');if(!bar)return;
+    bar.hidden=state.mode!=='results'||!state.results.length;
+    const visible=filteredResults(),selected=selectedResults(),hidden=selected.length-visible.filter(r=>state.selected.has(r.id)).length;
+    document.querySelector('#v9SelectionCount').textContent=`已选 ${selected.length} 条${hidden?`（${hidden} 条被筛选隐藏）`:''}${selected.length>4?' · 图片对比最多 4 条':''}`;
+    document.querySelector('#v9SelectVisible').disabled=!visible.length;
+    document.querySelector('#v9ClearSelection').disabled=!selected.length;
+    for(const id of ['v9SaveSelectedEvidence','v9WatchSelected'])document.querySelector('#'+id).disabled=!selected.length;
+    const csv=document.querySelector('#v9ExportCsv');csv.disabled=!selected.length&&!visible.length;csv.textContent=selected.length?'导出所选 CSV':'导出筛选 CSV';
+    const compare=document.querySelector('#v9Compare');compare.disabled=!selected.length||selected.length>4;compare.title=selected.length>4?'请保留 1–4 条结果进行对比':'比较所选的 1–4 条结果';
+  }
+
   function resultCard(r){
     const img=remoteImageUrl(r),selected=state.selected.has(r.id),label=r.manualLabel||'',p=r.product||{};
     return `<article class="v9-result-card ${selected?'selected':''} ${r.duplicateOf?'duplicate':''}" data-result-id="${r.id}">
-      <label class="v9-select"><input type="checkbox" data-result-select="${r.id}" ${selected?'checked':''}><span>${icon('check')}</span></label>
+      <label class="v9-select"><input type="checkbox" aria-label="选择 ${escapeHtml(r.title||'结果')}" data-result-select="${r.id}" ${selected?'checked':''}><span>${icon('check')}</span></label>
       <div class="v9-result-image">${img?`<img src="${escapeHtml(proxyUrl(img))}" alt="" loading="lazy" referrerpolicy="no-referrer">`:icon('image')}<span class="v9-source-badge">${escapeHtml(r.engine||r.source||'采集')}</span>${r.width&&r.height?`<em>${r.width}×${r.height}${r.quality?.sharpness?` · 清晰 ${Math.round(r.quality.sharpness*100)}`:''}</em>`:''}</div>
       <div class="v9-result-body"><div class="v9-result-title"><b>${escapeHtml(r.title||p.name||'未命名结果')}</b><small>${escapeHtml(r.domain||domainOf(r.url)||'')}</small></div>
       <div class="v9-score-row"><span title="尚未计算时显示横线">${Number.isFinite(r.scores?.overall)?scorePct(r.scores.overall):'—'}<small>综合</small></span><span>${Number.isFinite(r.scores?.visual)?scorePct(r.scores.visual):'—'}<small>视觉</small></span><span>${Number.isFinite(r.scores?.structure)?scorePct(r.scores.structure):'—'}<small>结构</small></span></div>
@@ -219,6 +237,7 @@
   function renderBody(){
     document.querySelectorAll('[data-v9-mode]').forEach(b=>b.classList.toggle('active',b.dataset.v9Mode===state.mode));
     if(state.mode==='domains')renderDomains();else if(state.mode==='timeline')renderTimeline();else if(state.mode==='watch')renderWatch();else if(state.mode==='graph')renderGraph();else if(state.mode==='evidence')renderEvidence();else if(state.mode==='cases')renderCases();else renderResults();
+    renderSelection();
   }
   function renderWeights(){const el=document.querySelector('#v9Weights');if(!el)return;el.innerHTML=`<span>视觉 ${Math.round(state.weights.visual*100)}%</span><span>结构 ${Math.round(state.weights.structure*100)}%</span><span>文字 ${Math.round(state.weights.text*100)}%</span>`;}
   function renderMetadata(){const el=document.querySelector('#v9Metadata');if(!el)return;const a=getAnalysis(),ex=state.exif||{},brands=brandCandidates(a.ocr||'');el.innerHTML=`<dl class="v9-meta-list"><div><dt>品牌候选</dt><dd>${brands.map(escapeHtml).join(' · ')||'—'}</dd></div><div><dt>型号 / 条码</dt><dd>${(a.barcodes||[]).map(escapeHtml).join(' · ')||extractModel(a.ocr||'')||'—'}</dd></div><div><dt>相机</dt><dd>${escapeHtml([ex.Make,ex.Model].filter(Boolean).join(' ')||'—')}</dd></div><div><dt>拍摄时间</dt><dd>${escapeHtml(ex.DateTimeOriginal||ex.DateTime||'—')}</dd></div><div><dt>软件</dt><dd>${escapeHtml(ex.Software||'—')}</dd></div>${Number.isFinite(ex.latitude)?`<div><dt>GPS</dt><dd>${ex.latitude.toFixed(5)}, ${ex.longitude.toFixed(5)}</dd></div>`:''}</dl>`;}
@@ -333,12 +352,39 @@
   function updateLearning(r,label){r.manualLabel=label;if(!['visual','structure','text'].some(key=>Number.isFinite(r.scores?.[key])))return;const target=label==='same'?1:label==='similar'?.55:0;const lr=.08;const features={visual:r.scores.visual||0,structure:r.scores.structure||0,text:r.scores.text||0};Object.keys(state.weights).forEach(k=>{const f=features[k];state.weights[k]=Math.max(.05,state.weights[k]+lr*(target-.45)*(f-.5))});state.weights=normalizeWeights(state.weights);state.results.forEach(x=>{if(['visual','structure','text'].some(key=>Number.isFinite(x.scores?.[key])))x.scores.overall=clamp01((x.scores.visual||0)*state.weights.visual+(x.scores.structure||0)*state.weights.structure+(x.scores.text||0)*state.weights.text)});persist();renderWeights();}
 
   async function addToBatch(r){const img=remoteImageUrl(r);if(!img)return bridge()?.toast?.('没有可加入的图片','该结果没有缩略图 URL。','error');try{const resp=await fetch(proxyUrl(img));if(!resp.ok)throw new Error('image fetch failed');const blob=await resp.blob();const file=new File([blob],`${(r.title||'result').replace(/[^\w\u4e00-\u9fff-]+/g,'-').slice(0,40)}.${blob.type.includes('png')?'png':'jpg'}`,{type:blob.type||'image/jpeg'});await bridge()?.addBatch?.([file]);bridge()?.setView?.('batch');}catch(e){bridge()?.toast?.('加入批量失败',e.message||'远程图片无法读取。','error')}}
-  function addEvidence(r,note=''){if(state.evidence.some(e=>canonicalUrl(e.url)===canonicalUrl(r.url)&&e.title===r.title))return bridge()?.toast?.('已保存这条证据','可在证据页查看。','ok');const e={id:uid(),capturedAt:Date.now(),title:r.title,url:r.url,image:remoteImageUrl(r),query:sourceQuery(),captureState:r.captureState,domain:r.domain||domainOf(r.url),price:r.price||r.product?.price||'',product:r.product||{},engine:r.engine||r.source||'',note,manualLabel:r.manualLabel||''};state.evidence.unshift(e);persist();renderStats();if(state.mode==='evidence')renderEvidence();bridge()?.toast?.('证据已保存','来源、规格和采集时间已记录。','ok');}
-  function addWatch(r){if(!/^https?:/i.test(r.url||''))return bridge()?.toast?.('无法追踪','该结果没有有效的公开来源 URL。','error');if(state.watch.some(x=>canonicalUrl(x.url)===canonicalUrl(r.url)))return bridge()?.toast?.('已经在追踪','无需重复添加。');state.watch.unshift({id:uid(),url:r.url,title:r.title,firstSeen:Date.now(),lastChecked:0,lastPrice:r.price||r.product?.price||'',status:'待刷新',history:[]});persist();renderStats();bridge()?.toast?.('已加入追踪','可在“价格 / 生命周期”里刷新。','ok')}
+  function storedList(key,fallback){try{const raw=localStorage.getItem(key),value=raw===null?fallback:JSON.parse(raw);return Array.isArray(value)?value:null}catch{return null}}
+  function saveEvidenceItems(items,note=''){
+    if(!items.length)return;
+    const existing=storedList(KEYS.evidence,state.evidence);if(!existing)return bridge()?.toast?.('证据保存失败','已有记录无法读取，请检查本机数据后重试。','error');
+    const next=existing.slice();let added=0;
+    for(const r of items){
+      if(next.some(e=>canonicalUrl(e.url)===canonicalUrl(r.url)&&e.title===r.title))continue;
+      next.unshift({id:uid(),capturedAt:Date.now(),sourceCapturedAt:r.capturedAt,title:r.title,url:r.url,image:remoteImageUrl(r),query:r.query??sourceQuery(),captureState:r.captureState,domain:r.domain||domainOf(r.url),price:r.price||r.product?.price||'',observedPrice:r.observedPrice||'',priceSource:r.priceSource||'',product:r.product||{},engine:r.engine||r.source||'',note,manualLabel:r.manualLabel||''});added++;
+    }
+    if(added&&!write(KEYS.evidence,next))return bridge()?.toast?.('证据保存失败','本机存储空间不足，请先导出备份；本次没有新增证据。','error');
+    state.evidence=next;renderStats();if(state.mode==='evidence')renderEvidence();
+    bridge()?.toast?.(added?'证据已保存':'已保存这些证据',`新增 ${added} 条 · 跳过 ${items.length-added} 条重复记录。`,'ok');
+  }
+  function addEvidence(r,note=''){return saveEvidenceItems([r],note)}
+  function saveWatchItems(items){
+    if(!items.length)return;
+    const existing=storedList(KEYS.watch,state.watch);if(!existing)return bridge()?.toast?.('追踪保存失败','已有记录无法读取，请检查本机数据后重试。','error');
+    const next=existing.slice();let added=0,duplicate=0,limited=0;
+    for(const r of items){
+      if(!/^https?:/i.test(r.url||''))continue;
+      if(next.some(w=>canonicalUrl(w.url)===canonicalUrl(r.url))){duplicate++;continue}
+      if(next.length>=100){limited++;continue}
+      next.unshift({id:uid(),url:r.url,title:r.title,firstSeen:Date.now(),lastChecked:0,lastPrice:r.price||r.product?.price||'',status:'待刷新',history:[]});added++;
+    }
+    if(added&&!write(KEYS.watch,next))return bridge()?.toast?.('追踪保存失败','本机存储空间不足，本次没有新增追踪。','error');
+    state.watch=next;renderStats();
+    bridge()?.toast?.(added?'已加入追踪':'未新增追踪',`新增 ${added} 条 · 已在追踪 ${duplicate} 条${limited?` · 达到 100 条上限，${limited} 条未加入`:''}。`,limited?'error':'ok');
+  }
+  function addWatch(r){return saveWatchItems([r])}
   async function refreshWatchItem(w){w.status='刷新中';renderWatch();try{const resp=await fetch(`/api/url-status?url=${encodeURIComponent(w.url)}`);const data=await resp.json();w.lastChecked=Date.now();w.status=data.alive?'在线':'不可访问';if(data.title)w.title=data.title;if(data.price&&data.priceSource!=='page-text'){w.lastPrice=data.price;w.history.push({at:w.lastChecked,price:data.price});w.history=w.history.slice(-30)}if(data.priceSource==='page-text')w.status='在线 · 文本价格待核对';w.product=data.product||w.product||{};}catch{w.lastChecked=Date.now();w.status='检查失败'}persist();renderWatch();}
   async function refreshAllWatch(){for(const w of state.watch)await refreshWatchItem(w)}
 
-  function compareSelected(extraId=''){if(extraId)state.selected.add(extraId);const list=state.results.filter(r=>state.selected.has(r.id)).slice(0,4);if(!list.length)return bridge()?.toast?.('请选择结果','勾选 1–4 个结果后比较。','error');const modal=document.querySelector('#v9CompareModal'),body=document.querySelector('#v9CompareBody');modal.classList.remove('hidden');const src=bridge()?.source?.();const rows=['brand','sku','model','mpn','gtin','price','currency'];body.innerHTML=`<div class="v9-compare-grid"><div class="v9-compare-source"><h3>源图片</h3>${src?.activeUrl?`<img src="${escapeHtml(src.activeUrl)}" alt="源图">`:''}<p>${escapeHtml(sourceQuery()||'')}</p></div>${list.map(r=>`<article><h3>${escapeHtml(r.title||'结果')}</h3>${remoteImageUrl(r)?`<img src="${escapeHtml(proxyUrl(remoteImageUrl(r)))}" alt="">`:''}<a href="${escapeHtml(r.url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(r.domain||domainOf(r.url))}</a></article>`).join('')}</div><div class="v9-spec-table"><table><thead><tr><th>字段</th>${list.map(r=>`<th>${escapeHtml((r.title||'结果').slice(0,26))}</th>`).join('')}</tr></thead><tbody>${rows.map(k=>`<tr><td>${k.toUpperCase()}</td>${list.map(r=>`<td>${escapeHtml(String(r.product?.[k]??(k==='price'?r.price:'')??'—'))}</td>`).join('')}</tr>`).join('')}</tbody></table></div>${list.length===1&&src?.activeUrl&&remoteImageUrl(list[0])?overlayCompare(src.activeUrl,proxyUrl(remoteImageUrl(list[0]))):''}`;bindOverlay();}
+  function compareSelected(extraId=''){const list=extraId?state.results.filter(r=>r.id===extraId):selectedResults();if(list.length>4)return bridge()?.toast?.('对比最多 4 条','请减少选择数量后再比较。','error');if(!list.length)return bridge()?.toast?.('请选择结果','勾选 1–4 个结果后比较。','error');const modal=document.querySelector('#v9CompareModal'),body=document.querySelector('#v9CompareBody');modal.classList.remove('hidden');const src=bridge()?.source?.();const rows=['brand','sku','model','mpn','gtin','price','currency'];body.innerHTML=`<div class="v9-compare-grid"><div class="v9-compare-source"><h3>源图片</h3>${src?.activeUrl?`<img src="${escapeHtml(src.activeUrl)}" alt="源图">`:''}<p>${escapeHtml(sourceQuery()||'')}</p></div>${list.map(r=>`<article><h3>${escapeHtml(r.title||'结果')}</h3>${remoteImageUrl(r)?`<img src="${escapeHtml(proxyUrl(remoteImageUrl(r)))}" alt="">`:''}<a href="${escapeHtml(r.url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(r.domain||domainOf(r.url))}</a></article>`).join('')}</div><div class="v9-spec-table"><table><thead><tr><th>字段</th>${list.map(r=>`<th>${escapeHtml((r.title||'结果').slice(0,26))}</th>`).join('')}</tr></thead><tbody>${rows.map(k=>`<tr><td>${k.toUpperCase()}</td>${list.map(r=>`<td>${escapeHtml(String(r.product?.[k]??(k==='price'?r.price:'')??'—'))}</td>`).join('')}</tr>`).join('')}</tbody></table></div>${list.length===1&&src?.activeUrl&&remoteImageUrl(list[0])?overlayCompare(src.activeUrl,proxyUrl(remoteImageUrl(list[0]))):''}`;bindOverlay();}
   function overlayCompare(a,b){return `<div class="v9-overlay-compare"><h3>透明叠加 / 滑块对比</h3><div class="v9-overlay-stage"><img src="${escapeHtml(a)}" alt="源图"><div class="v9-overlay-top" id="v9OverlayTop"><img src="${escapeHtml(b)}" alt="结果"></div></div><input id="v9OverlayRange" type="range" min="0" max="100" value="50"></div>`;}
   function bindOverlay(){const r=document.querySelector('#v9OverlayRange'),top=document.querySelector('#v9OverlayTop');if(r&&top)r.oninput=()=>top.style.clipPath=`inset(0 ${100-r.value}% 0 0)`;}
 
@@ -360,6 +406,15 @@
 
   function download(name,blob){const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)}
   function exportJson(){download(`soutu-pro-v9-${Date.now()}.json`,new Blob([JSON.stringify({version:V9_VERSION,exportedAt:new Date().toISOString(),query:sourceQuery(),results:state.results,evidence:state.evidence,watch:state.watch},null,2)],{type:'application/json'}))}
+  function exportCsv(){
+    const selected=selectedResults(),items=selected.length?selected:filteredResults();if(!items.length)return;
+    const headers=['标题','来源链接','域名','图片链接','页面价格','待核对文本价格','币种','品牌','型号','SKU','综合相似度 (%)','视觉相似度 (%)','结构相似度 (%)','人工判断','搜索词','记录方式','采集时间'];
+    const labels={same:'完全同款',similar:'类似',irrelevant:'不相关'},types={api:'API 查询',page:'网页采集',manual:'手工记录',import:'导入'};
+    const cell=value=>{let text=String(value??'');if(/^\s*[=+\-@]/.test(text))text="'"+text;return '"'+text.replace(/"/g,'""')+'"'};
+    const rows=items.map(r=>[r.title,r.url,r.domain||domainOf(r.url),remoteImageUrl(r),displayPrice(r),r.observedPrice||'',r.product?.currency||'',r.product?.brand||'',r.product?.model||'',r.product?.sku||'',...['overall','visual','structure'].map(key=>Number.isFinite(r.scores?.[key])?scorePct(r.scores[key]):''),labels[r.manualLabel]||'',r.query??'',types[r.captureState]||r.captureState||'',fmtDate(r.capturedAt)]);
+    download(`soutu-investigation-${selected.length?'selected':'filtered'}-${Date.now()}.csv`,new Blob(['\ufeff'+[headers,...rows].map(row=>row.map(cell).join(',')).join('\r\n')],{type:'text/csv;charset=utf-8'}));
+    bridge()?.toast?.('CSV 已导出',`${items.length} 条${selected.length?'所选':'筛选'}结果，未计算相似度留空。`,'ok');
+  }
   async function exportXlsx(){try{await loadScript('https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js','XLSX');const rows=state.results.map(r=>({title:r.title,url:r.url,domain:r.domain||domainOf(r.url),price:r.price||r.product?.price||'',brand:r.product?.brand||'',sku:r.product?.sku||'',model:r.product?.model||'',similarity:Number.isFinite(r.scores?.overall)?scorePct(r.scores.overall):'',visual:Number.isFinite(r.scores?.visual)?scorePct(r.scores.visual):'',structure:Number.isFinite(r.scores?.structure)?scorePct(r.scores.structure):'',label:r.manualLabel||''}));const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(rows),'Results');XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(state.evidence),'Evidence');XLSX.writeFile(wb,`soutu-pro-v9-${Date.now()}.xlsx`)}catch(e){bridge()?.toast?.('Excel 导出失败',e.message||'SheetJS 未加载。','error')}}
   function printReport(){
     const box=document.querySelector('#v9PrintReport');if(!box)return;
@@ -407,6 +462,11 @@
       if(e.target.closest('#v9Compare'))return compareSelected();
       if(e.target.closest('#v9SaveCase'))return saveCase();
       if(e.target.closest('#v9ExportJson'))return exportJson();
+      if(e.target.closest('#v9ExportCsv'))return exportCsv();
+      if(e.target.closest('#v9SelectVisible')){filteredResults().forEach(result=>state.selected.add(result.id));renderBody();return}
+      if(e.target.closest('#v9ClearSelection')){state.selected.clear();renderBody();return}
+      if(e.target.closest('#v9SaveSelectedEvidence'))return saveEvidenceItems(selectedResults());
+      if(e.target.closest('#v9WatchSelected'))return saveWatchItems(selectedResults());
       if(e.target.closest('#v9ExportXlsx'))return exportXlsx();
       if(e.target.closest('#v9Print'))return printReport();
       if(e.target.closest('#v9Industrial')){state.weights=normalizeWeights({visual:.18,structure:.67,text:.15});bridge()?.choosePreset?.('industrial');persist();renderWeights();bridge()?.toast?.('工业结构模式已启用','结构特征权重已提升。','ok');return}
@@ -423,11 +483,11 @@
       const wd=e.target.closest('[data-watch-remove]');if(wd){state.watch=state.watch.filter(x=>x.id!==wd.dataset.watchRemove);persist();renderWatch();renderStats();return}
       const er=e.target.closest('[data-evidence-remove]');if(er){state.evidence=state.evidence.filter(x=>x.id!==er.dataset.evidenceRemove);persist();renderEvidence();renderStats();return}
       const nav=e.target.closest('[data-nav]');if(nav){bridge()?.setView?.(nav.dataset.nav);return}
-      const co=e.target.closest('[data-case-open]');if(co){refreshEvidence();const cs=state.cases.find(x=>x.id===co.dataset.caseOpen);if(cs){let restored;try{const copies=[...state.evidence,...state.cases.flatMap(c=>c.evidence||[])];restored=(cs.evidence||[]).map(e=>e.lineage?window.SOUTU_VERIFICATION_AUDIT?.canonical(e,copies)||e:e)}catch{return bridge()?.toast?.('审核记录冲突','项目未打开，请导出备份并核对审计记录。','error')}state.results=(cs.results||[]).filter(r=>r.engine!=='demo');state.evidence=JSON.parse(JSON.stringify(restored));cs.evidence=JSON.parse(JSON.stringify(restored));state.weights=normalizeWeights(cs.weights||DEFAULT_WEIGHTS);persist();state.mode='results';render();await window.SOUTU_INVESTIGATION?.restore?.(cs);bridge()?.toast?.('调查项目已打开',cs.name,'ok')}return}
+      const co=e.target.closest('[data-case-open]');if(co){refreshEvidence();const cs=state.cases.find(x=>x.id===co.dataset.caseOpen);if(cs){let restored;try{const copies=[...state.evidence,...state.cases.flatMap(c=>c.evidence||[])];restored=(cs.evidence||[]).map(e=>e.lineage?window.SOUTU_VERIFICATION_AUDIT?.canonical(e,copies)||e:e)}catch{return bridge()?.toast?.('审核记录冲突','项目未打开，请导出备份并核对审计记录。','error')}state.results=(cs.results||[]).filter(r=>r.engine!=='demo');state.selected.clear();state.filter='';state.domain='all';state.hideDuplicates=false;document.querySelector('#v9Filter').value='';state.evidence=JSON.parse(JSON.stringify(restored));cs.evidence=JSON.parse(JSON.stringify(restored));state.weights=normalizeWeights(cs.weights||DEFAULT_WEIGHTS);persist();state.mode='results';render();await window.SOUTU_INVESTIGATION?.restore?.(cs);bridge()?.toast?.('调查项目已打开',cs.name,'ok')}return}
       const ce=e.target.closest('[data-case-export]');if(ce){const cs=state.cases.find(x=>x.id===ce.dataset.caseExport);if(cs)download(`soutu-case-${Date.now()}.json`,new Blob([JSON.stringify(cs,null,2)],{type:'application/json'}));return}
       const cd=e.target.closest('[data-case-delete]');if(cd){state.cases=state.cases.filter(x=>x.id!==cd.dataset.caseDelete);persist();renderCases();return}
     });
-    r.addEventListener('change',e=>{if(e.target.matches('[data-result-select]')){e.target.checked?state.selected.add(e.target.dataset.resultSelect):state.selected.delete(e.target.dataset.resultSelect);renderBody()}});
+    r.addEventListener('change',e=>{if(e.target.matches('[data-result-select]')){e.target.checked?state.selected.add(e.target.dataset.resultSelect):state.selected.delete(e.target.dataset.resultSelect);e.target.closest('.v9-result-card')?.classList.toggle('selected',e.target.checked);renderSelection()}});
     document.querySelector('#v9Filter').oninput=e=>{state.filter=e.target.value;renderBody()};
     document.querySelector('#v9Domain').onchange=e=>{state.domain=e.target.value;renderBody()};
     document.querySelector('#v9Sort').onchange=e=>{state.sort=e.target.value;renderBody()};
