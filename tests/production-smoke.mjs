@@ -47,7 +47,7 @@ assert.equal(release.version,version,'release version mismatch');
 if(expectedCommit)assert.equal(release.commit,expectedCommit,'release commit mismatch');
 assert(html.includes('data-nav="research"'),'research nav missing in production');
 
-for(const asset of ['search-launch.html','search-launch.js','search-launch-bridge.js','app.js','v9.js','styles.css','v9.css','perspective-worker.js','manifest.webmanifest','config.js','price-intelligence.js','price-reliability.js','competitor-intelligence-ui.js','competitor-intelligence.js','price-history.js','provenance-lineage.js','evidence-verification.js','verification-audit.js']){
+for(const asset of ['search-launch.html','search-launch.js','search-launch-bridge.js','app.js','v9.js','investigation-workflow.js','styles.css','v9.css','perspective-worker.js','manifest.webmanifest','config.js','price-intelligence.js','price-reliability.js','competitor-intelligence-ui.js','competitor-intelligence.js','price-history.js','provenance-lineage.js','evidence-verification.js','verification-audit.js']){
   const r=await get(`${base}/${asset}?qa=${Date.now()}`);
   assert.equal(r.status,200,`${asset} status`);
 }
@@ -60,6 +60,8 @@ const [app,priceModule,competitorModule,historyModule,lineageModule,auditModule]
   get(`${base}/provenance-lineage.js?v=${version}&qa=${Date.now()}`).then(r=>r.text()),
   get(`${base}/verification-audit.js?v=${version}&qa=${Date.now()}`).then(r=>r.text())
 ]);
+assert(!html.includes('ai-foreign-trade-os'),'removed foreign trade link returned');
+assert(app.includes('uploadImage:')&&app.includes('startImageSearch:'),'research image workflow bridge missing');
 assert(app.includes('function engineBrand'),'official brand renderer missing');
 assert(!app.includes("short:'G'"),'letter engine marks returned');
 assert(!app.includes('images/searchbyimage/upload'),'obsolete Bing path returned');

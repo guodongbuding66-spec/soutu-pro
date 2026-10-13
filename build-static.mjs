@@ -11,6 +11,7 @@ const files = [
   'search-launch.html',
   'search-launch.js',
   'v9.js',
+  'investigation-workflow.js',
   'price-intelligence.js',
   'price-reliability.js',
   'competitor-intelligence-ui.js',
@@ -63,7 +64,7 @@ standalone=standalone
   .replace(/<script src="\.\/search-launch-bridge\.js\?v=[^"]+"><\/script>/, `<script>\n${read('search-launch-bridge.js')}\n</script>`)
   .replace(/<script src="\.\/app\.js\?v=[^"]+"><\/script>/, `<script>\n${releaseApp}\n</script>`)
   .replace(/<script src="\.\/v9\.js\?v=[^"]+"><\/script>/, `<script>\n${releaseV9}\n</script>`)
-  .replace('</body>', `<script>\n${read('price-intelligence.js')}\n</script>\n<script>\n${read('price-reliability.js')}\n</script>\n<script>\n${read('competitor-intelligence-ui.js')}\n</script>\n<script>\n${read('competitor-intelligence.js')}\n</script>\n<script>\n${read('price-history.js')}\n</script>\n<script id="soutu-provenance-lineage">\n${read('provenance-lineage.js')}\n</script>\n<script id="soutu-verification-audit">\n${read('verification-audit.js')}\n</script>\n<script id="soutu-evidence-verification">\n${read('evidence-verification.js')}\n</script>\n</body>`);
+  .replace('</body>', `<script id="soutu-investigation-workflow">\n${read('investigation-workflow.js')}\n</script>\n<script>\n${read('price-intelligence.js')}\n</script>\n<script>\n${read('price-reliability.js')}\n</script>\n<script>\n${read('competitor-intelligence-ui.js')}\n</script>\n<script>\n${read('competitor-intelligence.js')}\n</script>\n<script>\n${read('price-history.js')}\n</script>\n<script id="soutu-provenance-lineage">\n${read('provenance-lineage.js')}\n</script>\n<script id="soutu-verification-audit">\n${read('verification-audit.js')}\n</script>\n<script id="soutu-evidence-verification">\n${read('evidence-verification.js')}\n</script>\n</body>`);
 fs.writeFileSync(path.join(outDir,'standalone.html'),standalone);
 
 console.log(`Static frontend copied to ${outDir}; release ${releaseVersion} @ ${releaseCommit}; standalone generated from current assets including price + competitor intelligence, reliability + history + provenance lineage + evidence verification`);

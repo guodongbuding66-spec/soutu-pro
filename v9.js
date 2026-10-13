@@ -1,7 +1,7 @@
 (() => {
   'use strict';
 
-  const V9_VERSION = '9.4.7';
+  const V9_VERSION = '9.5.0';
   const KEYS = {
     results: 'soutu-pro-v9-results',
     watch: 'soutu-pro-v9-watch',
@@ -21,7 +21,7 @@
   const bridge = () => window.SOUTU_BRIDGE || null;
 
   const state = {
-    results: read(KEYS.results, []),
+    results: read(KEYS.results, []).filter(r=>r.engine!=='demo'),
     watch: read(KEYS.watch, []),
     cases: read(KEYS.cases, []),
     evidence: read(KEYS.evidence, []),
@@ -103,7 +103,7 @@
     const el=root(); if(!el)return;
     el.innerHTML=`
       <section class="v9-hero">
-        <div><span class="section-kicker">V9 INVESTIGATION HUB</span><h1>图片调查与商品溯源</h1><p>把 Google Lens、Bing、Yandex、商品页和供应商线索重新汇总到一个工作台，自动去重、比较、留证与追踪。</p></div>
+        <div><span class="section-kicker">V9 INVESTIGATION HUB</span><h1>图片调查与商品溯源</h1><p>上传图片查找来源，采集真实商品页与供应商线索，在这里比较、留证、追踪并保存调查项目。</p></div>
         <div class="v9-hero-actions">
           <label class="secondary-btn v9-import">${icon('upload')}导入采集 JSON<input id="v9Import" type="file" accept="application/json,.json" hidden></label>
           <button class="secondary-btn" id="v9SaveCase">${icon('save')}保存调查项目</button>
@@ -112,8 +112,9 @@
           <button class="primary-btn" id="v9Print">${icon('download')}报告 / PDF</button>
         </div>
       </section>
-      <section class="v9-stats" id="v9Stats"></section>
       <section class="v9-source-card" id="v9Source"></section>
+      <section class="investigation-workflow" id="v9Workflow"></section>
+      <section class="v9-stats" id="v9Stats"></section>
       <section class="v9-toolbar">
         <div class="v9-tabs" role="tablist">
           <button data-v9-mode="results">结果</button><button data-v9-mode="domains">域名聚类</button><button data-v9-mode="timeline">来源时间线</button><button data-v9-mode="watch">价格 / 生命周期</button><button data-v9-mode="graph">品牌关系图</button><button data-v9-mode="evidence">证据</button><button data-v9-mode="cases">调查项目</button>
@@ -132,7 +133,6 @@
         <article class="v9-panel"><div class="v9-panel-head"><div><span class="section-kicker">INDUSTRIAL MODE</span><h2>工业产品 / CAD 找同款</h2></div></div><p>结构优先比较轮廓、门窗、百叶、加强筋与五金节点；适合工具房、雨棚、温室、花圃和线描图。</p><div class="v9-action-row"><button class="secondary-btn" id="v9Industrial">结构优先</button><button class="secondary-btn" id="v9Edge">生成线稿增强</button><button class="secondary-btn" id="v9Slices">生成搜索切片</button></div><div id="v9Weights" class="v9-weight-row"></div></article>
         <article class="v9-panel"><div class="v9-panel-head"><div><span class="section-kicker">OCR / METADATA</span><h2>文字、品牌与 EXIF</h2></div></div><div id="v9Metadata"></div><div class="v9-translate"><select id="v9TranslateLang"><option value="zh-CN">翻译为中文</option><option value="en">Translate to English</option><option value="es">Español</option><option value="pt">Português</option></select><button class="secondary-btn compact" id="v9Translate">翻译 OCR</button></div><div id="v9Translation" class="v9-translation"></div></article>
       </section>
-      <section class="v9-integration"><div><span class="section-kicker">WORKFLOW</span><h2>继续到业务工具</h2><p>把当前商品线索整理成结构化导入包，再进入 AI 外贸工作台继续开发客户。</p></div><div class="v9-action-row"><button class="secondary-btn" id="v9CopyTrade">复制外贸导入包</button><a class="primary-btn" href="https://ai-foreign-trade-os.pages.dev/" target="_blank" rel="noopener noreferrer">打开 AI 外贸工作台 ${icon('arrow-up-right')}</a></div></section>
       <div class="modal-backdrop hidden" id="v9CompareModal"><div class="modal modal-wide v9-compare-modal"><div class="modal-head"><h2>图片与商品对比</h2><button class="icon-btn" id="v9CompareClose" aria-label="关闭">${icon('x')}</button></div><div id="v9CompareBody"></div></div></div>
       <section id="v9PrintReport" class="v9-print-report" aria-hidden="true"></section>
     `;
@@ -140,7 +140,7 @@
 
   function stats() {
     const domains = new Set(state.results.map(r=>r.domain||domainOf(r.url)).filter(Boolean));
-    const products=state.results.filter(r=>r.product&&Object.keys(r.product).length).length;
+    const products=state.results.filter(r=>Object.values(r.product||{}).some(value=>value!==''&&value!=null)).length;
     const prices=state.results.filter(r=>r.price||r.product?.price).length;
     return [
       ['采集结果',state.results.length,'list'],['独立域名',domains.size,'grid'],['商品结构',products,'shopping'],['带价格',prices,'star'],['追踪中',state.watch.length,'clock'],['证据',state.evidence.length,'save']
@@ -150,15 +150,15 @@
 
   function getAnalysis(){return bridge()?.analysis?.()||{};}
   function activeSource(){return bridge()?.source?.()||null;}
-  function sourceQuery(){return bridge()?.primaryQuery?.()||'';}
+  function sourceQuery(){return window.SOUTU_INVESTIGATION?.query?.()||bridge()?.primaryQuery?.()||'';}
 
   async function renderSource() {
     const el=document.querySelector('#v9Source'); if(!el)return;
     const src=activeSource(),analysis=getAnalysis();
-    if(!src){el.innerHTML=`<div class="v9-empty-inline">${icon('image')}<div><b>当前没有源图片</b><p>回到“搜图”上传图片，或通过浏览器扩展采集结果页。</p></div><button class="secondary-btn" data-nav="search">去上传</button></div>`;return;}
+    if(!src){el.innerHTML=`<div class="v9-empty-inline">${icon('image')}<div><b>当前没有源图片</b><p>在下方上传或拖入图片，也可直接采集商品页和图片来源链接。</p></div></div>`;return;}
     const brands=brandCandidates(analysis.ocr||'');
     el.innerHTML=`<div class="v9-source-thumb">${src.activeUrl?`<img src="${escapeHtml(src.activeUrl)}" alt="源图片">`:icon('image')}</div><div class="v9-source-main"><span class="section-kicker">SOURCE IMAGE</span><h2>${escapeHtml(src.name||'当前图片')}</h2><p>${escapeHtml(sourceQuery()||'尚未生成主搜索词')}</p><div class="v9-chip-row">${brands.map(x=>`<span>品牌候选 · ${escapeHtml(x)}</span>`).join('')}${(analysis.barcodes||[]).map(x=>`<span>编码 · ${escapeHtml(x)}</span>`).join('')}</div></div><div class="v9-source-actions"><button class="secondary-btn compact" id="v9RefreshSource">刷新源特征</button><button class="secondary-btn compact" id="v9AnalyzeSource">智能分析</button></div>`;
-    if(!state.exif) try{state.exif=await parseExif(await bridge()?.blob?.());renderMetadata();}catch{}
+    if(!state.exif) try{const metadata=await parseExif(await bridge()?.blob?.());if(activeSource()?.activeUrl===src.activeUrl){state.exif=metadata;renderMetadata()}}catch{}
   }
 
   function brandCandidates(text=''){
@@ -168,6 +168,7 @@
   }
 
   function productText(r){const p=r.product||{};return [r.title,r.snippet,p.name,p.brand,p.sku,p.mpn,p.gtin,p.model].filter(Boolean).join(' ')}
+  function displayPrice(r){const value=String(r.price||r.product?.price||''),currency=String(r.product?.currency||'').trim();return currency&&!value.toUpperCase().includes(currency.toUpperCase())?`${value} ${currency}`:value;}
   function resultPriceNumber(r){const raw=r.price||r.product?.price||'';const m=String(raw).replace(/,/g,'').match(/-?\d+(?:\.\d+)?/);return m?Number(m[0]):0;}
   function resultDate(r){const raw=r.date||r.published||r.capturedAt;const t=raw?Date.parse(raw)||Number(raw):0;return Number.isFinite(t)?t:0;}
   function dedupeBasic(items){const seen=new Set();return items.filter(r=>{const k=`${canonicalUrl(r.url)}|${String(r.title||'').toLowerCase().replace(/\s+/g,' ').slice(0,120)}`;if(seen.has(k))return false;seen.add(k);return true;});}
@@ -196,18 +197,18 @@
       <label class="v9-select"><input type="checkbox" data-result-select="${r.id}" ${selected?'checked':''}><span>${icon('check')}</span></label>
       <div class="v9-result-image">${img?`<img src="${escapeHtml(proxyUrl(img))}" alt="" loading="lazy" referrerpolicy="no-referrer">`:icon('image')}<span class="v9-source-badge">${escapeHtml(r.engine||r.source||'采集')}</span>${r.width&&r.height?`<em>${r.width}×${r.height}${r.quality?.sharpness?` · 清晰 ${Math.round(r.quality.sharpness*100)}`:''}</em>`:''}</div>
       <div class="v9-result-body"><div class="v9-result-title"><b>${escapeHtml(r.title||p.name||'未命名结果')}</b><small>${escapeHtml(r.domain||domainOf(r.url)||'')}</small></div>
-      <div class="v9-score-row"><span title="综合">${scorePct(r.scores?.overall)}<small>综合</small></span><span title="视觉">${scorePct(r.scores?.visual)}<small>视觉</small></span><span title="结构">${scorePct(r.scores?.structure)}<small>结构</small></span></div>
+      <div class="v9-score-row"><span title="尚未计算时显示横线">${Number.isFinite(r.scores?.overall)?scorePct(r.scores.overall):'—'}<small>综合</small></span><span>${Number.isFinite(r.scores?.visual)?scorePct(r.scores.visual):'—'}<small>视觉</small></span><span>${Number.isFinite(r.scores?.structure)?scorePct(r.scores.structure):'—'}<small>结构</small></span></div>
       <p>${escapeHtml((r.snippet||[p.brand,p.sku,p.model].filter(Boolean).join(' · ')||'暂无摘要').slice(0,160))}</p>
-      <div class="v9-result-meta">${(r.price||p.price)?`<strong>${escapeHtml(r.price||String(p.price))}${p.currency?` ${escapeHtml(p.currency)}`:''}</strong>`:''}${p.brand?`<span>${escapeHtml(p.brand)}</span>`:''}${p.sku?`<span>SKU ${escapeHtml(p.sku)}</span>`:''}${r.duplicateOf?'<span class="warn">疑似重复</span>':''}</div>
+      <div class="v9-result-meta">${(r.price||p.price)?`<strong>${escapeHtml(displayPrice(r))}</strong>`:''}${p.brand?`<span>${escapeHtml(p.brand)}</span>`:''}${p.sku?`<span>SKU ${escapeHtml(p.sku)}</span>`:''}${r.observedPrice?`<span class="warn">文本价格 ${escapeHtml(r.observedPrice)} · 待核对</span>`:''}${r.duplicateOf?'<span class="warn">疑似重复</span>':''}</div>
       <div class="v9-labels"><button data-label="same" class="${label==='same'?'active':''}">完全同款</button><button data-label="similar" class="${label==='similar'?'active':''}">类似</button><button data-label="irrelevant" class="${label==='irrelevant'?'active':''}">不相关</button></div>
-      <div class="v9-result-actions"><a href="${escapeHtml(r.url||'#')}" target="_blank" rel="noopener noreferrer">来源 ${icon('arrow-up-right')}</a><button data-action="compare">对比</button><button data-action="watch">追踪</button><button data-action="evidence">留证</button><button data-action="supplier">找供应商</button><button data-action="batch">加入批量</button></div></div></article>`;
+      <div class="v9-result-actions"><a href="${escapeHtml(r.url||'#')}" target="_blank" rel="noopener noreferrer">来源 ${icon('arrow-up-right')}</a><button data-action="compare">对比</button><button data-action="watch">追踪</button><button data-action="evidence">留证</button><button data-action="supplier">找供应商</button><button data-action="batch">加入批量</button><button data-action="remove">移除</button></div></div></article>`;
   }
 
-  function renderResults(){const body=document.querySelector('#v9Body');if(!body)return;const list=filteredResults();if(!list.length){body.innerHTML=emptyCollector();return}body.innerHTML=`<div class="v9-result-grid">${list.map(resultCard).join('')}</div>`;}
-  function emptyCollector(){return `<div class="v9-empty"><div>${icon('scan')}</div><h2>还没有采集结果</h2><p>安装仓库里的 Chrome / Edge 扩展后，在 Google Lens、Bing、Yandex 或任意商品页点击“采集当前页”，结果会自动回到这里。</p><div class="v9-action-row"><button class="secondary-btn" data-v9-demo>载入示例结构</button><a class="primary-btn" href="https://github.com/guodongbuding66-spec/soutu-pro/tree/main/extension" target="_blank" rel="noopener noreferrer">打开扩展目录 ${icon('arrow-up-right')}</a></div></div>`;}
+  function renderResults(){const body=document.querySelector('#v9Body');if(!body)return;const list=filteredResults();if(!list.length){body.innerHTML=state.results.length?'<div class="v9-empty-inline"><p>没有匹配当前筛选条件的结果。</p><button class="secondary-btn" data-v9-reset-filter>清除筛选</button></div>':emptyCollector();return}body.innerHTML=`<div class="v9-result-grid">${list.map(resultCard).join('')}</div>`;}
+  function emptyCollector(){return `<div class="v9-empty"><div>${icon('scan')}</div><h2>还没有真实调查结果</h2><p>在上方查询公开图片，或粘贴商品页、供应商页和图片来源链接进行采集。结果加入后即可对比、留证和保存项目。</p><details><summary>已有采集数据？</summary><p>可使用顶部“导入采集 JSON”；Chrome / Edge 扩展也支持采集搜索结果页。</p><a class="secondary-btn" href="https://github.com/guodongbuding66-spec/soutu-pro/tree/main/extension" target="_blank" rel="noopener noreferrer">查看扩展安装说明</a></details></div>`;}
 
   function renderDomains(){const body=document.querySelector('#v9Body');if(!body)return;const groups={};state.results.forEach(r=>{const d=r.domain||domainOf(r.url)||'unknown';(groups[d]??=[]).push(r)});body.innerHTML=`<div class="v9-domain-grid">${Object.entries(groups).sort((a,b)=>b[1].length-a[1].length).map(([d,items])=>`<article><div><b>${escapeHtml(d)}</b><span>${items.length} 条</span></div><p>${escapeHtml(items.slice(0,3).map(x=>x.title).filter(Boolean).join(' · ').slice(0,150))}</p><button data-domain-focus="${escapeHtml(d)}">只看这个域名</button></article>`).join('')||emptyCollector()}</div>`;}
-  function renderTimeline(){const body=document.querySelector('#v9Body');if(!body)return;const list=state.results.slice().sort((a,b)=>resultDate(a)-resultDate(b));body.innerHTML=`<div class="v9-timeline">${list.map(r=>`<article><time>${resultDate(r)?fmtDate(resultDate(r)):'日期未知'}</time><span></span><div><b>${escapeHtml(r.title||'结果')}</b><small>${escapeHtml(r.domain||domainOf(r.url))}</small><a href="${escapeHtml(r.url||'#')}" target="_blank" rel="noopener noreferrer">打开来源</a></div></article>`).join('')||emptyCollector()}</div>`;}
+  function renderTimeline(){const body=document.querySelector('#v9Body');if(!body)return;const list=state.results.slice().sort((a,b)=>resultDate(a)-resultDate(b));body.innerHTML=`<div class="v9-timeline">${list.map(r=>`<article><time>${r.date||r.published?'页面日期':'采集时间'}<br>${resultDate(r)?fmtDate(resultDate(r)):'日期未知'}</time><span></span><div><b>${escapeHtml(r.title||'结果')}</b><small>${escapeHtml(r.domain||domainOf(r.url))}</small><a href="${escapeHtml(r.url||'#')}" target="_blank" rel="noopener noreferrer">打开来源</a></div></article>`).join('')||emptyCollector()}</div>`;}
   function renderWatch(){const body=document.querySelector('#v9Body');if(!body)return;body.innerHTML=`<div class="v9-watch-head"><p>本机追踪价格、页面状态与最近变化。刷新时由 Vercel Function 读取公开页面；遇到反爬站点会明确标记失败。</p><button class="primary-btn" id="v9RefreshWatch">${icon('clock')}刷新全部</button></div><div class="v9-watch-list">${state.watch.map(w=>`<article data-watch-id="${w.id}"><div><b>${escapeHtml(w.title||w.url)}</b><small>${escapeHtml(domainOf(w.url))}</small></div><div class="v9-watch-status"><strong>${escapeHtml(w.lastPrice||'价格未知')}</strong><span>${escapeHtml(w.status||'待刷新')}</span><small>${w.lastChecked?fmtDate(w.lastChecked):'尚未检查'}</small></div><a href="${escapeHtml(w.url)}" target="_blank" rel="noopener noreferrer">打开</a><button data-watch-refresh="${w.id}">刷新</button><button data-watch-remove="${w.id}">移除</button></article>`).join('')||'<div class="v9-empty-inline">暂无追踪商品。</div>'}</div>`;}
   function renderGraph(){const body=document.querySelector('#v9Body');if(!body)return;const brand=brandCandidates(getAnalysis().ocr||'')[0]||'当前产品';const domains=[...new Set(state.results.map(r=>r.domain||domainOf(r.url)).filter(Boolean))].slice(0,12);const suppliers=[...new Set(state.results.filter(r=>/alibaba|made-in-china|globalsources/i.test(r.domain||domainOf(r.url))).map(r=>r.domain||domainOf(r.url)))].slice(0,6);body.innerHTML=relationshipSvg(brand,domains,suppliers);}
   function relationshipSvg(brand,domains,suppliers){const nodes=[{id:'brand',label:brand,type:'brand'},...domains.map((d,i)=>({id:`d${i}`,label:d,type:suppliers.includes(d)?'supplier':'domain'}))];const W=1000,H=520,cx=500,cy=250,R=190;nodes.forEach((n,i)=>{if(i===0){n.x=cx;n.y=cy}else{const a=(i-1)/(nodes.length-1||1)*Math.PI*2;n.x=cx+Math.cos(a)*R;n.y=cy+Math.sin(a)*R}});return `<div class="v9-graph-wrap"><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="品牌与来源关系图">${nodes.slice(1).map(n=>`<line x1="${cx}" y1="${cy}" x2="${n.x}" y2="${n.y}"/>`).join('')}${nodes.map(n=>`<g class="${n.type}"><circle cx="${n.x}" cy="${n.y}" r="${n.type==='brand'?54:36}"/><text x="${n.x}" y="${n.y+4}" text-anchor="middle">${escapeHtml(n.label.slice(0,18))}</text></g>`).join('')}</svg><p>中心为当前品牌/产品候选，外围为已采集来源；B2B 来源会按供应商节点标识。</p></div>`;}
@@ -237,14 +238,15 @@
       const sum=hist.reduce((a,b)=>a+b,0)||1;let edgeCount=0;for(const bit of edgeBits)if(bit==='1')edgeCount++;return{dhash:dh,edgehash:edgeBits,hist:hist.map(x=>x/sum),width:img.naturalWidth,height:img.naturalHeight,sharpness:edgeCount/Math.max(1,edgeBits.length)};
     })();state.featureCache.set(url,p);try{return await p}catch{state.featureCache.delete(url);return null}
   }
-  async function sourceFeatures(){if(state.sourceFeatures)return state.sourceFeatures;const url=bridge()?.activeUrl?.();if(!url)return null;state.sourceFeatures=await imageFeatures(url);return state.sourceFeatures;}
+  async function sourceFeatures(){if(state.sourceFeatures)return state.sourceFeatures;const url=bridge()?.activeUrl?.();if(!url)return null;const features=await imageFeatures(url);if(bridge()?.activeUrl?.()===url)state.sourceFeatures=features;return features;}
 
   async function computeFeaturesForResult(r, withAI=false) {
-    const imgUrl=remoteImageUrl(r); if(!imgUrl)return r;
+    const imgUrl=remoteImageUrl(r); if(!imgUrl)return r;const sourceUrl=bridge()?.activeUrl?.();
     // Result fingerprints must not depend on source-image decoding. Dedupe compares
     // result-to-result and should continue to work even when the source image cannot
     // be decoded or is temporarily unavailable.
     const [src,feat]=await Promise.all([sourceFeatures().catch(()=>null),imageFeatures(imgUrl)]);
+    if(sourceUrl!==bridge()?.activeUrl?.())throw new Error('源图片已更换，请重新计算相似度。');
     if(!feat)return r;
     r.width=feat.width;
     r.height=feat.height;
@@ -252,16 +254,13 @@
     r.features={dhash:feat.dhash,edgehash:feat.edgehash,hist:feat.hist};
 
     const text=jaccard(sourceQuery()||getAnalysis().ocr||'', productText(r));
-    if(!src){
-      r.scores={visual:r.scores?.visual||0,structure:r.scores?.structure||0,text:clamp01(text)};
-      r.scores.overall=clamp01(r.scores.visual*state.weights.visual+r.scores.structure*state.weights.structure+r.scores.text*state.weights.text);
-      return r;
-    }
+    if(!src)throw new Error('源图片无法读取，请重新上传本地原图后比较。');
 
     const visual=(1-hamming(src.dhash,feat.dhash))*.62+cosine(src.hist,feat.hist)*.38;
     const structure=1-hamming(src.edgehash,feat.edgehash);
     let ai=0;
     if(withAI){try{ai=await aiSimilarity(bridge()?.activeUrl?.(),imgUrl)}catch{ai=0}}
+    if(sourceUrl!==bridge()?.activeUrl?.())throw new Error('源图片已更换，请重新计算相似度。');
     const visualFinal=ai?visual*.35+ai*.65:visual;
     r.scores={visual:clamp01(visualFinal),structure:clamp01(structure),text:clamp01(text)};
     r.scores.overall=clamp01(r.scores.visual*state.weights.visual+r.scores.structure*state.weights.structure+r.scores.text*state.weights.text);
@@ -289,7 +288,7 @@
   async function aiSimilarity(a,b){const [x,y]=await Promise.all([embedding(a),embedding(b)]);return clamp01((cosine(x,y)+1)/2);}
 
   async function aiRank(){
-    const b=document.querySelector('#v9AiRank');if(!state.results.length||!b)return;
+    const b=document.querySelector('#v9AiRank');if(!b)return;if(!activeSource())return bridge()?.toast?.('请先上传源图片','相似度比较需要源图片与候选图片。','error');if(!state.results.some(remoteImageUrl))return bridge()?.toast?.('候选结果没有图片','采集带图片的来源网页，或手工填写图片直链。','error');
     b.disabled=true;b.textContent='AI 分析中…';
     try{
       const list=state.results.slice(0,MAX_AI_RESULTS);
@@ -331,12 +330,12 @@
     finally{b.disabled=false;b.innerHTML=state.hideDuplicates?`${icon('grid')}显示重复项`:`${icon('grid')}智能去重`}
   }
 
-  function updateLearning(r,label){r.manualLabel=label;if(!r.scores)return;const target=label==='same'?1:label==='similar'?.55:0;const lr=.08;const features={visual:r.scores.visual||0,structure:r.scores.structure||0,text:r.scores.text||0};Object.keys(state.weights).forEach(k=>{const f=features[k];state.weights[k]=Math.max(.05,state.weights[k]+lr*(target-.45)*(f-.5))});state.weights=normalizeWeights(state.weights);state.results.forEach(x=>{if(x.scores)x.scores.overall=clamp01(x.scores.visual*state.weights.visual+x.scores.structure*state.weights.structure+x.scores.text*state.weights.text)});persist();renderWeights();}
+  function updateLearning(r,label){r.manualLabel=label;if(!['visual','structure','text'].some(key=>Number.isFinite(r.scores?.[key])))return;const target=label==='same'?1:label==='similar'?.55:0;const lr=.08;const features={visual:r.scores.visual||0,structure:r.scores.structure||0,text:r.scores.text||0};Object.keys(state.weights).forEach(k=>{const f=features[k];state.weights[k]=Math.max(.05,state.weights[k]+lr*(target-.45)*(f-.5))});state.weights=normalizeWeights(state.weights);state.results.forEach(x=>{if(['visual','structure','text'].some(key=>Number.isFinite(x.scores?.[key])))x.scores.overall=clamp01((x.scores.visual||0)*state.weights.visual+(x.scores.structure||0)*state.weights.structure+(x.scores.text||0)*state.weights.text)});persist();renderWeights();}
 
   async function addToBatch(r){const img=remoteImageUrl(r);if(!img)return bridge()?.toast?.('没有可加入的图片','该结果没有缩略图 URL。','error');try{const resp=await fetch(proxyUrl(img));if(!resp.ok)throw new Error('image fetch failed');const blob=await resp.blob();const file=new File([blob],`${(r.title||'result').replace(/[^\w\u4e00-\u9fff-]+/g,'-').slice(0,40)}.${blob.type.includes('png')?'png':'jpg'}`,{type:blob.type||'image/jpeg'});await bridge()?.addBatch?.([file]);bridge()?.setView?.('batch');}catch(e){bridge()?.toast?.('加入批量失败',e.message||'远程图片无法读取。','error')}}
-  function addEvidence(r,note=''){const e={id:uid(),capturedAt:Date.now(),title:r.title,url:r.url,domain:r.domain||domainOf(r.url),price:r.price||r.product?.price||'',product:r.product||{},engine:r.engine||r.source||'',note,manualLabel:r.manualLabel||''};state.evidence.unshift(e);persist();renderStats();if(state.mode==='evidence')renderEvidence();}
+  function addEvidence(r,note=''){if(state.evidence.some(e=>canonicalUrl(e.url)===canonicalUrl(r.url)&&e.title===r.title))return bridge()?.toast?.('已保存这条证据','可在证据页查看。','ok');const e={id:uid(),capturedAt:Date.now(),title:r.title,url:r.url,image:remoteImageUrl(r),query:sourceQuery(),captureState:r.captureState,domain:r.domain||domainOf(r.url),price:r.price||r.product?.price||'',product:r.product||{},engine:r.engine||r.source||'',note,manualLabel:r.manualLabel||''};state.evidence.unshift(e);persist();renderStats();if(state.mode==='evidence')renderEvidence();bridge()?.toast?.('证据已保存','来源、规格和采集时间已记录。','ok');}
   function addWatch(r){if(!/^https?:/i.test(r.url||''))return bridge()?.toast?.('无法追踪','该结果没有有效的公开来源 URL。','error');if(state.watch.some(x=>canonicalUrl(x.url)===canonicalUrl(r.url)))return bridge()?.toast?.('已经在追踪','无需重复添加。');state.watch.unshift({id:uid(),url:r.url,title:r.title,firstSeen:Date.now(),lastChecked:0,lastPrice:r.price||r.product?.price||'',status:'待刷新',history:[]});persist();renderStats();bridge()?.toast?.('已加入追踪','可在“价格 / 生命周期”里刷新。','ok')}
-  async function refreshWatchItem(w){w.status='刷新中';renderWatch();try{const resp=await fetch(`/api/url-status?url=${encodeURIComponent(w.url)}`);const data=await resp.json();w.lastChecked=Date.now();w.status=data.alive?'在线':'不可访问';if(data.title)w.title=data.title;if(data.price){w.lastPrice=data.price;w.history.push({at:w.lastChecked,price:data.price});w.history=w.history.slice(-30)}w.product=data.product||w.product||{};}catch{w.lastChecked=Date.now();w.status='检查失败'}persist();renderWatch();}
+  async function refreshWatchItem(w){w.status='刷新中';renderWatch();try{const resp=await fetch(`/api/url-status?url=${encodeURIComponent(w.url)}`);const data=await resp.json();w.lastChecked=Date.now();w.status=data.alive?'在线':'不可访问';if(data.title)w.title=data.title;if(data.price&&data.priceSource!=='page-text'){w.lastPrice=data.price;w.history.push({at:w.lastChecked,price:data.price});w.history=w.history.slice(-30)}if(data.priceSource==='page-text')w.status='在线 · 文本价格待核对';w.product=data.product||w.product||{};}catch{w.lastChecked=Date.now();w.status='检查失败'}persist();renderWatch();}
   async function refreshAllWatch(){for(const w of state.watch)await refreshWatchItem(w)}
 
   function compareSelected(extraId=''){if(extraId)state.selected.add(extraId);const list=state.results.filter(r=>state.selected.has(r.id)).slice(0,4);if(!list.length)return bridge()?.toast?.('请选择结果','勾选 1–4 个结果后比较。','error');const modal=document.querySelector('#v9CompareModal'),body=document.querySelector('#v9CompareBody');modal.classList.remove('hidden');const src=bridge()?.source?.();const rows=['brand','sku','model','mpn','gtin','price','currency'];body.innerHTML=`<div class="v9-compare-grid"><div class="v9-compare-source"><h3>源图片</h3>${src?.activeUrl?`<img src="${escapeHtml(src.activeUrl)}" alt="源图">`:''}<p>${escapeHtml(sourceQuery()||'')}</p></div>${list.map(r=>`<article><h3>${escapeHtml(r.title||'结果')}</h3>${remoteImageUrl(r)?`<img src="${escapeHtml(proxyUrl(remoteImageUrl(r)))}" alt="">`:''}<a href="${escapeHtml(r.url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(r.domain||domainOf(r.url))}</a></article>`).join('')}</div><div class="v9-spec-table"><table><thead><tr><th>字段</th>${list.map(r=>`<th>${escapeHtml((r.title||'结果').slice(0,26))}</th>`).join('')}</tr></thead><tbody>${rows.map(k=>`<tr><td>${k.toUpperCase()}</td>${list.map(r=>`<td>${escapeHtml(String(r.product?.[k]??(k==='price'?r.price:'')??'—'))}</td>`).join('')}</tr>`).join('')}</tbody></table></div>${list.length===1&&src?.activeUrl&&remoteImageUrl(list[0])?overlayCompare(src.activeUrl,proxyUrl(remoteImageUrl(list[0]))):''}`;bindOverlay();}
@@ -344,10 +343,10 @@
   function bindOverlay(){const r=document.querySelector('#v9OverlayRange'),top=document.querySelector('#v9OverlayTop');if(r&&top)r.oninput=()=>top.style.clipPath=`inset(0 ${100-r.value}% 0 0)`;}
 
   async function supplierSearch(r){const q=[r.product?.brand,r.product?.model,r.product?.sku,r.title].filter(Boolean).join(' ').slice(0,160);const modal=document.querySelector('#v9CompareModal'),body=document.querySelector('#v9CompareBody');modal.classList.remove('hidden');const links=[['Alibaba',`https://www.alibaba.com/trade/search?SearchText=${encodeURIComponent(q)}`],['Made-in-China',`https://www.made-in-china.com/products-search/hot-china-products/${encodeURIComponent(q.replace(/\s+/g,'_'))}.html`],['Global Sources',`https://www.globalsources.com/search?query=${encodeURIComponent(q)}`]];body.innerHTML=`<div class="v9-supplier-panel"><h3>供应商反查 · ${escapeHtml(q)}</h3><div class="v9-supplier-links">${links.map(([n,u])=>`<a href="${u}" target="_blank" rel="noopener noreferrer">${n} ${icon('arrow-up-right')}</a>`).join('')}</div><div id="v9SupplierApi" class="v9-provider-note">正在检查站内供应商聚合…</div></div>`;try{const res=await fetch(`/api/supplier-search?q=${encodeURIComponent(q)}`),data=await res.json();const el=document.querySelector('#v9SupplierApi');if(res.ok&&data.enabled&&data.items?.length){const imported=data.items.map((x,i)=>normalizeResult({title:x.title,url:x.link,domain:domainOf(x.link),snippet:x.snippet,source:x.source}, {source:'supplier-api',capturedAt:Date.now()}, i));state.results=dedupeBasic([...imported,...state.results]).slice(0,MAX_RESULTS);persist();el.innerHTML=`<b>已聚合 ${imported.length} 条供应商线索</b><p>结果已加入研究工作台。</p>`;renderStats()}else el.innerHTML='<b>供应商聚合 API 未启用</b><p>仍可使用上方三个 B2B 平台直达入口。</p>'}catch{document.querySelector('#v9SupplierApi').innerHTML='<b>供应商聚合暂不可用</b><p>仍可使用上方直达入口。</p>'}}
-  function saveCase(){
+  async function saveCase(){
     const src=bridge()?.source?.(),name=prompt('调查项目名称',sourceQuery()||src?.name||'图片调查')||'';
     if(!name)return;
-    const thumb=src?.activeUrl?.startsWith('data:')&&src.activeUrl.length<120000?src.activeUrl:'';
+    let thumb='';if(src?.activeUrl)try{thumb=await bridge()?.makeThumb?.(src.activeUrl)||''}catch{}
     const cs={id:uid(),name,createdAt:Date.now(),source:{name:src?.name||'',thumb},query:sourceQuery(),results:state.results.slice(0,50).map(compactResult),evidence:JSON.parse(JSON.stringify(state.evidence)),weights:state.weights};
     cs.verificationSummary=window.SOUTU_EVIDENCE_VERIFICATION?.summary(cs.evidence.filter(e=>e.lineage))||undefined;
     cs.verificationAuditSummary=window.SOUTU_VERIFICATION_AUDIT?.summary(cs.evidence.filter(e=>e.lineage))||undefined;
@@ -356,41 +355,53 @@
       cs.results=cs.results.slice(0,20);cs.source.thumb='';
       if(!write(KEYS.cases,state.cases)){state.cases=state.cases.filter(c=>c.id!==cs.id);return bridge()?.toast?.('项目保存失败','浏览器本机存储空间不足，请先导出或删除旧项目。','error')}
     }
-    persist();bridge()?.toast?.('调查项目已保存',`${cs.results.length} 条结果 · ${cs.evidence.length} 条证据`,'ok')
+    persist();if(state.mode==='cases')renderCases();bridge()?.toast?.('调查项目已保存',`${cs.results.length} 条结果 · ${cs.evidence.length} 条证据`,'ok')
   }
 
   function download(name,blob){const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)}
   function exportJson(){download(`soutu-pro-v9-${Date.now()}.json`,new Blob([JSON.stringify({version:V9_VERSION,exportedAt:new Date().toISOString(),query:sourceQuery(),results:state.results,evidence:state.evidence,watch:state.watch},null,2)],{type:'application/json'}))}
-  async function exportXlsx(){try{await loadScript('https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js','XLSX');const rows=state.results.map(r=>({title:r.title,url:r.url,domain:r.domain||domainOf(r.url),price:r.price||r.product?.price||'',brand:r.product?.brand||'',sku:r.product?.sku||'',model:r.product?.model||'',similarity:scorePct(r.scores?.overall),visual:scorePct(r.scores?.visual),structure:scorePct(r.scores?.structure),label:r.manualLabel||''}));const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(rows),'Results');XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(state.evidence),'Evidence');XLSX.writeFile(wb,`soutu-pro-v9-${Date.now()}.xlsx`)}catch(e){bridge()?.toast?.('Excel 导出失败',e.message||'SheetJS 未加载。','error')}}
+  async function exportXlsx(){try{await loadScript('https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js','XLSX');const rows=state.results.map(r=>({title:r.title,url:r.url,domain:r.domain||domainOf(r.url),price:r.price||r.product?.price||'',brand:r.product?.brand||'',sku:r.product?.sku||'',model:r.product?.model||'',similarity:Number.isFinite(r.scores?.overall)?scorePct(r.scores.overall):'',visual:Number.isFinite(r.scores?.visual)?scorePct(r.scores.visual):'',structure:Number.isFinite(r.scores?.structure)?scorePct(r.scores.structure):'',label:r.manualLabel||''}));const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(rows),'Results');XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(state.evidence),'Evidence');XLSX.writeFile(wb,`soutu-pro-v9-${Date.now()}.xlsx`)}catch(e){bridge()?.toast?.('Excel 导出失败',e.message||'SheetJS 未加载。','error')}}
   function printReport(){
     const box=document.querySelector('#v9PrintReport');if(!box)return;
     const items=filteredResults().slice(0,40);
-    box.innerHTML=`<h1>搜图 Pro · 图片调查报告</h1><p>生成时间：${new Date().toLocaleString()}<br>搜索词：${escapeHtml(sourceQuery())}<br>结果：${items.length} 条 · 证据：${state.evidence.length} 条</p><table><thead><tr><th>图片</th><th>标题 / 来源</th><th>价格</th><th>相似度</th><th>判断</th></tr></thead><tbody>${items.map(r=>`<tr><td>${remoteImageUrl(r)?`<img src="${escapeHtml(proxyUrl(remoteImageUrl(r)))}" alt="">`:''}</td><td><b>${escapeHtml(r.title||'')}</b><br><small>${escapeHtml(r.domain||domainOf(r.url))}</small><br>${escapeHtml(r.url||'')}</td><td>${escapeHtml(r.price||r.product?.price||'')}</td><td>${scorePct(r.scores?.overall)}%</td><td>${escapeHtml(r.manualLabel||'')}</td></tr>`).join('')}</tbody></table>`;
+    box.innerHTML=`<h1>搜图 Pro · 图片调查报告</h1><p>生成时间：${new Date().toLocaleString()}<br>搜索词：${escapeHtml(sourceQuery())}<br>结果：${items.length} 条 · 证据：${state.evidence.length} 条</p><table><thead><tr><th>图片</th><th>标题 / 来源</th><th>价格</th><th>相似度</th><th>判断</th></tr></thead><tbody>${items.map(r=>`<tr><td>${remoteImageUrl(r)?`<img src="${escapeHtml(proxyUrl(remoteImageUrl(r)))}" alt="">`:''}</td><td><b>${escapeHtml(r.title||'')}</b><br><small>${escapeHtml(r.domain||domainOf(r.url))}</small><br>${escapeHtml(r.url||'')}</td><td>${escapeHtml(r.price||r.product?.price||'')}</td><td>${Number.isFinite(r.scores?.overall)?scorePct(r.scores.overall)+'%':'未计算'}</td><td>${escapeHtml(r.manualLabel||'')}</td></tr>`).join('')}</tbody></table>`;
     requestAnimationFrame(()=>window.print());
   }
 
-  function copyTradePackage(){const selected=state.results.filter(r=>state.selected.has(r.id));const top=(selected.length?selected:filteredResults().slice(0,5));const pack={source:'soutu-pro',createdAt:new Date().toISOString(),query:sourceQuery(),products:top.map(r=>({name:r.title,brand:r.product?.brand||'',sku:r.product?.sku||'',model:r.product?.model||'',price:r.price||r.product?.price||'',source_url:r.url,supplier_hint:/alibaba|made-in-china|globalsources/i.test(r.domain||domainOf(r.url))?r.domain||domainOf(r.url):'',similarity:scorePct(r.scores?.overall)})),evidence:state.evidence.slice(0,20)};navigator.clipboard.writeText(JSON.stringify(pack,null,2)).then(()=>bridge()?.toast?.('外贸导入包已复制','打开 AI 外贸工作台后可粘贴到项目备注或导入流程。','ok')).catch(()=>bridge()?.toast?.('复制失败','浏览器没有授予剪贴板权限，可先导出 JSON。','error'));}
 
   async function translateOcr(){const text=getAnalysis().ocr||'';if(!text)return bridge()?.toast?.('没有 OCR 文字','先在搜图页运行智能分析。','error');const tl=document.querySelector('#v9TranslateLang').value;const out=document.querySelector('#v9Translation');out.textContent='翻译中…';try{const url=`https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=${encodeURIComponent(tl)}&dt=t&q=${encodeURIComponent(text.slice(0,4500))}`;const r=await fetch(url);if(!r.ok)throw new Error();const data=await r.json();state.translation=(data?.[0]||[]).map(x=>x?.[0]||'').join('');out.textContent=state.translation||'没有返回翻译结果'}catch{out.innerHTML=`公共翻译接口不可用。<a href="https://translate.google.com/?sl=auto&tl=${encodeURIComponent(tl)}&text=${encodeURIComponent(text.slice(0,1800))}" target="_blank" rel="noopener noreferrer">在 Google Translate 打开</a>`}}
 
   async function parseExif(blob){if(!blob||!/jpe?g/i.test(blob.type))return{};const buf=await blob.arrayBuffer(),v=new DataView(buf);if(v.getUint16(0)!==0xFFD8)return{};let off=2;while(off<buf.byteLength){if(v.getUint8(off)!==0xFF)break;const marker=v.getUint8(off+1),len=v.getUint16(off+2);if(marker===0xE1){const sig=String.fromCharCode(...new Uint8Array(buf,off+4,6));if(sig.startsWith('Exif'))return parseTiff(v,off+10)}off+=2+len}return{};}
   function parseTiff(v,start){const le=v.getUint16(start)===0x4949;const u16=o=>v.getUint16(o,le),u32=o=>v.getUint32(o,le);const base=start,first=base+u32(base+4),out={};const readAscii=(ptr,count)=>{let s='';for(let i=0;i<count-1&&ptr+i<v.byteLength;i++){const c=v.getUint8(ptr+i);if(!c)break;s+=String.fromCharCode(c)}return s};const parseIfd=(pos)=>{const n=u16(pos);for(let i=0;i<n;i++){const e=pos+2+i*12,tag=u16(e),type=u16(e+2),count=u32(e+4),size=(type===3?2:type===4?4:type===5?8:1)*count,ptr=size<=4?e+8:base+u32(e+8);if(type===2){const s=readAscii(ptr,count);if(tag===0x010F)out.Make=s;if(tag===0x0110)out.Model=s;if(tag===0x0131)out.Software=s;if(tag===0x0132)out.DateTime=s;if(tag===0x9003)out.DateTimeOriginal=s}if(tag===0x8769)parseIfd(base+u32(e+8));if(tag===0x8825)parseGps(base+u32(e+8));}};const rat=ptr=>u32(ptr)/Math.max(1,u32(ptr+4));const parseGps=(pos)=>{const n=u16(pos),g={};for(let i=0;i<n;i++){const e=pos+2+i*12,tag=u16(e),count=u32(e+4),ptr=base+u32(e+8);if(tag===1)g.latRef=String.fromCharCode(v.getUint8(e+8));if(tag===3)g.lonRef=String.fromCharCode(v.getUint8(e+8));if(tag===2&&count===3)g.lat=[rat(ptr),rat(ptr+8),rat(ptr+16)];if(tag===4&&count===3)g.lon=[rat(ptr),rat(ptr+8),rat(ptr+16)]}const d=x=>x?x[0]+x[1]/60+x[2]/3600:null;if(g.lat){out.latitude=d(g.lat)*(g.latRef==='S'?-1:1)}if(g.lon){out.longitude=d(g.lon)*(g.lonRef==='W'?-1:1)}};try{parseIfd(first)}catch{}return out;}
 
-  function importPayload(payload){if(!payload)return;const results=(payload.results||payload.images||[]).map((r,i)=>normalizeResult(r,payload,i));if(!results.length)return;state.results=dedupeBasic([...results,...state.results]).slice(0,MAX_RESULTS);state.importedAt=Date.now();persist();render();bridge()?.setView?.('research');bridge()?.toast?.('采集结果已导入',`${results.length} 条 · ${payload.source||payload.kind||'网页采集'}`,'ok')}
-  window.SOUTU_V9_IMPORT=payload=>importPayload(payload);
+  function importPayload(payload,options={}){
+    if(!payload)return 0;const rows=payload.results||payload.images;
+    if(!Array.isArray(rows))return 0;
+    const results=rows.filter(r=>r&&typeof r==='object').map((r,i)=>normalizeResult(r,payload,i)).filter(r=>r.url);
+    if(!results.length)return 0;
+    if(options.mergeByUrl){for(const result of results){const index=state.results.findIndex(r=>canonicalUrl(r.url)===canonicalUrl(result.url));if(index>=0){const old=state.results[index];state.results[index]={...old,...result,id:old.id,manualLabel:old.manualLabel,product:{...old.product,...result.product}}}else state.results.unshift(result)}}
+    else state.results=dedupeBasic([...results,...state.results]);
+    state.results=state.results.slice(0,MAX_RESULTS);state.importedAt=Date.now();state.mode='results';state.filter='';state.domain='all';state.hideDuplicates=false;
+    if(document.querySelector('#v9Filter'))document.querySelector('#v9Filter').value='';
+    persist();render();if(options.focus!==false)bridge()?.setView?.('research');
+    if(options.notify!==false)bridge()?.toast?.('采集结果已导入',`${results.length} 条 · ${payload.source||payload.kind||'网页采集'}`,'ok');
+    return results.length;
+  }
+  window.SOUTU_V9_IMPORT=(payload,options)=>importPayload(payload,options);
   window.SOUTU_V9_FINGERPRINT=url=>imageFeatures(url);
   function importPendingUniversal(){try{const raw=localStorage.getItem('soutu-pro-v9-pending-import');if(!raw)return;localStorage.removeItem('soutu-pro-v9-pending-import');importPayload(JSON.parse(raw))}catch(e){console.warn('pending universal import invalid',e)}}
 
-  function normalizeResult(r,payload,i){const url=r.url||r.href||r.link||'',rawImg=r.image||r.thumbnail||r.src||'',img=/^https?:/i.test(rawImg)?rawImg:'';return{id:r.id||uid(),title:r.title||r.alt||r.product?.name||`结果 ${i+1}`,url:/^https?:/i.test(url)?url:'',image:img,thumbnail:/^https?:/i.test(r.thumbnail||'')?r.thumbnail:img,domain:r.domain||domainOf(url),price:r.price||r.product?.price||'',snippet:r.snippet||r.text||'',engine:r.engine||payload.source||payload.engine||'',source:r.source||payload.pageTitle||'',date:r.date||r.published||'',capturedAt:r.capturedAt||payload.capturedAt||Date.now(),product:r.product||{},scores:r.scores||{},manualLabel:r.manualLabel||'',width:r.width||0,height:r.height||0};}
+  function normalizeResult(r,payload,i){const url=r.url||r.href||r.link||payload.pageUrl||r.image||r.thumbnail||'',rawImg=r.image||r.thumbnail||r.src||'',img=/^https?:/i.test(rawImg)?rawImg:'';return{id:r.id||uid(),title:r.title||r.alt||r.product?.name||`结果 ${i+1}`,url:/^https?:/i.test(url)?url:'',image:img,thumbnail:/^https?:/i.test(r.thumbnail||'')?r.thumbnail:img,domain:r.domain||domainOf(url),price:r.price||r.product?.price||'',snippet:r.snippet||r.text||'',engine:r.engine||payload.source||payload.engine||'',source:r.source||payload.pageTitle||'',date:r.date||r.publishedAt||r.published||'',query:r.query||payload.query||'',captureState:r.captureState||'import',observedPrice:r.observedPrice||'',priceSource:r.priceSource||'',capturedAt:r.capturedAt||payload.capturedAt||Date.now(),product:r.product||{},scores:r.scores||{},manualLabel:r.manualLabel||'',width:r.width||0,height:r.height||0};}
   function decodeCollectorHash(){const h=location.hash||'';if(!h.startsWith('#collector='))return;try{let raw=h.slice(11).replace(/-/g,'+').replace(/_/g,'/');raw+='='.repeat((4-raw.length%4)%4);const bin=atob(raw),bytes=Uint8Array.from(bin,ch=>ch.charCodeAt(0)),json=new TextDecoder().decode(bytes);importPayload(JSON.parse(json));history.replaceState(null,'',location.pathname+location.search)}catch(e){console.warn('collector payload invalid',e)}}
-  function demo(){importPayload({source:'demo',results:[{title:'示例商品 A',url:'https://example.com/a',domain:'example.com',price:'$199',product:{brand:'Demo',sku:'A-100'}},{title:'示例供应商 B',url:'https://www.alibaba.com/',domain:'alibaba.com',product:{brand:'Demo'}}]})}
 
   async function generateSlices(){const a=getAnalysis(),objects=a.objects||[];if(objects.length){await bridge()?.addDetectedObjects?.();return}const src=bridge()?.source?.();if(!src?.activeUrl)return bridge()?.toast?.('没有源图片','先上传图片。','error');try{const img=new Image();img.crossOrigin='anonymous';img.src=/^https?:/i.test(src.activeUrl)?proxyUrl(src.activeUrl):src.activeUrl;await img.decode();const specs=[[0,0,.5,.5],[.5,0,.5,.5],[0,.5,.5,.5],[.5,.5,.5,.5],[.2,.2,.6,.6]],files=[];for(let i=0;i<specs.length;i++){const [x,y,w,h]=specs[i],c=document.createElement('canvas');c.width=Math.round(img.naturalWidth*w);c.height=Math.round(img.naturalHeight*h);c.getContext('2d').drawImage(img,img.naturalWidth*x,img.naturalHeight*y,img.naturalWidth*w,img.naturalHeight*h,0,0,c.width,c.height);const blob=await new Promise(res=>c.toBlob(res,'image/png'));files.push(new File([blob],`slice-${i+1}.png`,{type:'image/png'}))}await bridge()?.addBatch?.(files);bridge()?.setView?.('batch');}catch{bridge()?.toast?.('生成切片失败','请尝试本地文件。','error')}}
 
   function bind(){
     const r=root();if(!r)return;
+    r.addEventListener('error',e=>{const image=e.target;if(!image.matches?.('.v9-result-image>img'))return;image.hidden=true;const note=document.createElement('span');note.className='v9-image-unavailable';note.textContent='来源图片读取受限，可打开来源查看';image.parentElement.append(note)},true);
     r.addEventListener('click',async e=>{
       const mode=e.target.closest('[data-v9-mode]');if(mode){state.mode=mode.dataset.v9Mode;persist();renderBody();return}
+      if(e.target.closest('[data-v9-reset-filter]')){state.filter='';state.domain='all';state.hideDuplicates=false;document.querySelector('#v9Filter').value='';render();return}
       if(e.target.closest('#v9AiRank'))return aiRank();
       if(e.target.closest('#v9Dedupe')){state.hideDuplicates?(()=>{state.hideDuplicates=false;persist();render();})():smartDedupe();return}
       if(e.target.closest('#v9Compare'))return compareSelected();
@@ -402,35 +413,34 @@
       if(e.target.closest('#v9Edge')){bridge()?.process?.('edge');return}
       if(e.target.closest('#v9Slices'))return generateSlices();
       if(e.target.closest('#v9Translate'))return translateOcr();
-      if(e.target.closest('#v9CopyTrade'))return copyTradePackage();
       if(e.target.closest('#v9RefreshSource')){state.sourceFeatures=null;state.featureCache.clear();state.exif=null;renderSource();return}
       if(e.target.closest('#v9AnalyzeSource')){await bridge()?.analyze?.();renderSource();renderMetadata();return}
       if(e.target.closest('#v9RefreshWatch'))return refreshAllWatch();
       if(e.target.closest('#v9EvidenceExport'))return download('soutu-pro-evidence.json',new Blob([JSON.stringify(state.evidence,null,2)],{type:'application/json'}));
       const domain=e.target.closest('[data-domain-focus]');if(domain){state.domain=domain.dataset.domainFocus;state.mode='results';renderDomainOptions();renderBody();return}
-      const card=e.target.closest('[data-result-id]');if(card){const result=state.results.find(x=>x.id===card.dataset.resultId);if(!result)return;const label=e.target.closest('[data-label]');if(label){updateLearning(result,label.dataset.label);persist();render();return}const act=e.target.closest('[data-action]');if(act){if(act.dataset.action==='compare')compareSelected(result.id);if(act.dataset.action==='watch')addWatch(result);if(act.dataset.action==='evidence')addEvidence(result);if(act.dataset.action==='supplier')supplierSearch(result);if(act.dataset.action==='batch')addToBatch(result);return}}
+      const card=e.target.closest('[data-result-id]');if(card){const result=state.results.find(x=>x.id===card.dataset.resultId);if(!result)return;const label=e.target.closest('[data-label]');if(label){updateLearning(result,label.dataset.label);persist();render();return}const act=e.target.closest('[data-action]');if(act){if(act.dataset.action==='compare')compareSelected(result.id);if(act.dataset.action==='watch')addWatch(result);if(act.dataset.action==='evidence')addEvidence(result);if(act.dataset.action==='supplier')supplierSearch(result);if(act.dataset.action==='batch')addToBatch(result);if(act.dataset.action==='remove'){state.results=state.results.filter(r=>r.id!==result.id);state.selected.delete(result.id);persist();render()}return}}
       const wr=e.target.closest('[data-watch-refresh]');if(wr){const w=state.watch.find(x=>x.id===wr.dataset.watchRefresh);if(w)refreshWatchItem(w);return}
       const wd=e.target.closest('[data-watch-remove]');if(wd){state.watch=state.watch.filter(x=>x.id!==wd.dataset.watchRemove);persist();renderWatch();renderStats();return}
       const er=e.target.closest('[data-evidence-remove]');if(er){state.evidence=state.evidence.filter(x=>x.id!==er.dataset.evidenceRemove);persist();renderEvidence();renderStats();return}
       const nav=e.target.closest('[data-nav]');if(nav){bridge()?.setView?.(nav.dataset.nav);return}
-      const co=e.target.closest('[data-case-open]');if(co){refreshEvidence();const cs=state.cases.find(x=>x.id===co.dataset.caseOpen);if(cs){let restored;try{const copies=[...state.evidence,...state.cases.flatMap(c=>c.evidence||[])];restored=(cs.evidence||[]).map(e=>e.lineage?window.SOUTU_VERIFICATION_AUDIT?.canonical(e,copies)||e:e)}catch{return bridge()?.toast?.('审核记录冲突','项目未打开，请导出备份并核对审计记录。','error')}state.results=cs.results||[];state.evidence=JSON.parse(JSON.stringify(restored));cs.evidence=JSON.parse(JSON.stringify(restored));state.weights=normalizeWeights(cs.weights||DEFAULT_WEIGHTS);persist();state.mode='results';render();bridge()?.toast?.('调查项目已打开',cs.name,'ok')}return}
+      const co=e.target.closest('[data-case-open]');if(co){refreshEvidence();const cs=state.cases.find(x=>x.id===co.dataset.caseOpen);if(cs){let restored;try{const copies=[...state.evidence,...state.cases.flatMap(c=>c.evidence||[])];restored=(cs.evidence||[]).map(e=>e.lineage?window.SOUTU_VERIFICATION_AUDIT?.canonical(e,copies)||e:e)}catch{return bridge()?.toast?.('审核记录冲突','项目未打开，请导出备份并核对审计记录。','error')}state.results=(cs.results||[]).filter(r=>r.engine!=='demo');state.evidence=JSON.parse(JSON.stringify(restored));cs.evidence=JSON.parse(JSON.stringify(restored));state.weights=normalizeWeights(cs.weights||DEFAULT_WEIGHTS);persist();state.mode='results';render();await window.SOUTU_INVESTIGATION?.restore?.(cs);bridge()?.toast?.('调查项目已打开',cs.name,'ok')}return}
       const ce=e.target.closest('[data-case-export]');if(ce){const cs=state.cases.find(x=>x.id===ce.dataset.caseExport);if(cs)download(`soutu-case-${Date.now()}.json`,new Blob([JSON.stringify(cs,null,2)],{type:'application/json'}));return}
       const cd=e.target.closest('[data-case-delete]');if(cd){state.cases=state.cases.filter(x=>x.id!==cd.dataset.caseDelete);persist();renderCases();return}
-      if(e.target.closest('[data-v9-demo]'))return demo();
     });
     r.addEventListener('change',e=>{if(e.target.matches('[data-result-select]')){e.target.checked?state.selected.add(e.target.dataset.resultSelect):state.selected.delete(e.target.dataset.resultSelect);renderBody()}});
     document.querySelector('#v9Filter').oninput=e=>{state.filter=e.target.value;renderBody()};
     document.querySelector('#v9Domain').onchange=e=>{state.domain=e.target.value;renderBody()};
     document.querySelector('#v9Sort').onchange=e=>{state.sort=e.target.value;renderBody()};
-    document.querySelector('#v9Import').onchange=async e=>{const f=e.target.files?.[0];if(!f)return;try{importPayload(JSON.parse(await f.text()))}catch{bridge()?.toast?.('导入失败','JSON 格式不正确。','error')}e.target.value=''};
+    document.querySelector('#v9Import').onchange=async e=>{const f=e.target.files?.[0];if(!f)return;try{if(!importPayload(JSON.parse(await f.text())))throw new Error('未找到有效来源链接')}catch{bridge()?.toast?.('导入失败','JSON 格式不正确。','error')}e.target.value=''};
     document.querySelector('#v9CompareClose').onclick=()=>document.querySelector('#v9CompareModal').classList.add('hidden');
     document.querySelector('#v9CompareModal').addEventListener('mousedown',e=>{if(e.target.id==='v9CompareModal')e.currentTarget.classList.add('hidden')});
   }
 
   function refreshEvidence(){state.evidence=read(KEYS.evidence,[]);state.cases=read(KEYS.cases,[]);renderStats();renderBody()}
   window.SOUTU_V9={refreshEvidence};
+  window.addEventListener('soutu:investigation-ready',()=>renderSource());
   window.addEventListener('storage',e=>{if(e.key===KEYS.evidence||e.key===KEYS.cases)refreshEvidence()});
 
-  function init(){if(!root())return;renderShell();bind();decodeCollectorHash();importPendingUniversal();render();window.addEventListener('soutu:source-changed',()=>{state.sourceFeatures=null;state.exif=null;renderSource();renderMetadata()});window.addEventListener('soutu:analysis-changed',()=>{renderSource();renderMetadata()});}
+  function init(){if(!root())return;renderShell();bind();decodeCollectorHash();importPendingUniversal();render();window.addEventListener('soutu:source-changed',()=>{state.sourceFeatures=null;state.exif=null;state.results.forEach(result=>result.scores={});write(KEYS.results,state.results.slice(0,MAX_RESULTS).map(compactResult));renderSource();renderMetadata();renderBody()});window.addEventListener('soutu:analysis-changed',()=>{renderSource();renderMetadata()});}
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();
 })();

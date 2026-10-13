@@ -39,7 +39,7 @@ async function wikimedia(q) {
   url.search = new URLSearchParams({
     action:'query', format:'json', origin:'*', generator:'search',
     gsrsearch:q, gsrnamespace:'6', gsrlimit:String(MAX_PER_PROVIDER),
-    prop:'imageinfo', iiprop:'url|size|mime|timestamp|user'
+    prop:'imageinfo', iiprop:'url|size|mime|timestamp|user', iiurlwidth:'640'
   });
   const d = await jsonFetch(url);
   return Object.values(d?.query?.pages || {}).map(p => {

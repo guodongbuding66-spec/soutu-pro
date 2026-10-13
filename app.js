@@ -1,7 +1,7 @@
 (() => {
   'use strict';
 
-  const APP_VERSION='9.4.7';
+  const APP_VERSION='9.5.0';
 
   const MAX_FILE = 20 * 1024 * 1024;
   const MAX_BATCH = 50;
@@ -156,19 +156,20 @@
   async function acceptFile(file,kind='upload'){
     if(!file||!file.type.startsWith('image/'))return toast('请选择图片文件','支持 JPG、PNG、WebP、GIF 等常见格式。','error');
     if(file.size>MAX_FILE)return toast('图片过大',`最大 20 MB，当前 ${formatBytes(file.size)}。`,'error');
-    try{const url=await fileData(file),d=await probe(url);await deleteTempLink();state.source={kind,name:file.name||'剪贴板图片',publicUrl:null,size:file.size,format:(file.type.split('/')[1]||'IMAGE').toUpperCase(),...d};state.originalUrl=url;state.processedUrl=null;state.processedMeta=null;state.useProcessed=false;state.forceTempLink=false;state.cropRect=null;state.cropMode=false;clearAnalysis();syncWorkbench();window.dispatchEvent(new CustomEvent('soutu:source-changed'));toast(kind==='paste'?'已读取剪贴板图片':'图片已就绪','可直接搜图，或先进行 OCR / 视觉分析。','ok');scrollTool()}catch{toast('图片读取失败','文件可能已经损坏。','error')}
+    try{const url=await fileData(file),d=await probe(url);await deleteTempLink();state.source={kind,name:file.name||'剪贴板图片',publicUrl:null,size:file.size,format:(file.type.split('/')[1]||'IMAGE').toUpperCase(),...d};state.originalUrl=url;state.processedUrl=null;state.processedMeta=null;state.useProcessed=false;state.forceTempLink=false;state.cropRect=null;state.cropMode=false;clearAnalysis();syncWorkbench();toast(kind==='paste'?'已读取剪贴板图片':'图片已就绪','可直接搜图，或先进行 OCR / 视觉分析。','ok');scrollTool()}catch{toast('图片读取失败','文件可能已经损坏。','error')}
   }
   async function acceptUrl(raw){
-    try{const u=new URL(raw);if(!/^https?:$/.test(u.protocol))throw new Error();const d=await probe(raw);await deleteTempLink();state.source={kind:'url',name:decodeURIComponent(u.pathname.split('/').pop()||u.hostname),publicUrl:raw,size:0,format:(u.pathname.split('.').pop()||'远程').toUpperCase(),...d};state.originalUrl=raw;state.processedUrl=null;state.processedMeta=null;state.useProcessed=false;state.forceTempLink=false;state.cropRect=null;state.cropMode=false;clearAnalysis();syncWorkbench();window.dispatchEvent(new CustomEvent('soutu:source-changed'));toast('图片链接已载入','支持 URL 参数的引擎可直接进入结果页。','ok');scrollTool()}catch{toast('无法载入图片链接','链接可能无效、需要登录或被防盗链拦截。','error')}
+    try{const u=new URL(raw);if(!/^https?:$/.test(u.protocol))throw new Error();const d=await probe(raw);await deleteTempLink();state.source={kind:'url',name:decodeURIComponent(u.pathname.split('/').pop()||u.hostname),publicUrl:raw,size:0,format:(u.pathname.split('.').pop()||'远程').toUpperCase(),...d};state.originalUrl=raw;state.processedUrl=null;state.processedMeta=null;state.useProcessed=false;state.forceTempLink=false;state.cropRect=null;state.cropMode=false;clearAnalysis();syncWorkbench();toast('图片链接已载入','支持 URL 参数的引擎可直接进入结果页。','ok');scrollTool()}catch{toast('无法载入图片链接','链接可能无效、需要登录或被防盗链拦截。','error')}
   }
   function scrollTool(){requestAnimationFrame(()=>$('#toolCard')?.scrollIntoView({behavior:reduced()?'auto':'smooth',block:'center'}))}
 
+  let investigationSourceUrl=null,investigationSource=null;
   function syncWorkbench(){
-    const has=!!state.source;if(els.imageProcessStatus&&state.processFeedbackSource!==state.source)els.imageProcessStatus.hidden=true;els.uploader.classList.toggle('hidden',has);els.workbench.classList.toggle('hidden',!has);if(!has){els.runSearch.disabled=true;syncCropUi();return}
+    const has=!!state.source;if(els.imageProcessStatus&&state.processFeedbackSource!==state.source)els.imageProcessStatus.hidden=true;els.uploader.classList.toggle('hidden',has);els.workbench.classList.toggle('hidden',!has);if(!has){els.runSearch.disabled=true;syncCropUi();if(investigationSourceUrl!==null){investigationSourceUrl=null;investigationSource=null;window.dispatchEvent(new CustomEvent('soutu:source-changed'))}return}
     els.previewImg.src=activeUrl();els.fileName.textContent=state.source.name;els.sourceKind.textContent=state.source.kind==='url'?'图片链接':state.source.kind==='paste'?'剪贴板图片':state.source.kind==='project'?'项目缩略图':'本地文件';const meta=activeImageMeta();els.dims.textContent=`${meta.width} × ${meta.height}`;els.format.textContent=meta.format;els.size.textContent=formatBytes(meta.size);els.sourceToggle.classList.toggle('hidden',!state.processedUrl);$$('[data-use]').forEach(b=>b.classList.toggle('active',(b.dataset.use==='processed')===state.useProcessed));
-    const canDirect=!!directSourceUrl()||isTempValid();const tip=canDirect?'当前图片已有可访问 URL，支持直链的引擎可以直接进入搜索结果。':'当前为本地处理图。未配置临时图片服务时，部分第三方引擎需要手动上传。';els.metaTip.innerHTML=`${icon('info')}<span>${escapeHtml(tip)}</span>`;els.engineHint.textContent=canDirect?'直链能力已就绪；不支持 URL 参数的引擎仍会打开上传页。':'配置临时图片服务后，本地图片也能获得短时 URL，提高一键搜索覆盖率。';syncTempCard();renderEngines();syncSearchButton();syncCropUi()
+    const canDirect=!!directSourceUrl()||isTempValid();const tip=canDirect?'当前图片已有可访问 URL，支持直链的引擎可以直接进入搜索结果。':'当前为本地处理图。未配置临时图片服务时，部分第三方引擎需要手动上传。';els.metaTip.innerHTML=`${icon('info')}<span>${escapeHtml(tip)}</span>`;els.engineHint.textContent=canDirect?'直链能力已就绪；不支持 URL 参数的引擎仍会打开上传页。':'配置临时图片服务后，本地图片也能获得短时 URL，提高一键搜索覆盖率。';syncTempCard();renderEngines();syncSearchButton();syncCropUi();if(investigationSource!==state.source||investigationSourceUrl!==activeUrl()){investigationSource=state.source;investigationSourceUrl=activeUrl();window.dispatchEvent(new CustomEvent('soutu:source-changed'))}
   }
-  async function removeSource(){await deleteTempLink();state.source=null;state.originalUrl=null;state.processedUrl=null;state.processedMeta=null;state.useProcessed=false;state.forceTempLink=false;state.cropMode=false;state.cropRect=null;clearAnalysis();els.uploader.classList.remove('hidden');els.workbench.classList.add('hidden');els.fileInput.value='';els.urlInput.value='';renderEngines();syncSearchButton()}
+  async function removeSource(){await deleteTempLink();state.source=null;state.originalUrl=null;state.processedUrl=null;state.processedMeta=null;state.useProcessed=false;state.forceTempLink=false;state.cropMode=false;state.cropRect=null;clearAnalysis();els.uploader.classList.remove('hidden');els.workbench.classList.add('hidden');els.fileInput.value='';els.urlInput.value='';renderEngines();syncSearchButton();syncWorkbench()}
 
   function renderPresets(){const map={product:'shopping',source:'origin',hd:'expand',anime:'sparkles',industrial:'scan',all:'grid'};els.presetGrid.innerHTML=presets.map(p=>`<button class="preset-card ${state.preset===p.id?'active':''}" data-preset="${p.id}" aria-pressed="${state.preset===p.id}"><span class="preset-icon">${icon(map[p.id])}</span><span class="preset-check">${icon('check')}</span><strong>${p.title}</strong><span class="preset-desc">${p.desc}</span></button>`).join('')}
   function choosePreset(id,announce=true){const p=presets.find(x=>x.id===id);if(!p)return;state.preset=id;state.selected=[...p.engines];if(announce)state.presetTouched=true;renderPresets();renderEngines();syncSearchButton();if(announce)toast(`已切换：${p.title}`,'搜索引擎选择已同步。','ok')}
@@ -1109,7 +1110,13 @@ els.federatedSearchBtn.onclick=federatedProductSearch;if(els.supplierSearchBtn)e
     analyze:()=>analyzeImage(),
     process:kind=>processImage(kind),
     choosePreset:id=>choosePreset(id),
-    makeThumb:url=>makeThumb(url)
+    makeThumb:url=>makeThumb(url),
+    uploadImage:async(file,kind='upload')=>{const before=state.source;await acceptFile(file,kind);return state.source!==before},
+    loadImageUrl:async url=>{const before=state.source;await acceptUrl(url);return state.source!==before},
+    clearImage:()=>removeSource(),
+    setQuery:q=>{const value=String(q||'').trim().slice(0,160);state.analysis.queries=value?[value,...state.analysis.queries.filter(x=>x!==value)].slice(0,8):[];renderQueries();renderMarketplaces();window.dispatchEvent(new CustomEvent('soutu:analysis-changed'))},
+    searchEndpoint:()=>state.settings.productEndpoint.trim().replace(/\/$/,''),
+    startImageSearch:kind=>{if(!state.source)return false;choosePreset(kind==='source'?'source':'product',false);return runSearch()}
   };
   function init(){if(guardVersionMismatch())return;applyTheme(localStorage.getItem('soutu-theme')==='dark',true);initSettings();if(state.engineHealthCheckedAt&&els.engineHealthSummary){const vals=Object.values(state.engineHealth||{}),ok=vals.filter(x=>x.state==='ok').length,degraded=vals.filter(x=>x.state==='degraded').length,down=vals.filter(x=>x.state==='down').length;els.engineHealthSummary.textContent=`${Date.now()-state.engineHealthCheckedAt>12*60*60*1000?'状态已过期 · ':''}正常 ${ok} · 受限 ${degraded} · 异常 ${down}`}renderPresets();renderEngines();renderAnalysis();renderMarketplaces();renderHistory();renderProjects();renderBatch();syncSearchButton();syncTempCard();bind();initPwa();initFromUrl();}
   init();

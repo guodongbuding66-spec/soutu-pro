@@ -111,3 +111,36 @@ test('production manual crop preserves exactly the pixels displayed inside the s
   await page.locator('#applyCrop').click();await expectRegion(page,region);
   await expect(page.locator('#imageProcessStatus')).toContainText('968 × 786');
 });
+
+test('production investigation queries live image providers and saves real sources as evidence',async({page})=>{
+  await page.emulateMedia({reducedMotion:'reduce'});
+  await page.goto(base+'/?investigation-live-qa='+Date.now(),{waitUntil:'domcontentloaded'});
+  await page.locator('[data-nav="research"]').first().click();await expect(page.locator('#v9Workflow')).toHaveAttribute('data-ready','true');
+  await expect(page.locator('a[href*="ai-foreign-trade"]')).toHaveCount(0);await expect(page.locator('[data-v9-demo]')).toHaveCount(0);
+  await page.locator('#investigationQuery').fill('garden shed');
+  const responsePromise=page.waitForResponse(r=>r.url().includes('/api/media-search?'));
+  await page.locator('#investigationSearch').click();const response=await responsePromise;
+  expect(response.ok()).toBe(true);const data=await response.json();expect(data.enabled).toBe(true);expect(data.items.length).toBeGreaterThan(0);
+  await expect(page.locator('.v9-result-card')).not.toHaveCount(0);await expect(page.locator('#investigationStatus')).toContainText('真实结果');
+  const source=await page.locator('.v9-result-card [data-action="evidence"]').first().locator('..').locator('a').first().getAttribute('href');
+  expect(data.items.some(item=>item.link===source)).toBe(true);
+  await page.locator('.v9-result-card [data-action="evidence"]').first().click();
+  await page.locator('[data-v9-mode="evidence"]').click();await expect(page.locator('.v9-evidence-list article')).toHaveCount(1);
+  expect(await page.evaluate(()=>JSON.parse(localStorage.getItem('soutu-pro-v9-evidence'))[0].url)).toBe(source);
+  await page.setViewportSize({width:390,height:844});expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(1);
+  await page.locator('#v9Workflow').screenshot({path:'test-results/production-investigation-live-mobile.png'});
+});
+
+test('production investigation captures a live product page and restores its saved project',async({page})=>{
+  await page.emulateMedia({reducedMotion:'reduce'});
+  await page.goto(base+'/?investigation-product-qa='+Date.now(),{waitUntil:'domcontentloaded'});await page.locator('[data-nav="research"]').first().click();await expect(page.locator('#v9Workflow')).toHaveAttribute('data-ready','true');
+  const fixture=Buffer.from('<svg xmlns="http://www.w3.org/2000/svg" width="240" height="180"><rect width="240" height="180" fill="#ccddee"/></svg>');
+  await page.locator('#investigationFile').setInputFiles({name:'production-investigation-source.svg',mimeType:'image/svg+xml',buffer:fixture});await expect(page.locator('#v9Source h2')).toHaveText('production-investigation-source.svg');
+  await page.locator('#investigationQuery').fill('AirPods source investigation');await page.locator('#investigationUrls').fill('https://www.apple.com/airpods-pro/');
+  const responsePromise=page.waitForResponse(r=>r.url().includes('/api/url-status?'));
+  await page.locator('#investigationCollect').click();const response=await responsePromise;expect(response.ok()).toBe(true);const data=await response.json();expect(data.alive).toBe(true);expect(data.title).toContain('AirPods');expect(data.image).toMatch(/^https:\/\/www\.apple\.com\//);
+  await expect(page.locator('.v9-result-card')).toHaveCount(1);await expect(page.locator('.v9-result-card')).toContainText(data.title);await expect(page.locator('.v9-result-card img')).toHaveCount(1);
+  await page.locator('.v9-result-card [data-action="evidence"]').click();page.once('dialog',d=>d.accept('Production investigation QA'));await page.locator('#v9SaveCase').click();await expect.poll(()=>page.evaluate(()=>JSON.parse(localStorage.getItem('soutu-pro-v9-cases')||'[]').length)).toBe(1);
+  await page.locator('#investigationQuery').fill('changed query');await page.locator('[data-v9-mode="cases"]').click();await page.locator('[data-case-open]').click();await expect(page.locator('#investigationQuery')).toHaveValue('AirPods source investigation');await expect(page.locator('#v9Source h2')).toHaveText('production-investigation-source.svg');
+  await page.locator('#researchHubView').screenshot({path:'test-results/production-investigation-product-desktop.png'});
+});

@@ -373,8 +373,8 @@ test('V9 investigation workspace: import, dedupe, compare, watch, evidence, case
   await page.locator('#v9Print').click();
   await expect.poll(()=>page.evaluate(()=>window.__printed)).toBe(true);
 
-  await page.locator('#v9CopyTrade').click();
-  await expect.poll(async()=>{try{return (await page.evaluate(()=>navigator.clipboard.readText())).includes('"source": "soutu-pro"')}catch{return false}}).toBe(true);
+  await expect(page.locator('#v9CopyTrade')).toHaveCount(0);
+  await expect(page.locator('a[href*="ai-foreign-trade"]')).toHaveCount(0);
 
   await page.locator('#v9Slices').click();
   await expect(page.locator('#batchView')).toBeVisible();

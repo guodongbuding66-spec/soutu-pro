@@ -67,7 +67,7 @@ test('V9 result investigation modes, labels, watch, evidence, supplier, cases an
   await page.goto('http://127.0.0.1:4173/');
   await uploadFixture(page);
   await page.locator('[data-nav="research"]').first().click();
-  await page.locator('[data-v9-demo]').click();
+  await page.evaluate(()=>window.SOUTU_V9_IMPORT({source:'QA网页采集',results:[{title:'示例商品 A',url:'https://example.com/a',domain:'example.com',price:'$199',product:{brand:'Demo',sku:'A-100'}},{title:'示例供应商 B',url:'https://www.alibaba.com/',domain:'alibaba.com',product:{brand:'Demo'}}]}));
   await expect(page.locator('.v9-result-card')).toHaveCount(2);
 
   const first=page.locator('.v9-result-card').first();
@@ -121,9 +121,8 @@ test('V9 result investigation modes, labels, watch, evidence, supplier, cases an
   await page.locator('#v9Print').click();
   await expect.poll(()=>page.evaluate(()=>window.__soutuPrinted===true)).toBeTruthy();
 
-  await page.locator('#v9CopyTrade').click();
-  const clip=await page.evaluate(()=>navigator.clipboard.readText());
-  expect(clip).toContain('"source": "soutu-pro"');
+  await expect(page.locator('#v9CopyTrade')).toHaveCount(0);
+  await expect(page.locator('a[href*="ai-foreign-trade"]')).toHaveCount(0);
 });
 
 test('V9 JSON import, smart dedupe and AI controls always recover from failures',async({page})=>{
