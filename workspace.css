@@ -101,7 +101,9 @@
 
 .topbar .wrap{width:min(1640px,calc(100% - 64px))}
 .source-card:not(:has(#workbench:not(.hidden))) .analysis-disclosure{display:none}
-.source-card{scrollbar-gutter:stable}
+.source-card{scrollbar-gutter:stable;overflow-anchor:none}
+.source-card .crop-actions{display:grid;grid-template-columns:1fr 1fr;animation:none}
+.source-card .crop-actions span{grid-column:1/-1;min-height:3em;line-height:1.5}
 .workspace-content .engines-section:has(#engineGroups.show-all) #engineHealthBtn{display:inline-flex}
 .workspace-content .engines-section:has(#engineGroups.show-all) .engine-health-summary{display:inline-block}
 .workspace-content #engineGroups.show-all .engine-group-actions{display:flex}

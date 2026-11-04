@@ -366,13 +366,14 @@
   }
   function syncCropUi(){
     els.imageStage.classList.toggle('cropping',state.cropMode);els.cropShade.classList.toggle('hidden',!state.cropMode);els.cropActions.classList.toggle('hidden',!state.cropMode);els.cropBtn.classList.toggle('active',state.cropMode);
-    const bounds=previewImageBounds(),meta=activeImageMeta();
-    if(els.cropHint)els.cropHint.textContent='在图片上拖动，框选需要搜索的局部。';
+    const meta=activeImageMeta(),r=state.cropMode&&state.cropRect?cropPixelBounds(state.cropRect,meta.width,meta.height):null;
+    if(els.cropHint)els.cropHint.textContent=!r?'在图片上拖动，框选需要搜索的局部。':r.w&&r.h?`已框选 ${r.w} × ${r.h}，应用后保留白框内的区域。`:'拖动选框以选择图片区域。';
+    // Finish text/layout updates before measuring either coordinate space.
+    const bounds=previewImageBounds();
     if(!state.cropMode||!state.cropRect||!bounds){els.cropBox.classList.add('hidden');els.applyCrop.disabled=true;return}
-    const r=cropPixelBounds(state.cropRect,meta.width,meta.height),stage=els.imageStage.getBoundingClientRect();
+    const stage=els.imageStage.getBoundingClientRect();
     els.cropBox.classList.remove('hidden');
     Object.assign(els.cropBox.style,{left:`${bounds.left-stage.left-els.imageStage.clientLeft+r.x/meta.width*bounds.width}px`,top:`${bounds.top-stage.top-els.imageStage.clientTop+r.y/meta.height*bounds.height}px`,width:`${r.w/meta.width*bounds.width}px`,height:`${r.h/meta.height*bounds.height}px`});
-    if(els.cropHint)els.cropHint.textContent=r.w&&r.h?`已框选 ${r.w} × ${r.h}，应用后保留白框内的区域。`:'拖动选框以选择图片区域。';
     els.applyCrop.disabled=state.imageProcessing||!r.w||!r.h
   }
 
