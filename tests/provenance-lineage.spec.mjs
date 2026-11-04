@@ -1,3 +1,4 @@
+import {openKeywordSearch,openKeywordOptions,openResultTools,showAllEngines,revealFixtureAnalysis} from './workspace-helpers.mjs';
 import {test,expect} from '@playwright/test';
 import {readFile} from 'node:fs/promises';
 // Fixture mutations must not be reset by an unrelated PWA installation reload.
@@ -41,6 +42,8 @@ test('provenance lineage renders, exports, hands off to Hub and reports evidence
       <div class="universal-result-card"><a class="universal-media" href="https://earlier.example/item"></a><div class="universal-result-body"><b>Earlier D</b></div></div>`;
   });
 
+  await openKeywordSearch(page);
+  await openResultTools(page);
   await page.locator('#universalLineageBtn').click();
   await expect(page.locator('#universalLineagePanel')).toBeVisible();
   await expect(page.locator('#universalLineagePanel')).toContainText('版本传播链');

@@ -101,6 +101,12 @@
 
 .topbar .wrap{width:min(1640px,calc(100% - 64px))}
 .source-card:not(:has(#workbench:not(.hidden))) .analysis-disclosure{display:none}
+.source-card{scrollbar-gutter:stable}
+.workspace-content .engines-section:has(#engineGroups.show-all) #engineHealthBtn{display:inline-flex}
+.workspace-content .engines-section:has(#engineGroups.show-all) .engine-health-summary{display:inline-block}
+.workspace-content #engineGroups.show-all .engine-group-actions{display:flex}
+.workspace-content #engineGroups.show-all .engine-card-status .engine-health{display:inline-flex}
+.keyword-options .keyword-lab-head{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
 .workspace-content .search-bar{margin:0 0 12px}
 .workspace-content .search-note{margin:0 0 20px}
 .workspace-content .engine-expand{float:none;margin:0}

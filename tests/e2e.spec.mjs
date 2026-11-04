@@ -1,3 +1,4 @@
+import {openKeywordSearch,openKeywordOptions,openResultTools,showAllEngines,revealFixtureAnalysis} from './workspace-helpers.mjs';
 import {test,expect} from '@playwright/test';
 import {readFile} from 'node:fs/promises';
 const releaseVersion=JSON.parse(await readFile(new URL('../package.json',import.meta.url),'utf8')).version;
@@ -27,6 +28,7 @@ test('core product flow, local image tools, batch, projects and V9 research',asy
   await expect(page.locator('.engine-card')).toHaveCount(10);
   await expect(page.locator('.engine-card .engine-brand img')).toHaveCount(10);
   await expect(page.locator('.engine-card .engine-mark').first()).not.toContainText(/^G$/);
+  await showAllEngines(page);
   await page.locator('#engineHealthBtn').click();
   await expect(page.locator('#engineHealthSummary')).toContainText('正常 10');
   await expect(page.locator('.engine-health.ok')).toHaveCount(10);
@@ -77,7 +79,7 @@ test('core product flow, local image tools, batch, projects and V9 research',asy
   await expect(page.locator('#historyContent .history-card')).toHaveCount(1);
 
   await page.locator('[data-nav="search"]').first().click();
-  await page.evaluate(()=>document.querySelector('#researchPanel')?.classList.remove('hidden'));
+  await revealFixtureAnalysis(page);
   page.once('dialog',d=>d.accept('QA Project'));
   await page.locator('#saveProjectBtn').click();
   await page.locator('[data-nav="projects"]').first().click();
@@ -425,10 +427,9 @@ test('product identity grouping respects GTIN conflicts and exports match eviden
   }));
   await page.goto('http://127.0.0.1:4173/',{waitUntil:'domcontentloaded'});
   await page.locator('#fileInput').setInputFiles({name:'identity.svg',mimeType:'image/svg+xml',buffer:fixture});
-  await page.evaluate(()=>document.querySelector('#researchPanel')?.classList.remove('hidden'));
-  await page.locator('#addQueryBtn').click();
-  await page.locator('[data-query-index]').last().fill('garden shed');
-  await page.locator('#universalSearchBtn').click();
+  await openKeywordSearch(page,'garden shed');
+  await page.locator('#keywordSearchForm button').click();
+  await openResultTools(page);
   await expect(page.locator('.universal-result-card')).toHaveCount(3);
 
   await page.locator('#universalIdentityGroupBtn').click();
@@ -487,12 +488,8 @@ test('V9 universal search: modes, filters, waterfall, favorites and history rest
   });
   await page.goto('http://127.0.0.1:4173/',{waitUntil:'domcontentloaded'});
   await page.locator('#fileInput').setInputFiles({name:'universal.svg',mimeType:'image/svg+xml',buffer:fixture});
-  await page.evaluate(()=>document.querySelector('#researchPanel')?.classList.remove('hidden'));
-  await page.evaluate(()=>{window.scrollTo(0,document.body.scrollHeight)});
-
-  await page.locator('#addQueryBtn').click();
-  const queryInputs=page.locator('[data-query-index]');
-  await queryInputs.last().fill('garden shed');
+  await openKeywordSearch(page,'garden shed');
+  await openKeywordOptions(page);
   await expect(page.locator('#universalModes')).toBeVisible();
 
   await page.locator('[data-universal-mode="source"]').click();
@@ -508,7 +505,7 @@ test('V9 universal search: modes, filters, waterfall, favorites and history rest
   await page.locator('#universalType').selectOption('image');
   await page.locator('#universalTime').selectOption('year');
 
-  await page.locator('#universalSearchBtn').click();
+  await page.locator('#keywordSearchForm button').click();
   await expect(page.locator('.universal-result-card')).toHaveCount(1);
   await page.locator('#universalType').selectOption('all');
   await expect(page.locator('.universal-result-card')).toHaveCount(2);
@@ -523,16 +520,19 @@ test('V9 universal search: modes, filters, waterfall, favorites and history rest
   await expect(page.locator('#universalResearchStats')).toContainText('有身份线索');
   await page.locator('#universalSort').selectOption('evidence');
   await expect(page.locator('.universal-result-card').first()).toContainText('Garden Shed Original');
-  await expect(page.locator('.universal-source-score').first()).not.toBeEmpty();
+  await expect(page.locator('.universal-source-score')).toHaveCount(0);
+  await expect(page.locator('.universal-confidence').first()).toContainText('关键词');
   await page.locator('#universalSort').selectOption('largest');
   await expect(page.locator('.universal-result-card').first()).toContainText('Garden Shed Video');
   await page.locator('#universalSort').selectOption('newest');
   await expect(page.locator('.universal-result-card').first()).toContainText('Garden Shed Original');
   await page.locator('#universalSort').selectOption('auto');
+  await openResultTools(page);
   await page.locator('#universalVisualClusterBtn').click();
   await expect(page.locator('#universalInsights')).toBeVisible();
   await expect(page.locator('#universalInsights')).toContainText('视觉相似归组');
   await expect(page.locator('[data-visual-cluster-key]').first()).toContainText('2 条');
+  await openResultTools(page);
   await page.locator('#universalVisualClusterBtn').click();
   await expect(page.locator('#universalVisualClusterBtn')).not.toHaveClass(/active/);
   await page.locator('#universalProvenanceBtn').click();
@@ -575,7 +575,8 @@ test('V9 universal search: modes, filters, waterfall, favorites and history rest
   await expect(page.locator('.universal-result-card')).toContainText('Garden Shed Original');
   await expect(page.locator('.universal-evidence-badges')).toContainText('1600×1200');
   await expect(page.locator('.universal-evidence-badges')).toContainText('CC0');
-  await expect(page.locator('.universal-confidence')).toContainText('%');
+  await expect(page.locator('.universal-confidence')).toContainText('关键词');
+  await expect(page.locator('.universal-confidence')).not.toContainText('%');
 
   await page.locator('#universalType').selectOption('all');
   await page.locator('#universalResolution').selectOption('4');
@@ -621,7 +622,7 @@ test('V9 universal search: modes, filters, waterfall, favorites and history rest
 
   const requestsBeforeSiteSearch=mediaRequests;
   await page.locator('#universalPlatform').selectOption('instagram');
-  await page.locator('#universalSearchBtn').click();
+  await page.locator('#keywordSearchForm button').click();
   expect(mediaRequests).toBe(requestsBeforeSiteSearch);
   await expect(page.locator('#toastStack')).toContainText('官方站内搜索');
 

@@ -11,7 +11,7 @@
       anchor?.insertAdjacentElement('afterend',button)||actions.appendChild(button)
     }
     if(!document.querySelector('#competitorIntelligencePanel')){
-      const panel=document.createElement('div');panel.id='competitorIntelligencePanel';panel.className='competitor-intelligence-panel hidden';panel.setAttribute('aria-live','polite');grid.insertAdjacentElement('beforebegin',panel)
+      const panel=document.createElement('div');panel.id='competitorIntelligencePanel';panel.className='competitor-intelligence-panel hidden';panel.setAttribute('aria-live','polite');(grid.closest('.platform-disclosure')||grid).insertAdjacentElement('afterend',panel)
     }
     window.SOUTU_COMPETITOR_UI_MOUNTED=true;return true
   }
