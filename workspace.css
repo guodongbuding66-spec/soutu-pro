@@ -6,7 +6,7 @@
 .workspace-local{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted)}
 .workspace-local svg{width:16px;height:16px;color:var(--success)}
 .workspace-layout{display:grid;grid-template-columns:344px minmax(0,1fr);gap:28px;align-items:start}
-.source-card{width:100%;padding:16px;border-radius:16px;box-shadow:var(--shadow-xs);animation:none;position:sticky;top:92px;max-height:calc(100vh - 112px);overflow:auto;scrollbar-width:thin}
+.source-card{width:100%;padding:16px;border-radius:16px;box-shadow:var(--shadow-xs);animation:none;position:relative;overflow:visible}
 .source-card .drop-zone{min-height:300px;padding:28px 16px;border-radius:10px}
 .source-card .drop-zone h2{font-size:19px}.source-card .drop-zone p{font-size:12px;line-height:1.8}
 .source-card .url-row{flex-wrap:wrap;padding:8px 10px;gap:8px;min-height:44px}
@@ -101,7 +101,7 @@
 
 .topbar .wrap{width:min(1640px,calc(100% - 64px))}
 .source-card:not(:has(#workbench:not(.hidden))) .analysis-disclosure{display:none}
-.source-card{scrollbar-gutter:stable;overflow-anchor:none}
+.source-card{overflow-anchor:none}
 .source-card .crop-actions{display:grid;grid-template-columns:1fr 1fr;animation:none}
 .source-card .crop-actions span{grid-column:1/-1;min-height:3em;line-height:1.5}
 .workspace-content .engines-section:has(#engineGroups.show-all) #engineHealthBtn{display:inline-flex}
