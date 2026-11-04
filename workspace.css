@@ -1,5 +1,5 @@
 /* Source and search share one work surface. Images, then actions, then metadata. */
-.search-workspace{width:min(1640px,calc(100% - 64px));padding-bottom:48px}
+.search-workspace{width:min(1640px,calc(100% - 64px));padding-bottom:48px;overflow-anchor:none}
 .workspace-heading{display:flex;align-items:center;justify-content:space-between;gap:24px;padding:32px 0 24px}
 .workspace-heading h1{font-size:28px;letter-spacing:-.04em;line-height:1.25;margin:8px 0}
 .workspace-heading p{margin:0;color:var(--muted);font-size:14px}
