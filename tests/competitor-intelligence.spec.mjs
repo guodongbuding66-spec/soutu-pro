@@ -1,3 +1,4 @@
+import {openKeywordSearch,openKeywordOptions,openResultTools,showAllEngines,revealFixtureAnalysis} from './workspace-helpers.mjs';
 import {test,expect} from '@playwright/test';
 
 test.use({serviceWorkers:'block'});
@@ -21,7 +22,8 @@ test('competitor intelligence mounts and separates same product competitor and s
     document.querySelector('#researchPanel')?.classList.remove('hidden');
     document.querySelector('#universalResearchbar')?.classList.remove('hidden');
   });
-  await expect(page.locator('#researchPanel')).toBeVisible();
+  await openKeywordSearch(page);
+  await openResultTools(page);
   await expect(page.locator('#competitorIntelligenceBtn')).toBeVisible();
 
   await page.locator('#competitorIntelligenceBtn').click();

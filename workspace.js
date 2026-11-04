@@ -33,6 +33,8 @@
   advanced.innerHTML='<summary>更多分析与导出'+icon('plus')+'</summary><div class="advanced-action-list"></div>';
   for(const id of ['universalClusterBtn','universalVisualClusterBtn','universalProvenanceBtn','universalIdentityGroupBtn','universalTimelineBtn','universalExportJsonBtn'])advanced.lastElementChild.append($(id));
   document.querySelector('#universalResearchbar>.query-actions').append(advanced);
+  document.querySelector('.keyword-lab-head').append($('expandKeywordsBtn'));
+  document.querySelector('.platform-disclosure>summary').after($('batchOpenSourcesBtn'));
 
   // Retry a failed thumbnail through the existing restricted public-image proxy,
   // then retain an explicit state and the working source link. Never leave blank cards.

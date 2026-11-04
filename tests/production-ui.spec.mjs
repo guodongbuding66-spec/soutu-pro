@@ -1,3 +1,4 @@
+import {openKeywordSearch,openKeywordOptions,openResultTools,showAllEngines,revealFixtureAnalysis} from './workspace-helpers.mjs';
 import {test,expect} from '@playwright/test';
 import {coordinateFixture,drawSelection,expectOverlay,expectRegion} from './crop-helpers.mjs';
 
@@ -27,6 +28,7 @@ test('production renders distinct official search-engine brands on desktop and m
   await page.setViewportSize({width:1440,height:1000});
   await page.goto(base+'/?official-brand-qa='+Date.now(),{waitUntil:'networkidle'});
 
+  await showAllEngines(page);
   const imgs=page.locator('.engine-card .engine-brand img');
   await expect(imgs).toHaveCount(10);
   await expect.poll(async()=>imgs.evaluateAll(nodes=>nodes.every(i=>i.complete&&i.naturalWidth>0&&i.naturalHeight>0))).toBe(true);

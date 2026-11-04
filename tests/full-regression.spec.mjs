@@ -1,3 +1,4 @@
+import {openKeywordSearch,openKeywordOptions,openResultTools,showAllEngines,revealFixtureAnalysis} from './workspace-helpers.mjs';
 import {test,expect} from '@playwright/test';
 
 const fixture=Buffer.from(`<svg xmlns="http://www.w3.org/2000/svg" width="320" height="200"><rect width="320" height="200" fill="white"/><rect x="40" y="30" width="240" height="140" rx="12" fill="#1f2937"/><circle cx="160" cy="100" r="42" fill="#60a5fa"/><rect x="112" y="82" width="96" height="36" fill="#f8fafc"/></svg>`);
@@ -28,8 +29,10 @@ test('official engine brands render as real images at desktop and mobile',async(
   await page.goto('http://127.0.0.1:4173/',{waitUntil:'domcontentloaded'});
   await expect(page.locator('.engine-card')).toHaveCount(10);
   await expect(page.locator('.engine-card .engine-brand img')).toHaveCount(10);
+  await showAllEngines(page);
   const marks=await page.locator('.engine-card .engine-brand').evaluateAll(nodes=>nodes.map(n=>({text:n.textContent.trim(),w:n.getBoundingClientRect().width,h:n.getBoundingClientRect().height,imgW:n.querySelector('img')?.getBoundingClientRect().width||0})));
-  expect(marks.every(x=>!x.text&&x.w>=44&&x.h>=44&&x.imgW>=30)).toBeTruthy();
+  expect(marks.every(x=>!x.text&&x.w>=32&&x.h>=32&&x.imgW>=30)).toBeTruthy();
+  expect(await page.locator('.select-engine').evaluateAll(nodes=>nodes.every(n=>n.getBoundingClientRect().height>=44))).toBeTruthy();
   await page.locator('.engines-section').screenshot({path:'test-results/engine-ui-desktop-9.3.1.png'});
   await page.setViewportSize({width:390,height:844});
   const overflow=await page.evaluate(()=>document.documentElement.scrollWidth-window.innerWidth);
@@ -39,7 +42,7 @@ test('official engine brands render as real images at desktop and mobile',async(
 
 test('OCR vision barcode object detection and object-to-batch flow',async({page})=>{
   await clean(page);
-  await page.route(/tesseract\.js@5/,route=>route.fulfill({status:200,contentType:'application/javascript',body:`window.Tesseract={recognize:async()=>({data:{text:'ACME\\nMODEL X100\\nSKU 12345'}})};`}));
+  await page.route(/tesseract\.js@5/,route=>route.fulfill({status:200,contentType:'application/javascript',body:`window.Tesseract={recognize:async()=>({data:{confidence:95,text:'ACME\\nMODEL X100\\nSKU 12345'}})};`}));
   await page.route(/@tensorflow\/tfjs@4\.22\.0/,route=>route.fulfill({status:200,contentType:'application/javascript',body:'window.tf={};'}));
   await page.route(/@tensorflow-models\/mobilenet@2\.1\.1/,route=>route.fulfill({status:200,contentType:'application/javascript',body:`window.mobilenet={load:async()=>({classify:async()=>[{className:'tool shed',probability:.93}],infer:()=>({data:async()=>new Float32Array([1,0,0,0]),dispose(){}})})};`}));
   await page.route(/@tensorflow-models\/coco-ssd@2\.2\.3/,route=>route.fulfill({status:200,contentType:'application/javascript',body:`window.cocoSsd={load:async()=>({detect:async()=>[{class:'bench',score:.91,bbox:[35,25,180,110]}]})};`}));
@@ -151,6 +154,7 @@ test('group controls, presets 1-6, native search links, remove source and URL so
   await clean(page);
   await page.route('https://example.com/remote.svg',route=>route.fulfill({status:200,contentType:'image/svg+xml',headers:{'access-control-allow-origin':'*'},body:fixture}));
   await page.goto('http://127.0.0.1:4173/');
+  await showAllEngines(page);
   const firstGroup=page.locator('.engine-group-panel').first();
   await firstGroup.locator('[data-group-clear]').click();
   await expect(firstGroup.locator('.engine-card.selected')).toHaveCount(0);

@@ -38,11 +38,16 @@ export async function drawSelection(page,region,{reverse=false}={}){
 }
 
 export async function expectOverlay(page,region){
-  await expect.poll(async()=>{
+  let last;
+  try{await expect.poll(async()=>{
     const img=await imageBounds(page),crop=await page.locator('#cropBox').boundingBox();
+    last={img,crop,region};
     if(!crop)return Infinity;
     return Math.max(Math.abs(crop.x-(img.x+region.x/img.naturalWidth*img.width)),Math.abs(crop.y-(img.y+region.y/img.naturalHeight*img.height)),Math.abs(crop.width-region.w/img.naturalWidth*img.width),Math.abs(crop.height-region.h/img.naturalHeight*img.height));
-  }).toBeLessThan(1);
+  }).toBeLessThan(1)}catch(error){
+    const layout=await page.evaluate(()=>Object.fromEntries(['toolCard','imageStage','previewImg','cropBox','cropActions','cropHint','imageProcessStatus'].map(id=>{const el=document.getElementById(id),r=el.getBoundingClientRect();return[id,{x:r.x,y:r.y,width:r.width,height:r.height,scrollTop:el.scrollTop,scrollHeight:el.scrollHeight,clientHeight:el.clientHeight,text:id==='cropHint'?el.textContent:undefined,style:id==='cropBox'?el.getAttribute('style'):undefined}]})));
+    console.error('Crop alignment diagnostics',JSON.stringify({last,layout,pointers:await page.evaluate(()=>window.__cropPointerLog)}));throw error;
+  }
 }
 
 export async function expectRegion(page,region){

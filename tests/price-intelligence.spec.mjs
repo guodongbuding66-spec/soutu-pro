@@ -1,3 +1,4 @@
+import {openKeywordSearch,openKeywordOptions,openResultTools,showAllEngines,revealFixtureAnalysis} from './workspace-helpers.mjs';
 import {test,expect} from '@playwright/test';
 
 const fixture=Buffer.from(`<svg xmlns="http://www.w3.org/2000/svg" width="160" height="100"><rect width="160" height="100" fill="white"/><rect x="24" y="18" width="112" height="64" rx="8" fill="#1f2937"/></svg>`);
@@ -54,11 +55,8 @@ test('same-product price intelligence separates currencies, variants and merges 
 
   await page.locator('#fileInput').setInputFiles({name:'price.svg',mimeType:'image/svg+xml',buffer:fixture});
   await expect(page.locator('#workbench')).toBeVisible();
-  await page.evaluate(()=>document.querySelector('#researchPanel')?.classList.remove('hidden'));
-  await expect(page.locator('#researchPanel')).toBeVisible();
-  await page.locator('#addQueryBtn').click();
-  await page.locator('[data-query-index]').last().fill('garden shed');
-  await page.locator('#universalSearchBtn').click();
+  await openKeywordSearch(page,'garden shed');
+  await page.locator('#keywordSearchForm button').click();
   await expect(page.locator('.universal-result-card')).toHaveCount(5);
 
   const mediaCard=page.locator('.universal-result-card').filter({has:page.locator('a.universal-media[href="https://shop-a.example/item"]')});
@@ -77,6 +75,7 @@ test('same-product price intelligence separates currencies, variants and merges 
   expect(bucketStats.find(x=>x.currency==='$').cheapest).toMatchObject({amount:299,domain:'shop-a.example'});
   expect(bucketStats.find(x=>x.currency==='EUR')).toMatchObject({count:1,totalCount:1,min:329,max:329,median:329});
 
+  await openResultTools(page);
   await page.locator('#universalIdentityGroupBtn').click();
   await expect(page.locator('#universalInsights')).toContainText('同款候选归组');
   const group=page.locator('[data-identity-group-key]').filter({hasText:'US Retail Listing'});
