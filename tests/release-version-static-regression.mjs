@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import vm from 'node:vm';
 import {execFileSync} from 'node:child_process';
 
 const read=p=>fs.readFileSync(p,'utf8');
@@ -43,3 +44,7 @@ assert.deepEqual({version:release.version,commit:release.commit},{version,commit
 assert(!Number.isNaN(Date.parse(release.builtAt)),'release metadata builtAt must be ISO date');
 
 console.log(`Release/deployment regression passed for ${version}`);
+
+// Replacement strings must preserve dollar signs in embedded JavaScript.
+assert(standalone.includes(publicApp),'standalone must preserve app source verbatim, including $$ selector helpers');
+for(const [i,match] of [...standalone.matchAll(/<script[^>]*>([\s\S]*?)<\/script>/g)].entries())new vm.Script(match[1],{filename:`standalone-script-${i}.js`});

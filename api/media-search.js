@@ -1,6 +1,18 @@
 const MAX_QUERY = 160;
 const MAX_PER_PROVIDER = 12;
 
+export function queryTerms(q='') {
+  return (String(q).toLowerCase().match(/[\p{L}\p{N}]+/gu)||[]).filter(x=>x.length>=2&&!['the','and','for','with','image','images','photo','photos','original','source'].includes(x));
+}
+export function matchesQuery(row,q) {
+  const terms=queryTerms(q),text=[row.title,row.snippet,row.author,...(Array.isArray(row.meta?.keywords)?row.meta.keywords:[])].filter(Boolean).join(' ').toLowerCase();
+  return terms.length>0&&terms.some(term=>text.includes(term));
+}
+export function meaningfulQuery(q='') {
+  const letters=(q.match(/[\p{L}\p{N}]/gu)||[]).length;
+  return letters>=2&&letters/Math.max(1,q.length)>=.65&&queryTerms(q).length>0;
+}
+
 function cleanQuery(value='') {
   return String(value).trim().replace(/\s+/g, ' ').slice(0, MAX_QUERY);
 }
@@ -290,6 +302,7 @@ export default async function handler(req, res) {
   if (req.method !== 'GET') return res.status(405).json({error:'Method not allowed'});
   const q = cleanQuery(req.query?.q);
   if (!q) return res.status(400).json({error:'Missing q'});
+  if (!meaningfulQuery(q)) return res.status(422).json({enabled:false,error:'请核对搜索词；未识别到可用的名称、型号或描述。'});
   const country = cleanQuery(req.query?.country || 'all');
   const language = cleanQuery(req.query?.language || 'all');
   const type = cleanQuery(req.query?.type || 'all');
@@ -298,12 +311,14 @@ export default async function handler(req, res) {
   const publishedAfter = sinceMs ? new Date(Date.now() - sinceMs).toISOString() : '';
   const filters = {country, language, type, time, publishedAfter};
   const requested = new Set(String(req.query?.providers || '').split(',').map(x=>x.trim().toLowerCase()).filter(Boolean));
-  const selected = requested.size ? providers.filter(([name]) => requested.has(name.toLowerCase().replace(/\s+/g,'-')) || requested.has(name.toLowerCase())) : providers.filter(([name]) => name !== 'Bluesky');
+  const mode=cleanQuery(req.query?.mode||'all');
+  const defaultNames=mode==='social'?['Mastodon','Bluesky']:mode==='video'?['YouTube','Pexels','Pixabay']:['Openverse','Wikimedia Commons','Pexels','Unsplash','Pixabay','Flickr'];
+  const selected = requested.size ? providers.filter(([name]) => requested.has(name.toLowerCase().replace(/\s+/g,'-')) || requested.has(name.toLowerCase())) : providers.filter(([name]) => defaultNames.includes(name));
   const settled = await Promise.all(selected.map(async ([name, fn, configured]) => {
     const enabled = configured();
     if (!enabled) return {name, enabled:false, configured:false, items:[], message:'API key not configured'};
     try {
-      let items = (await fn(q, filters)) || [];
+      let items = ((await fn(q, filters)) || []).filter(x=>matchesQuery(x,q));
       if (type !== 'all') items = items.filter(x => x.type === type);
       if (publishedAfter) {
         const cutoff = Date.parse(publishedAfter);
@@ -320,7 +335,7 @@ export default async function handler(req, res) {
   const items = settled.flatMap(x => x.items);
   res.setHeader('Cache-Control','s-maxage=300, stale-while-revalidate=600');
   return res.status(200).json({
-    enabled:true, query:q, filters, items,
+    enabled:true, mode:'keyword', query:q, filters, items,
     providers:settled.map(({items,...rest}) => ({...rest,count:items.length})),
     total:items.length
   });
