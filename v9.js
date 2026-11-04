@@ -1,7 +1,7 @@
 (() => {
   'use strict';
 
-  const V9_VERSION = '9.6.0';
+  const V9_VERSION = '9.7.0';
   const KEYS = {
     results: 'soutu-pro-v9-results',
     watch: 'soutu-pro-v9-watch',
@@ -21,7 +21,7 @@
   const bridge = () => window.SOUTU_BRIDGE || null;
 
   const state = {
-    results: read(KEYS.results, []).filter(r=>r.engine!=='demo'),
+    results: read(KEYS.results, []).filter(r=>r.engine!=='demo').map(r=>r.scores?.sourceEvidence!=null&&!Number.isFinite(r.scores?.visual)&&!Number.isFinite(r.scores?.structure)?{...r,scores:{sourceEvidence:r.scores.sourceEvidence}}:r),
     watch: read(KEYS.watch, []),
     cases: read(KEYS.cases, []),
     evidence: read(KEYS.evidence, []),
