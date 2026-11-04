@@ -75,6 +75,7 @@ test('same-product price intelligence separates currencies, variants and merges 
   expect(bucketStats.find(x=>x.currency==='$').cheapest).toMatchObject({amount:299,domain:'shop-a.example'});
   expect(bucketStats.find(x=>x.currency==='EUR')).toMatchObject({count:1,totalCount:1,min:329,max:329,median:329});
 
+  await openResultTools(page);
   await page.locator('#universalIdentityGroupBtn').click();
   await expect(page.locator('#universalInsights')).toContainText('同款候选归组');
   const group=page.locator('[data-identity-group-key]').filter({hasText:'US Retail Listing'});
