@@ -26,7 +26,13 @@
   });
   $('analyzeBtn').addEventListener('click',()=>{$('analysisDetails').open=true});
   const note=document.createElement('p');note.className='search-note';note.textContent='搜索引擎在新标签页打开。本地图片会创建短时链接；不支持直连的引擎需上传或粘贴图片。';
-  document.querySelector('.engines-section').append(note);
+  const engineHeading=document.querySelector('.engine-heading'),searchBar=document.querySelector('.search-bar');
+  engineHeading.before(searchBar,note);
+  engineHeading.querySelector('.section-actions').prepend($('engineExpandBtn'));
+  const advanced=document.createElement('details');advanced.className='result-advanced-actions';
+  advanced.innerHTML='<summary>更多分析与导出'+icon('plus')+'</summary><div class="advanced-action-list"></div>';
+  for(const id of ['universalClusterBtn','universalVisualClusterBtn','universalProvenanceBtn','universalIdentityGroupBtn','universalTimelineBtn','universalExportJsonBtn'])advanced.lastElementChild.append($(id));
+  document.querySelector('#universalResearchbar>.query-actions').append(advanced);
 
   // Retry a failed thumbnail through the existing restricted public-image proxy,
   // then retain an explicit state and the working source link. Never leave blank cards.
