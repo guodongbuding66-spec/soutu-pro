@@ -1,7 +1,7 @@
 import {test,expect} from '@playwright/test';
 import {coordinateFixture,imageBounds,drawSelection,expectOverlay,expectRegion} from './crop-helpers.mjs';
 
-test.use({serviceWorkers:'block',reducedMotion:'reduce',viewport:{width:1440,height:1000}});
+test.use({serviceWorkers:'block',reducedMotion:'reduce',viewport:{width:1440,height:1000},screenshot:'only-on-failure'});
 test.setTimeout(45000);
 async function setup(page,width,height){
   await page.route('**/api/image-proxy?**',route=>route.fulfill({status:200,contentType:'image/svg+xml',body:'<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"/>'}));
@@ -119,7 +119,7 @@ test('failed manual image loading restores the selection and its processing cont
   await setup(page,800,600);const buffer=await coordinateFixture(page,800,600),remote='https://crop.example.com/manual-failure.png';
   await page.locator('#removeBtn').click();await page.route(remote,route=>route.fulfill({status:200,contentType:'image/png',headers:{'access-control-allow-origin':'*'},body:buffer}));
   await page.locator('#urlInput').fill(remote);await page.locator('#urlForm button').click();await expect(page.locator('#sourceKind')).toContainText('图片链接');
-  await page.locator('#cropBtn').click();const region={x:100,y:80,w:600,h:400};await drawSelection(page,region);
+  await page.locator('#cropBtn').click();const region={x:100,y:80,w:600,h:400};await drawSelection(page,region);await expectOverlay(page,region);
   await page.route(remote,route=>route.abort());await page.route('**/api/image-proxy?url=https%3A%2F%2Fcrop.example.com%2Fmanual-failure.png',route=>route.fulfill({status:502,body:'failed'}));
   await page.locator('#applyCrop').click();await expect(page.locator('#imageProcessStatus')).toContainText('处理失败');
   await expect(page.locator('#applyCrop')).toBeEnabled();await expect(page.locator('#rotateBtn')).toBeEnabled();await expectOverlay(page,region);await expect(page.locator('#dims')).toHaveText('800 × 600');await expect(page.locator('#sourceToggle')).toBeHidden();
